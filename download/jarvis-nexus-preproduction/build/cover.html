@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  @page { size: 794px 1123px; margin: 0; }
+  :root {
+    --c-bg: #0a1628;
+    --c-accent: #4da8da;
+    --c-text: #e8f0f8;
+    --c-muted: #7a9bb8;
+    --c-glow: #2d7ab3;
+  }
+  html, body {
+    margin: 0; padding: 0; width: 794px; height: 1123px;
+    background: var(--c-bg); color: var(--c-text);
+    font-family: 'Inter', 'DejaVu Sans', 'Liberation Sans', sans-serif;
+  }
+  @media screen {
+    html { height: auto; display: flex; justify-content: center; min-height: 100vh; background: var(--c-bg); }
+    body { transform-origin: top center; scale: min(1, calc(100vw / 794), calc(100vh / 1123)); margin: 0 auto; box-shadow: 0 0 60px rgba(0,0,0,0.3); }
+  }
+  .cover { width: 794px; height: 1123px; position: relative; box-sizing: border-box;
+           border: none; outline: none; box-shadow: none; }
+
+  /* Layer 1 - background glow (clipped) */
+  .layer-bg { position: absolute; inset: 0; overflow: hidden; z-index: 1; }
+  .glow-a, .glow-b { position: absolute; width: 100%; height: 100%; }
+  .glow-a { background: radial-gradient(circle at 12% 8%, rgba(45,122,179,0.08), transparent 42%); }
+  .glow-b { background: radial-gradient(circle at 90% 94%, rgba(77,168,218,0.07), transparent 46%); }
+
+  /* Layer 2 - structure: luminous rectangular frame */
+  .layer-frame { position: absolute; inset: 0; z-index: 2; }
+  .frame {
+    position: absolute; left: 60px; right: 60px; top: 80px; bottom: 80px;
+    border: 2px solid var(--c-accent);
+  }
+
+  /* Layer 3 - content */
+  .layer-content { position: absolute; inset: 0; z-index: 3; }
+  .kicker {
+    position: absolute; left: 110px; top: 138px;
+    font-size: 11pt; font-weight: 300; color: var(--c-accent);
+    letter-spacing: 5px; text-transform: uppercase;
+  }
+  .hero {
+    position: absolute; left: 110px; top: 236px;
+    font-family: 'Playfair Display', 'Noto Serif SC', 'DejaVu Serif', serif;
+    font-size: 54pt; font-weight: 900; line-height: 1.15;
+    color: var(--c-text); max-width: 560px;
+    text-shadow: 0 0 26px rgba(45,122,179,0.35);
+  }
+  .summary {
+    position: absolute; left: 110px; top: 505px;
+    font-size: 15pt; font-weight: 300; line-height: 1.7;
+    color: var(--c-muted); max-width: 520px;
+  }
+  .org {
+    position: absolute; left: 110px; top: 750px;
+    font-size: 18pt; font-weight: 400; color: var(--c-text);
+  }
+  .org-sub {
+    position: absolute; left: 110px; top: 790px;
+    font-size: 11pt; font-weight: 300; color: var(--c-muted); letter-spacing: 1px;
+  }
+  .date {
+    position: absolute; left: 110px; top: 968px;
+    font-size: 10pt; font-weight: 300; color: var(--c-muted); letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+  <div class="cover">
+    <div class="layer-bg">
+      <div class="glow-a"></div>
+      <div class="glow-b"></div>
+    </div>
+    <div class="layer-frame">
+      <div class="frame"></div>
+    </div>
+    <div class="layer-content">
+      <div class="kicker">Pre-Production Package &middot; Phase Zero</div>
+      <div class="hero">JARVIS<br>NEXUS</div>
+      <div class="summary">
+        A persistent, owner-controlled intelligence embodied as a living adult female
+        presence inside a cinematic real-time world. This package presents the Phase&nbsp;Zero
+        direction for approval: repository inspection, character and environment direction,
+        a twenty-frame visual storyboard, and the motion and technical plan.
+      </div>
+      <div class="org">Z.ai</div>
+      <div class="org-sub">Principal Engineering &middot; Real-Time 3D Direction &middot; Owner Copy</div>
+      <div class="date">11 November 2026 &middot; Version 1.0 &middot; Confidential to Owner</div>
+    </div>
+  </div>
+</body>
+</html>
