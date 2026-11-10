@@ -306,11 +306,17 @@ for title, paras in CH2_SECTIONS:
     for extra in paras[1:]:
         story.append(P(extra))
 
-# character concept plates: full body + face, side by side
-fig_full = embed_image(os.path.join(BASE, "concepts/char_fullbody.png"), max_h=252)
-fig_face = embed_image(os.path.join(BASE, "concepts/char_face.png"), max_h=252)
-pair = Table([[fig_full, fig_face]],
-             colWidths=[fig_full.drawWidth + 14, fig_face.drawWidth + 14],
+# character identity plates: owner-approved anchor (full width) + locked sheet & face
+fig_anchor = embed_image(os.path.join(BASE, "v2_proof/canon_ref.png"), max_h=205)
+story += safe_keep_together(
+    [fig_anchor, Paragraph("Plate 2.1 - The owner-approved identity anchor. This single reference image "
+                           "is the law of the project: every concept plate and storyboard frame in this "
+                           "package is a controlled edit of it.", S["caption"])],
+    max_h=PAGE_H * 0.45)
+fig_sheet = embed_image(os.path.join(BASE, "v2_proof/p0_character_sheet.jpg"), max_h=252)
+fig_face = embed_image(os.path.join(BASE, "v2_proof/p1_face_closeup.jpg"), max_h=252)
+pair = Table([[fig_sheet, fig_face]],
+             colWidths=[fig_sheet.drawWidth + 14, fig_face.drawWidth + 14],
              hAlign="CENTER")
 pair.setStyle(TableStyle([
     ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
@@ -321,9 +327,10 @@ pair.setStyle(TableStyle([
     ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
 ]))
 story += safe_keep_together(
-    [pair, Spacer(1, 2), Paragraph("Plates 2.1-2.2 - Character concept studies: full figure and face. "
-                     "They fix silhouette, wardrobe language and attitude; the shipped "
-                     "character comes from the licensed pipeline in Table 2.3.", S["caption"])],
+    [pair, Spacer(1, 2), Paragraph("Plates 2.2-2.3 - The locked full-length character sheet (left) and face study "
+                     "(right), both generated as controlled edits of the anchor - one woman, guaranteed. "
+                     "The shipped 3D character comes from the repository rig aligned to this "
+                     "identity (Table 2.3).", S["caption"])],
     max_h=PAGE_H * 0.45)
 
 story += h2_block("2.6  Expressions", P(
@@ -337,9 +344,9 @@ story += h2_block("2.7  Poses and locomotion targets", P(
 story += styled_table(CH2_POSES)
 for title, paras in CH2_FACIAL:
     story += h2_block(title, P(paras[0]))
-story += h2_block("2.7  Proposed licensed assets", P(
-    "The pipeline below is proposed for licensing. Every entry names its licence basis "
-    "and role; nothing enters the repository without that row filled in."))
+story += h2_block("2.9  Asset pipeline", P(
+    "The pipeline below is repository-first. Every entry names its licence basis "
+    "and role; nothing enters a release without that row filled in."))
 story += styled_table(CH2_ASSETS, cell_style="cellSmall")
 story.append(P(CH2_ASSETS_NOTE))
 
@@ -408,7 +415,7 @@ for fr in FRAMES:
 story += h1_block("Chapter 5  —  Motion and Technical Plan", P(CH5_INTRO))
 for title, paras in CH5_SECTIONS:
     story += h2_block(title, P(paras[0]))
-story += h2_block("5.11  Storyboard-to-systems mapping",
+story += h2_block("5.12  Storyboard-to-systems mapping",
                   P("Every frame maps to the systems that realise it. The matrix below is "
                     "the traceability contract between the storyboard and the build."))
 story += styled_table(CH5_MAPPING, cell_style="cellSmall")

@@ -4,7 +4,7 @@ from pypdf import PdfReader, PdfWriter
 
 A4_W, A4_H = 595.28, 841.89
 BUILD = "/home/z/my-project/download/jarvis-nexus-preproduction/build"
-FINAL = "/home/z/my-project/download/JARVIS-NEXUS_PreProduction_Package_v1.pdf"
+FINAL = "/home/z/my-project/download/JARVIS-NEXUS_PreProduction_Package_v2.pdf"
 
 
 def normalize(page):
