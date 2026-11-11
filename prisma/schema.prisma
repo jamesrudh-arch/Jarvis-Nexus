@@ -1,0 +1,138 @@
+// JARVIS NEXUS — CORE persistence schema (ported from reference FastAPI/SQLAlchemy model,
+// trimmed to the golden-path surface: world state, owner switches, epistemic memory,
+// conversations, goals, scenarios, specialist agents, security audit).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// Authoritative singleton world state for the living JARVIS embodiment.
+model NexusWorldState {
+  id                        Int      @id @default(1)
+  ownerName                 String   @default("Owner")
+  firstLaunchCompleted      Boolean  @default(false)
+  activeMode                String   @default("wake_auth")
+  currentZone               String   @default("central_operations")
+  posX                      Float    @default(1.45)
+  posZ                      Float    @default(0.95)
+  yawRad                    Float    @default(-0.42)
+  locomotionState           String   @default("idle_console_work")
+  posture                   String   @default("focused_standing")
+  emotionalState            String   @default("attentive")
+  activeActivitySummary     String   @default("Reviewing primary systems assembly at Central Operations.")
+  interruptedTaskStackJson  String   @default("[]")
+  activeCameraPreset        String   @default("living_presence")
+  reducedMotion             Boolean  @default(false)
+  updatedAt                 DateTime @updatedAt
+}
+
+/// Seven hardware-grade owner control switches (Master, Mic, Cam, Autonomy, Remote Compute, Tools, Embodiment).
+model OwnerSwitch {
+  switchKey       String   @id
+  label           String
+  enabled         Boolean  @default(true)
+  description     String
+  enforcementScope String
+  updatedAt       DateTime @updatedAt
+}
+
+/// Typed epistemic memory: hypotheses are never silently promoted to verified facts.
+model MemoryRecord {
+  id              String   @id @default(uuid())
+  category        String
+  epistemicStatus String   @default("owner_stated")
+  title           String
+  content         String
+  isSensitive     Boolean  @default(false)
+  confidence      Float    @default(1.0)
+  sourceRef       String?
+  projectTag      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([category])
+  @@index([epistemicStatus])
+}
+
+model Conversation {
+  id        String   @id @default(uuid())
+  title     String   @default("Primary Sanctuary Session")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ConversationMessage {
+  id               String   @id @default(uuid())
+  conversationId   String
+  role             String
+  modality         String   @default("text")
+  content          String
+  mediaRef         String?
+  interrupted      Boolean  @default(false)
+  inferenceSource  String   @default("nexus_cloud_route")
+  emotionalTone    String   @default("attentive")
+  targetZone       String?
+  createdAt        DateTime @default(now())
+
+  @@index([conversationId])
+}
+
+/// Priority & dependency-gated goals driving JARVIS's autonomous ongoing work.
+model GoalRecord {
+  id              String   @id @default(uuid())
+  title           String
+  description     String
+  priority        Int      @default(2)
+  status          String   @default("active")
+  progress        Int      @default(0)
+  dependsOnJson   String   @default("[]")
+  scheduleSpec    String   @default("continuous")
+  assignedZone    String   @default("goals_projects")
+  autonomousAllowed Boolean @default(true)
+  nextAction      String   @default("")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+/// Scenario Director definitions ("Let me show you" room-scale 3D reconstructions).
+model ScenarioDefinition {
+  id                String   @id
+  title             String
+  classification    String
+  summary           String
+  durationSec       Float    @default(18.0)
+  variablesJson     String   @default("[]")
+  branchesJson      String   @default("[]")
+  timelineJson      String   @default("[]")
+  actorsPropsJson   String   @default("{}")
+  evidenceNotesJson String   @default("[]")
+  createdAt         DateTime @default(now())
+}
+
+/// Bounded specialist agents coordinated at the Multi-Agent Collaboration Table.
+model SpecialistAgent {
+  id                  String   @id
+  name                String
+  roleSummary         String
+  allowedToolsJson    String   @default("[]")
+  permissionBoundary  String
+  status              String   @default("idle")
+  currentTask         String?
+  lastOutput          String?
+  updatedAt           DateTime @updatedAt
+}
+
+model SecurityAuditEvent {
+  id        String   @id @default(uuid())
+  severity  String   @default("info")
+  category  String
+  message   String
+  source    String   @default("CORE")
+  resolved  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}

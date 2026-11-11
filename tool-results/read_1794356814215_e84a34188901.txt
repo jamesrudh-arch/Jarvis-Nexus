@@ -1,0 +1,1136 @@
+     1→/**
+     2→ * JARVIS NEXUS — Primary Client Orchestrator.
+     3→ * Connects the Real-Time 3D Sanctuary & Living Character to CORE (/api/v1 & /ws/nexus).
+     4→ */
+     5→import * as THREE from 'three';
+     6→import { NexusSanctuaryScene } from './world/NexusSanctuaryScene.js';
+     7→
+     8→const state = {
+     9→  world: null,
+    10→  switches: {},
+    11→  scenarios: [],
+    12→  activeScenarioDef: null,
+    13→  mediaItems: [],
+    14→  activeInspectorTab: 'scenarios',
+    15→  ws: null,
+    16→  micStream: null,
+    17→  camStream: null,
+    18→  recognition: null,
+    19→  mediaRecorder: null,
+    20→  recordedChunks: [],
+    21→};
+    22→
+    23→const canvas = document.getElementById('nexus-canvas');
+    24→const labelsLayer = document.getElementById('spatial-labels-layer');
+    25→const uploadedVideoEl = document.getElementById('uploaded-video-el');
+    26→const opticalCamEl = document.getElementById('optical-cam-el');
+    27→
+    28→const sanctuary = new NexusSanctuaryScene(canvas, labelsLayer);
+    29→
+    30→// Optional external CORE origin when Frontend is hosted separately (e.g. Vercel -> Railway).
+    31→// Defaults to '' (same-origin relative URLs) when served directly by Railway / FastAPI / Vite proxy.
+    32→const CORE_HTTP_ORIGIN = (import.meta.env.VITE_CORE_URL || '').trim().replace(/\/+$/, '');
+    33→
+    34→function coreHttpUrl(path) {
+    35→  return CORE_HTTP_ORIGIN ? `${CORE_HTTP_ORIGIN}${path}` : path;
+    36→}
+    37→
+    38→function coreWsBase() {
+    39→  if (CORE_HTTP_ORIGIN) {
+    40→    return CORE_HTTP_ORIGIN.replace(/^http:/i, 'ws:').replace(/^https:/i, 'wss:');
+    41→  }
+    42→  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    43→  return `${proto}//${window.location.host}`;
+    44→}
+    45→
+    46→async function api(path, options = {}) {
+    47→  const headers = options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' };
+    48→  const res = await fetch(coreHttpUrl(path), {
+    49→    ...options,
+    50→    headers: { ...headers, ...(options.headers || {}) },
+    51→  });
+    52→  if (!res.ok) {
+    53→    let detail = `HTTP ${res.status}`;
+    54→    try {
+    55→      const err = await res.json();
+    56→      detail = err.detail || detail;
+    57→    } catch { /* ignore */ }
+    58→    throw new Error(detail);
+    59→  }
+    60→  return res.json();
+    61→}
+    62→
+    63→// ---------------------------------------------------------------------------
+    64→// 1. Boot & Continuity Initialization
+    65→// ---------------------------------------------------------------------------
+    66→async function bootstrap() {
+    67→  const activityEl = document.getElementById('jarvis-activity-text');
+    68→  try {
+    69→    await sanctuary.initCharacter((xhr) => {
+    70→      if (xhr && xhr.total) {
+    71→        const pct = Math.round((xhr.loaded / xhr.total) * 100);
+    72→        activityEl.textContent = `Loading rigged 3D character & skeletal clips (${pct}%)...`;
+    73→      }
+    74→    });
+    75→  } catch (err) {
+    76→    activityEl.textContent = `Character asset warning: ${err.message}`;
+    77→  }
+    78→
+    79→  const [worldSnap, scenariosRes, mediaRes] = await Promise.all([
+    80→    api('/api/v1/world'),
+    81→    api('/api/v1/scenarios'),
+    82→    api('/api/v1/media'),
+    83→  ]);
+    84→
+    85→  state.scenarios = scenariosRes.scenarios || [];
+    86→  state.mediaItems = mediaRes.items || [];
+    87→  applyWorldState(worldSnap, true);
+    88→
+    89→  if (!worldSnap.first_launch_completed) {
+    90→    document.getElementById('first-wake-banner').classList.remove('hidden');
+    91→    sanctuary.cameraDirector.setPreset('arrival_wake', worldSnap.reduced_motion);
+    92→  }
+    93→
+    94→  connectNexusWebSocket();
+    95→  bindUIEvents();
+    96→  startTelemetryPoll();
+    97→
+    98→  const clock = new THREE.Clock();
+    99→  sanctuary.renderer.setAnimationLoop(() => {
+   100→    const dt = clock.getDelta();
+   101→    sanctuary.renderFrame(dt, opticalCamEl, Boolean(state.switches.camera));
+   102→    syncScenarioSliderReadout();
+   103→  });
+   104→}
+   105→
+   106→function connectNexusWebSocket() {
+   107→  const isMobile = window.innerWidth <= 860;
+   108→  const deviceTag = isMobile ? 'mobile_companion' : 'pc_sanctuary';
+   109→  const wsUrl = `${coreWsBase()}/ws/nexus?device=${deviceTag}`;
+   110→
+   111→  const dot = document.getElementById('core-conn-dot');
+   112→  const ws = new WebSocket(wsUrl);
+   113→  state.ws = ws;
+   114→
+   115→  ws.onopen = () => dot.classList.remove('offline');
+   116→  ws.onclose = () => {
+   117→    dot.classList.add('offline');
+   118→    setTimeout(connectNexusWebSocket, 3500);
+   119→  };
+   120→  ws.onmessage = (ev) => {
+   121→    try {
+   122→      const msg = JSON.parse(ev.data);
+   123→      handleLiveEvent(msg);
+   124→    } catch { /* noop */ }
+   125→  };
+   126→}
+   127→
+   128→function handleLiveEvent(msg) {
+   129→  const { type, payload } = msg;
+   130→  if (type === 'initial_state' || type === 'world_sync' || type === 'scenario_restored') {
+   131→    applyWorldState(payload, false);
+   132→    if (type === 'scenario_restored') {
+   133→      sanctuary.scenarioDirector.clearStage();
+   134→      document.getElementById('scenario-director-bar').classList.add('hidden');
+   135→    }
+   136→  } else if (type === 'jarvis_interrupted') {
+   137→    applyWorldState(payload, false);
+   138→    sanctuary.jarvis.acknowledgeInterruption(sanctuary.camera.position);
+   139→  } else if (type === 'switch_changed') {
+   140→    applyWorldState(payload.world, false);
+   141→    enforceBrowserSensorGates();
+   142→  } else if (type === 'jarvis_spoke') {
+   143→    applyWorldState(payload.world, false);
+   144→    showJarvisResponse(payload.jarvis_message);
+   145→    if (payload.activated_scenario) {
+   146→      const def = state.scenarios.find((s) => s.id === payload.activated_scenario.scenario_id);
+   147→      if (def) activateClientScenario(def, payload.activated_scenario);
+   148→    }
+   149→  } else if (type === 'scenario_activated') {
+   150→    applyWorldState(payload.world, false);
+   151→    activateClientScenario(payload.scenario, payload.runtime);
+   152→  } else if (type === 'video_state_changed') {
+   153→    applyWorldState(payload.world, false);
+   154→    applyVideoState(payload.video);
+   155→  }
+   156→}
+   157→
+   158→// ---------------------------------------------------------------------------
+   159→// 2. Apply Authoritative World, Switch, Locomotion & Camera State
+   160→// ---------------------------------------------------------------------------
+   161→function applyWorldState(snap, initialSnap = false) {
+   162→  if (!snap) return;
+   163→  state.world = snap;
+   164→  state.switches = snap.switches || {};
+   165→  sanctuary.reducedMotion = Boolean(snap.reduced_motion);
+   166→  document.getElementById('chk-reduced-motion').checked = sanctuary.reducedMotion;
+   167→
+   168→  // Header status
+   169→  const modeObj = (snap.modes || []).find((m) => m.id === snap.active_mode);
+   170→  document.getElementById('active-mode-label').textContent = modeObj ? modeObj.label : snap.active_mode;
+   171→  document.getElementById('jarvis-zone-badge').textContent = (snap.current_zone || '').replaceAll('_', ' ');
+   172→  document.getElementById('jarvis-activity-text').textContent = snap.active_activity_summary || '';
+   173→
+   174→  // Resume button visibility when an interrupted task is on the stack
+   175→  const hasStack = Array.isArray(snap.interrupted_task_stack) && snap.interrupted_task_stack.length > 0;
+   176→  document.getElementById('btn-resume-task').classList.toggle('hidden', !hasStack);
+   177→
+   178→  // Render 7 Hardware Switches
+   179→  renderSwitchesStrip(snap.switches || {});
+   180→  sanctuary.syncPhysicalSwitchLevers(snap.switches || {});
+   181→
+   182→  // Render 15 Modes Drawer
+   183→  renderModesDrawer(snap.modes || [], snap.active_mode);
+   184→
+   185→  // Move or place JARVIS in 3D space
+   186→  const pos = snap.position || { x: 1.45, z: 0.95, yaw: -0.42 };
+   187→  const zoneInfo = snap.zones?.[snap.current_zone];
+   188→  if (zoneInfo?.look_target) {
+   189→    sanctuary.jarvis.lookWorldTarget.set(...zoneInfo.look_target);
+   190→  }
+   191→  sanctuary.jarvis.focusCamera = ['conversational_focus', 'wake_auth', 'digital_human_embodiment', 'holographic_presence'].includes(snap.active_mode);
+   192→
+   193→  const postureMap = {
+   194→    simulation_stage: snap.active_scenario ? 'scenario_direct' : 'scenario_construct',
+   195→    media_presentation: 'video_present',
+   196→    central_operations: snap.active_mode === 'conversational_focus' ? 'conversational_focus' : 'console_interaction',
+   197→  };
+   198→  const posture = postureMap[snap.current_zone] || 'console_interaction';
+   199→
+   200→  if (initialSnap) {
+   201→    sanctuary.jarvis.root.position.set(pos.x, 0, pos.z);
+   202→    sanctuary.jarvis.root.rotation.y = pos.yaw;
+   203→    sanctuary.jarvis.targetYaw = pos.yaw;
+   204→    sanctuary.jarvis.postureMode = posture;
+   205→    sanctuary.jarvis.emotionalState = snap.emotional_state || 'attentive';
+   206→  } else {
+   207→    sanctuary.jarvis.navigateTo(pos.x, pos.z, pos.yaw, {
+   208→      urgent: snap.locomotion_state === 'running' || snap.emotional_state === 'urgent',
+   209→      posture,
+   210→      emotion: snap.emotional_state || 'focused',
+   211→    });
+   212→  }
+   213→
+   214→  // Camera & Holographic Mode 15 sync
+   215→  const isHolo = snap.active_mode === 'holographic_presence';
+   216→  sanctuary.setHologramMode(isHolo, sanctuary.hologramLayout);
+   217→  document.getElementById('hologram-control-bar').classList.toggle('hidden', !isHolo);
+   218→  document.getElementById('hologram-guides').classList.toggle('hidden', !isHolo);
+   219→  document.getElementById('btn-hologram-toggle').classList.toggle('active', isHolo);
+   220→
+   221→  if (snap.active_camera_preset) {
+   222→    sanctuary.cameraDirector.setPreset(snap.active_camera_preset, sanctuary.reducedMotion);
+   223→  }
+   224→
+   225→  if (snap.active_scenario && !sanctuary.scenarioDirector.activeScenario) {
+   226→    const def = state.scenarios.find((s) => s.id === snap.active_scenario.scenario_id);
+   227→    if (def) activateClientScenario(def, snap.active_scenario);
+   228→  }
+   229→
+   230→  if (snap.active_video) {
+   231→    applyVideoState(snap.active_video);
+   232→  }
+   233→}
+   234→
+   235→function renderSwitchesStrip(sw) {
+   236→  const strip = document.getElementById('switches-strip');
+   237→  const defs = [
+   238→    ['master', 'MASTER'],
+   239→    ['microphone', 'MIC'],
+   240→    ['camera', 'CAM'],
+   241→    ['autonomy', 'AUTO'],
+   242→    ['remote_compute', 'KAGGLE'],
+   243→    ['computer_control', 'TOOLS'],
+   244→    ['embodiment', 'BODY'],
+   245→  ];
+   246→  strip.innerHTML = defs.map(([key, short]) => {
+   247→    const on = Boolean(sw[key]);
+   248→    let cls = 'hw-switch-btn';
+   249→    if (key === 'master' && !on) cls += ' master-off';
+   250→    else if ((key === 'microphone' || key === 'camera') && on) cls += ' sensor-on';
+   251→    else if (on) cls += ' on';
+   252→    return `<button class="${cls}" data-switch="${key}" title="Toggle ${key}: currently ${on ? 'ON' : 'OFF'}">${short}:${on ? 'ON' : 'OFF'}</button>`;
+   253→  }).join('');
+   254→
+   255→  document.getElementById('mic-state-label').textContent = sw.microphone ? 'MIC READY' : 'MIC OFF';
+   256→  document.getElementById('cam-state-label').textContent = sw.camera ? 'CAM LIVE' : 'CAM OFF';
+   257→}
+   258→
+   259→function renderModesDrawer(modes, activeMode) {
+   260→  const list = document.getElementById('modes-list');
+   261→  list.innerHTML = modes.map((m) => `
+   262→    <button class="mode-row-btn ${m.id === activeMode ? 'active' : ''}" data-mode-id="${m.id}">
+   263→      <span>${String(m.index).padStart(2, '0')}. ${m.label}</span>
+   264→      <span class="mode-zone">${m.zone.replaceAll('_', ' ')}</span>
+   265→    </button>
+   266→  `).join('');
+   267→}
+   268→
+   269→// ---------------------------------------------------------------------------
+   270→// 3. Real Browser Sensor Enforcement (No Hidden Capture!)
+   271→// ---------------------------------------------------------------------------
+   272→async function enforceBrowserSensorGates() {
+   273→  // Microphone enforcement
+   274→  if (!state.switches.microphone || !state.switches.master) {
+   275→    if (state.micStream) {
+   276→      state.micStream.getTracks().forEach((t) => t.stop());
+   277→      state.micStream = null;
+   278→    }
+   279→    if (state.recognition) {
+   280→      try { state.recognition.abort(); } catch { /* noop */ }
+   281→    }
+   282→  }
+   283→
+   284→  // Camera enforcement
+   285→  if (!state.switches.camera || !state.switches.master) {
+   286→    if (state.camStream) {
+   287→      state.camStream.getTracks().forEach((t) => t.stop());
+   288→      state.camStream = null;
+   289→      opticalCamEl.srcObject = null;
+   290→    }
+   291→    sanctuary.updateVisionBoard(false, null);
+   292→  } else if (!state.camStream && navigator.mediaDevices?.getUserMedia) {
+   293→    try {
+   294→      state.camStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 360 } });
+   295→      opticalCamEl.srcObject = state.camStream;
+   296→      await opticalCamEl.play();
+   297→      sanctuary.updateVisionBoard(true, opticalCamEl);
+   298→    } catch {
+   299→      sanctuary.updateVisionBoard(false, null);
+   300→    }
+   301→  }
+   302→}
+   303→
+   304→// ---------------------------------------------------------------------------
+   305→// 4. Scenario Director & Spatial Video Controls
+   306→// ---------------------------------------------------------------------------
+   307→function activateClientScenario(def, runtime) {
+   308→  state.activeScenarioDef = def;
+   309→  sanctuary.scenarioDirector.loadScenario(def, runtime);
+   310→
+   311→  const bar = document.getElementById('scenario-director-bar');
+   312→  bar.classList.remove('hidden');
+   313→  document.getElementById('sc-class-badge').textContent = def.classification.replaceAll('_', ' ').toUpperCase();
+   314→  document.getElementById('sc-title').textContent = def.title;
+   315→  document.getElementById('sc-btn-playpause').textContent = sanctuary.scenarioDirector.playing ? 'Pause' : 'Play';
+   316→
+   317→  const slider = document.getElementById('sc-timeline-slider');
+   318→  slider.max = String(def.duration_sec || 20);
+   319→  slider.value = String(sanctuary.scenarioDirector.currentTime);
+   320→
+   321→  const varsRow = document.getElementById('sc-variables-row');
+   322→  varsRow.innerHTML = (def.variables || []).map((v) => {
+   323→    const val = runtime.variables?.[v.key] ?? v.default;
+   324→    return `
+   325→      <label class="var-control">
+   326→        <span>${v.label}: <strong class="tabular" id="var-val-${v.key}">${val}</strong></span>
+   327→        <input type="range" data-sc-var="${v.key}" min="${v.min}" max="${v.max}" step="${v.step}" value="${val}" />
+   328→      </label>
+   329→    `;
+   330→  }).join('');
+   331→
+   332→  updateScenarioBranchBanner(def, sanctuary.scenarioDirector.variables);
+   333→}
+   334→
+   335→function updateScenarioBranchBanner(def, vars) {
+   336→  const banner = document.getElementById('sc-branch-readout');
+   337→  if (!def || !def.branches || def.branches.length === 0) {
+   338→    banner.textContent = '';
+   339→    return;
+   340→  }
+   341→  let chosen = def.branches[def.branches.length - 1];
+   342→  if (def.id === 'cryo_manifold_forensic') {
+   343→    const ruptured = Number(vars.line_pressure_mpa ?? 210) >= 185 && Number(vars.relief_valve_ms ?? 125) > 70;
+   344→    chosen = ruptured ? def.branches[0] : def.branches[1];
+   345→  } else if (def.id === 'dual_turbine_sim') {
+   346→    chosen = Number(vars.inlet_temp_k ?? 1320) <= 1450 ? def.branches[0] : def.branches[1];
+   347→  } else if (def.id === 'zerotrust_compute_flow') {
+   348→    chosen = Number(vars.expose_public_port ?? 0) === 0 ? def.branches[0] : def.branches[1];
+   349→  }
+   350→  banner.className = `scenario-branch-banner ${chosen.severity === 'critical' ? 'critical' : ''}`;
+   351→  banner.textContent = `${chosen.label} — ${chosen.outcome}`;
+   352→}
+   353→
+   354→function syncScenarioSliderReadout() {
+   355→  const sd = sanctuary.scenarioDirector;
+   356→  if (!sd.activeScenario) return;
+   357→  document.getElementById('sc-time-readout').textContent =
+   358→    `${sd.currentTime.toFixed(1).padStart(4, '0')}s / ${sd.duration.toFixed(1)}s`;
+   359→  if (sd.playing) {
+   360→    document.getElementById('sc-timeline-slider').value = String(sd.currentTime);
+   361→  }
+   362→  const tl = sd.activeScenario.timeline || [];
+   363→  let activeCue = tl[0];
+   364→  for (const cue of tl) {
+   365→    if (sd.currentTime >= cue.t) activeCue = cue;
+   366→  }
+   367→  if (activeCue) {
+   368→    document.getElementById('sc-phase-label').textContent = activeCue.phase;
+   369→  }
+   370→}
+   371→
+   372→function applyVideoState(vState) {
+   373→  if (!vState) return;
+   374→  sanctuary.schlierenFeed.playing = Boolean(vState.playing);
+   375→  if (!vState.playing && typeof vState.current_time === 'number') {
+   376→    sanctuary.schlierenFeed.seek(vState.current_time);
+   377→  }
+   378→  if (sanctuary.extracted3DTwinGroup) {
+   379→    sanctuary.extracted3DTwinGroup.visible = Boolean(vState.extracted_3d_twin);
+   380→  }
+   381→  if (!uploadedVideoEl.paused && !vState.playing) uploadedVideoEl.pause();
+   382→  if (uploadedVideoEl.src && vState.playing && uploadedVideoEl.paused) {
+   383→    uploadedVideoEl.play().catch(() => {});
+   384→  }
+   385→}
+   386→
+   387→// ---------------------------------------------------------------------------
+   388→// 5. Speech, Dialogue & Subtitle Synchronization
+   389→// ---------------------------------------------------------------------------
+   390→function showJarvisResponse(jarvisMsg) {
+   391→  if (!jarvisMsg) return;
+   392→  const ribbon = document.getElementById('subtitle-ribbon');
+   393→  const subText = document.getElementById('subtitle-text');
+   394→  const pill = document.getElementById('inference-source-pill');
+   395→  const intBtn = document.getElementById('btn-interrupt');
+   396→
+   397→  ribbon.classList.remove('hidden');
+   398→  subText.textContent = jarvisMsg.content;
+   399→  pill.textContent = jarvisMsg.inference_source;
+   400→
+   401→  if (state.switches.embodiment !== false) {
+   402→    intBtn.classList.remove('hidden');
+   403→    sanctuary.jarvis.speak(jarvisMsg.content, {
+   404→      onEnd: () => intBtn.classList.add('hidden'),
+   405→    });
+   406→  }
+   407→}
+   408→
+   409→// ---------------------------------------------------------------------------
+   410→// 6. Contextual Inspector Drawer Views (Scenarios, Video, Memory, Goals, Agents, Kaggle, Telemetry)
+   411→// ---------------------------------------------------------------------------
+   412→async function renderInspectorTab(tab) {
+   413→  state.activeInspectorTab = tab;
+   414→  document.querySelectorAll('#inspector-tabs .tab-btn').forEach((b) => {
+   415→    b.classList.toggle('active', b.dataset.tab === tab);
+   416→  });
+   417→  const body = document.getElementById('inspector-body');
+   418→  body.innerHTML = '<p class="drawer-sub">Synchronizing with CORE...</p>';
+   419→
+   420→  if (tab === 'scenarios') {
+   421→    const res = await api('/api/v1/scenarios');
+   422→    state.scenarios = res.scenarios || [];
+   423→    body.innerHTML = `
+   424→      <div class="panel-card">
+   425→        <h4>Scenario Director — “Let Me Show You”</h4>
+   426→        <p>Launch a room-scale 3D reconstruction, parallel simulation, or architectural flow directly onto the Volumetric Stage.</p>
+   427→      </div>
+   428→      ${state.scenarios.map((s) => `
+   429→        <div class="panel-card">
+   430→          <span class="badge fact">${s.classification.replaceAll('_', ' ')}</span>
+   431→          <h4 style="margin-top:6px">${s.title}</h4>
+   432→          <p>${s.summary}</p>
+   433→          <div style="margin-top:8px; display:flex; gap:6px">
+   434→            <button class="btn-primary" data-launch-scenario="${s.id}">Construct on 3D Stage</button>
+   435→          </div>
+   436→        </div>
+   437→      `).join('')}
+   438→    `;
+   439→  } else if (tab === 'media') {
+   440→    const res = await api('/api/v1/media');
+   441→    state.mediaItems = res.items || [];
+   442→    const cur = state.mediaItems[0];
+   443→    body.innerHTML = `
+   444→      <div class="panel-card">
+   445→        <h4>Spatial Video & 3D Frame Extraction</h4>
+   446→        <p>JARVIS walks beside—never blocking—the 4.8m Media Wall, pauses at critical frames, and extracts a 3D volumetric twin into space.</p>
+   447→        <div style="margin-top:8px; display:flex; flex-wrap:wrap; gap:6px">
+   448→          <button class="btn-primary" id="vid-btn-walk">Walk to Media Wall</button>
+   449→          <button class="btn-chip" id="vid-btn-play">Play</button>
+   450→          <button class="btn-chip" id="vid-btn-pause-crit">Pause @ 14.2s Spike</button>
+   451→          <button class="btn-cyan-outline btn-chip" id="vid-btn-extract3d">Extract 3D Twin</button>
+   452→        </div>
+   453→      </div>
+   454→      <div class="panel-card">
+   455→        <h4>Import Owner Video Clip (MP4 / WebM)</h4>
+   456→        <form id="video-upload-form" class="form-grid">
+   457→          <input type="text" name="title" placeholder="Clip title (e.g. Bench Test Run #4)" required />
+   458→          <input type="file" name="file" accept="video/*" required />
+   459→          <button type="submit" class="btn-primary">Upload & Project on Media Wall</button>
+   460→        </form>
+   461→        <p style="margin-top:6px">FFmpeg host status: <strong>${res.ffmpeg_available ? 'Installed' : 'Not installed in container (WebM native supported)'}</strong> · Video-Gen Adapter: <strong>${res.video_generation_configured ? 'Configured' : 'Unconfigured (no fake videos)'}</strong></p>
+   462→      </div>
+   463→      ${cur ? `
+   464→        <div class="panel-card">
+   465→          <h4>Timestamp-Linked Commentary (${cur.title})</h4>
+   466→          ${(cur.commentaries || []).map((c) => `
+   467→            <div style="margin-top:6px; padding-top:6px; border-top:1px solid rgba(119,153,165,0.15)">
+   468→              <span class="badge fact tabular">${c.timestamp_sec.toFixed(1)}s</span>
+   469→              <strong> ${c.label}</strong>
+   470→              <p>${c.analysis}</p>
+   471→            </div>
+   472→          `).join('')}
+   473→        </div>
+   474→      ` : ''}
+   475→    `;
+   476→    bindMediaPanelHandlers(cur);
+   477→  } else if (tab === 'memory') {
+   478→    const memories = await api('/api/v1/memories');
+   479→    body.innerHTML = `
+   480→      <div class="panel-card">
+   481→        <h4>Store Typed Memory Record</h4>
+   482→        <form id="mem-create-form" class="form-grid">
+   483→          <select name="category">
+   484→            <option value="owner_fact">Owner Fact</option>
+   485→            <option value="preference">Preference</option>
+   486→            <option value="commitment">Commitment</option>
+   487→            <option value="project">Project</option>
+   488→            <option value="source_research">Source-Backed Research</option>
+   489→            <option value="agent_finding">Agent Finding</option>
+   490→            <option value="sensitive">Sensitive (Encrypted at Rest)</option>
+   491→          </select>
+   492→          <select name="epistemic_status">
+   493→            <option value="owner_stated">Owner Stated</option>
+   494→            <option value="verified_fact">Verified Fact</option>
+   495→            <option value="source_backed">Source Backed</option>
+   496→            <option value="hypothesis">Hypothesis (Never auto-promoted)</option>
+   497→          </select>
+   498→          <input type="text" name="title" placeholder="Memory title" required />
+   499→          <textarea name="content" rows="2" placeholder="Factual detail or preference..." required></textarea>
+   500→          <button type="submit" class="btn-primary">Save to Memory Archive</button>
+   501→        </form>
+   502→      </div>
+   503→      ${memories.map((m) => `
+   504→        <div class="panel-card">
+   505→          <div style="display:flex; justify-content:space-between; align-items:center">
+   506→            <span class="badge ${m.epistemic_status === 'hypothesis' ? 'hypothesis' : 'fact'}">${m.category} · ${m.epistemic_status}</span>
+   507→            <button class="btn-chip btn-danger-outline" data-forget-mem="${m.id}">Forget</button>
+   508→          </div>
+   509→          <h4 style="margin-top:5px">${m.title}</h4>
+   510→          <p>${m.content}</p>
+   511→        </div>
+   512→      `).join('')}
+   513→    `;
+   514→    bindMemoryPanelHandlers();
+   515→  } else if (tab === 'goals') {
+   516→    const goals = await api('/api/v1/goals');
+   517→    body.innerHTML = `
+   518→      <div class="panel-card">
+   519→        <h4>Create Goal with Priority & Schedule</h4>
+   520→        <form id="goal-create-form" class="form-grid">
+   521→          <input type="text" name="title" placeholder="Goal title" required />
+   522→          <input type="text" name="description" placeholder="Objective & verification criteria" required />
+   523→          <select name="priority">
+   524→            <option value="1">Priority P1 (Critical)</option>
+   525→            <option value="2" selected>Priority P2 (High)</option>
+   526→            <option value="3">Priority P3 (Standard)</option>
+   527→          </select>
+   528→          <button type="submit" class="btn-primary">Register Goal</button>
+   529→        </form>
+   530→      </div>
+   531→      ${goals.map((g) => `
+   532→        <div class="panel-card">
+   533→          <div style="display:flex; justify-content:space-between">
+   534→            <span class="badge ${g.unmet_dependencies.length ? 'hypothesis' : 'fact'}">P${g.priority} · ${g.status} · ${g.progress}%</span>
+   535→            <span class="tabular" style="font-size:11px; color:var(--muted)">${g.schedule_spec}</span>
+   536→          </div>
+   537→          <h4 style="margin-top:5px">${g.title}</h4>
+   538→          <p>${g.description}</p>
+   539→          ${g.unmet_dependencies.length ? `<p style="color:var(--amber); margin-top:4px">Blocked on: ${g.unmet_dependencies.join(', ')}</p>` : ''}
+   540→          <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap">
+   541→            <button class="btn-chip" data-goal-act="${g.id}" data-status="active">Activate</button>
+   542→            <button class="btn-chip" data-goal-act="${g.id}" data-status="paused">Pause</button>
+   543→            <button class="btn-chip btn-cyan-outline" data-goal-act="${g.id}" data-status="completed" data-prog="100">Mark Complete</button>
+   544→            <button class="btn-chip btn-danger-outline" data-goal-act="${g.id}" data-status="cancelled">Cancel</button>
+   545→          </div>
+   546→        </div>
+   547→      `).join('')}
+   548→    `;
+   549→    bindGoalsPanelHandlers();
+   550→  } else if (tab === 'agents') {
+   551→    const [agData, toolsData] = await Promise.all([api('/api/v1/agents'), api('/api/v1/tools')]);
+   552→    body.innerHTML = `
+   553→      <div class="panel-card">
+   554→        <h4>Specialist Agents (Bounded Permissions)</h4>
+   555→        <p>Every specialist operates within explicit tool allowlists and respects Autonomy & Computer Control switches.</p>
+   556→      </div>
+   557→      ${agData.agents.map((a) => `
+   558→        <div class="panel-card">
+   559→          <div style="display:flex; justify-content:space-between">
+   560→            <strong>${a.name}</strong>
+   561→            <span class="badge fact">${a.status}</span>
+   562→          </div>
+   563→          <p>${a.role_summary}</p>
+   564→          <p style="margin-top:4px; font-size:10.5px">Tools: <code>${a.allowed_tools.join(', ')}</code></p>
+   565→          ${a.last_output ? `<p style="margin-top:5px; color:var(--ice)">${a.last_output}</p>` : ''}
+   566→          <button style="margin-top:7px" class="btn-primary" data-dispatch-agent="${a.id}">Dispatch Audit Run</button>
+   567→        </div>
+   568→      `).join('')}
+   569→      <div class="panel-card">
+   570→        <h4>Guarded Tool Execution</h4>
+   571→        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px">
+   572→          ${toolsData.allowlist.map((t) => `
+   573→            <button class="btn-chip ${t.destructive ? 'btn-danger-outline' : ''}" data-exec-tool="${t.tool_name}">
+   574→              ${t.tool_name}${t.destructive ? ' (Confirm Gate)' : ''}
+   575→            </button>
+   576→          `).join('')}
+   577→        </div>
+   578→        <div id="tool-exec-result" style="margin-top:8px; font-size:11.5px; color:var(--ice)"></div>
+   579→      </div>
+   580→    `;
+   581→    bindAgentsAndToolsHandlers();
+   582→  } else if (tab === 'compute') {
+   583→    const [compStatus, setupInfo, profiles] = await Promise.all([
+   584→      api('/api/v1/compute/status'),
+   585→      api('/api/v1/compute/worker-setup-info'),
+   586→      api('/api/v1/compute/kaggle/profiles'),
+   587→    ]);
+   588→    body.innerHTML = `
+   589→      <div class="panel-card">
+   590→        <h4>Private Inference Routing (Zero Mandatory Cloud APIs)</h4>
+   591→        <table class="kv-table">
+   592→          <tr><td>Default Model</td><td>${compStatus.default_model}</td></tr>
+   593→          <tr><td>Active Backend</td><td>${compStatus.active_backend}</td></tr>
+   594→          <tr><td>Connected Workers</td><td>${compStatus.connected_workers.length}</td></tr>
+   595→          <tr><td>Masked Worker Token</td><td>${setupInfo.masked_worker_token}</td></tr>
+   596→        </table>
+   597→        <p style="margin-top:6px">${compStatus.kaggle_session_constraints}</p>
+   598→        <p style="margin-top:6px; font-family:var(--font-mono); font-size:10.5px; color:var(--cyan)">${setupInfo.local_pc_command}</p>
+   599→      </div>
+   600→      <div class="panel-card">
+   601→        <h4>6+ Encrypted Kaggle GPU Profiles (Server-Side Fernet)</h4>
+   602→        <p>Credentials are encrypted server-side and masked. No public port is ever opened on Kaggle.</p>
+   603→      </div>
+   604→      ${profiles.map((p) => `
+   605→        <div class="panel-card">
+   606→          <div style="display:flex; justify-content:space-between; align-items:center">
+   607→            <strong>#${p.slot_index} · ${p.profile_name}</strong>
+   608→            <span class="badge ${p.is_active ? 'fact' : ''}">${p.is_active ? 'ACTIVE' : 'STANDBY'} · ${p.gpu_accelerator}</span>
+   609→          </div>
+   610→          <p style="margin-top:4px">User: <code>${p.masked_username}</code> · Key: <code>${p.masked_key}</code></p>
+   611→          <p style="font-size:11px; margin-top:2px">Auth Test: <strong>${p.last_auth_status}</strong> — ${p.last_auth_detail}</p>
+   612→          <details style="margin-top:6px">
+   613→            <summary style="cursor:pointer; color:var(--cyan); font-size:11px">Update Encrypted Credentials / Model</summary>
+   614→            <form class="form-grid" data-kaggle-form="${p.id}">
+   615→              <input type="text" name="profile_name" value="${p.profile_name}" required />
+   616→              <input type="text" name="kaggle_username" placeholder="Kaggle Username (encrypted server-side)" />
+   617→              <input type="password" name="kaggle_key" placeholder="Kaggle API Key (encrypted server-side)" />
+   618→              <input type="text" name="preferred_model" value="${p.preferred_model}" />
+   619→              <button type="submit" class="btn-primary">Encrypt & Save</button>
+   620→            </form>
+   621→          </details>
+   622→          <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap">
+   623→            <button class="btn-chip" data-kaggle-select="${p.id}" data-kname="${p.profile_name}" data-kmodel="${p.preferred_model}" data-kgpu="${p.gpu_accelerator}">Select Active</button>
+   624→            <button class="btn-chip btn-cyan-outline" data-kaggle-test="${p.id}">Test Auth</button>
+   625→            <a class="btn-chip" style="text-decoration:none" href="${coreHttpUrl(`/api/v1/compute/kaggle/profiles/${p.id}/package?core_wss_url=${encodeURIComponent(`${coreWsBase()}/ws/worker`)}`)}" download>Download Worker ZIP</a>
+   626→          </div>
+   627→        </div>
+   628→      `).join('')}
+   629→      <div class="panel-card">
+   630→        <h4>Add Additional Named Kaggle Profile</h4>
+   631→        <form id="kaggle-add-form" class="form-grid">
+   632→          <input type="text" name="profile_name" placeholder="e.g. Kaggle-Account-07" required />
+   633→          <input type="text" name="kaggle_username" placeholder="Kaggle Username" />
+   634→          <input type="password" name="kaggle_key" placeholder="Kaggle API Key" />
+   635→          <button type="submit" class="btn-primary">Add Encrypted Profile</button>
+   636→        </form>
+   637→      </div>
+   638→    `;
+   639→    bindKaggleHandlers();
+   640→  } else if (tab === 'telemetry') {
+   641→    const [tel, sec] = await Promise.all([api('/api/v1/telemetry'), api('/api/v1/security/events')]);
+   642→    sanctuary.updateTelemetryBoard(tel);
+   643→    body.innerHTML = `
+   644→      <div class="panel-card">
+   645→        <h4>Real Measured Host & Persistence Telemetry</h4>
+   646→        <table class="kv-table">
+   647→          <tr><td>CPU Utilisation</td><td>${tel.cpu_percent}% (${tel.cpu_cores} cores)</td></tr>
+   648→          <tr><td>RAM Used</td><td>${tel.memory_used_mb} / ${tel.memory_total_mb} MB (${tel.memory_percent}%)</td></tr>
+   649→          <tr><td>Free Disk</td><td>${tel.disk_free_gb} GB</td></tr>
+   650→          <tr><td>Memories / Goals / Scenarios</td><td>${tel.database_records.memories} / ${tel.database_records.goals} / ${tel.database_records.scenarios}</td></tr>
+   651→          <tr><td>Connected Embodiment Views</td><td>${tel.embodiment_clients.length}</td></tr>
+   652→        </table>
+   653→        <div style="margin-top:8px; display:flex; gap:6px">
+   654→          <button class="btn-primary" id="btn-export-backup">Export State Backup JSON</button>
+   655→        </div>
+   656→        <div id="backup-status" style="margin-top:6px; font-size:11px; color:var(--cyan)"></div>
+   657→      </div>
+   658→      <div class="panel-card">
+   659→        <h4>Defensive Security Audit Trail</h4>
+   660→        ${sec.events.slice(0, 8).map((e) => `
+   661→          <div style="padding:5px 0; border-bottom:1px solid rgba(119,153,165,0.12)">
+   662→            <span class="badge ${e.severity === 'critical' ? 'critical' : (e.severity === 'warning' ? 'hypothesis' : 'fact')}">${e.category}</span>
+   663→            <p style="margin-top:3px">${e.message}</p>
+   664→          </div>
+   665→        `).join('')}
+   666→      </div>
+   667→    `;
+   668→    document.getElementById('btn-export-backup')?.addEventListener('click', async () => {
+   669→      const res = await api('/api/v1/admin/backup', { method: 'POST' });
+   670→      const blob = new Blob([JSON.stringify(res.snapshot, null, 2)], { type: 'application/json' });
+   671→      const url = URL.createObjectURL(blob);
+   672→      const a = document.createElement('a');
+   673→      a.href = url;
+   674→      a.download = res.backup_file;
+   675→      a.click();
+   676→      document.getElementById('backup-status').textContent = `Exported ${res.backup_file} (secrets scrubbed).`;
+   677→    });
+   678→  }
+   679→}
+   680→
+   681→// ---------------------------------------------------------------------------
+   682→// 7. Bind Interactive UI Handlers
+   683→// ---------------------------------------------------------------------------
+   684→function bindUIEvents() {
+   685→  // Modes Drawer
+   686→  document.getElementById('btn-modes-drawer').addEventListener('click', () => {
+   687→    document.getElementById('modes-drawer').classList.toggle('hidden');
+   688→  });
+   689→  document.getElementById('btn-close-modes').addEventListener('click', () => {
+   690→    document.getElementById('modes-drawer').classList.add('hidden');
+   691→  });
+   692→  document.getElementById('modes-list').addEventListener('click', async (e) => {
+   693→    const btn = e.target.closest('[data-mode-id]');
+   694→    if (!btn) return;
+   695→    try {
+   696→      await api('/api/v1/world/mode', { method: 'POST', body: JSON.stringify({ mode_id: btn.dataset.modeId }) });
+   697→    } catch (err) {
+   698→      alert(err.message);
+   699→    }
+   700→  });
+   701→
+   702→  // Quick locomotion & urgent alert buttons
+   703→  document.querySelectorAll('[data-quick-move]').forEach((btn) => {
+   704→    btn.addEventListener('click', () => {
+   705→      api('/api/v1/world/move', {
+   706→        method: 'POST',
+   707→        body: JSON.stringify({
+   708→          zone_id: btn.dataset.quickMove,
+   709→          activity: `Walking to ${btn.dataset.quickMove.replaceAll('_', ' ')}.`,
+   710→          emotional_state: 'focused',
+   711→          urgent: false,
+   712→        }),
+   713→      });
+   714→    });
+   715→  });
+   716→  document.querySelectorAll('[data-quick-urgent]').forEach((btn) => {
+   717→    btn.addEventListener('click', () => {
+   718→      api('/api/v1/world/move', {
+   719→        method: 'POST',
+   720→        body: JSON.stringify({
+   721→          zone_id: btn.dataset.quickUrgent,
+   722→          activity: 'Urgent defensive perimeter inspection triggered!',
+   723→          emotional_state: 'urgent',
+   724→          urgent: true,
+   725→          mode_override: 'defensive_security',
+   726→        }),
+   727→      });
+   728→    });
+   729→  });
+   730→
+   731→  // Reduced Motion toggle
+   732→  document.getElementById('chk-reduced-motion').addEventListener('change', (e) => {
+   733→    api(`/api/v1/world/reduced-motion?enabled=${e.target.checked}`, { method: 'POST' });
+   734→  });
+   735→
+   736→  // 7 Hardware Switches click
+   737→  document.getElementById('switches-strip').addEventListener('click', async (e) => {
+   738→    const btn = e.target.closest('[data-switch]');
+   739→    if (!btn) return;
+   740→    const key = btn.dataset.switch;
+   741→    const nextState = !state.switches[key];
+   742→    await api(`/api/v1/switches/${key}`, { method: 'PATCH', body: JSON.stringify({ enabled: nextState }) });
+   743→  });
+   744→
+   745→  // Camera Director Preset Selector
+   746→  document.getElementById('camera-preset-select').addEventListener('change', (e) => {
+   747→    sanctuary.cameraDirector.setManualSelect(e.target.value, sanctuary.reducedMotion);
+   748→  });
+   749→
+   750→  // Holographic Mode Toggle & Layout Buttons
+   751→  document.getElementById('btn-hologram-toggle').addEventListener('click', async () => {
+   752→    const targetMode = state.world?.active_mode === 'holographic_presence' ? 'living_presence' : 'holographic_presence';
+   753→    try {
+   754→      await api('/api/v1/world/mode', { method: 'POST', body: JSON.stringify({ mode_id: targetMode }) });
+   755→    } catch (err) {
+   756→      alert(err.message);
+   757→    }
+   758→  });
+   759→  document.querySelectorAll('[data-holo-layout]').forEach((btn) => {
+   760→    btn.addEventListener('click', () => {
+   761→      document.querySelectorAll('[data-holo-layout]').forEach((b) => b.classList.remove('active'));
+   762→      btn.classList.add('active');
+   763→      sanctuary.setHologramMode(true, btn.dataset.holoLayout);
+   764→    });
+   765→  });
+   766→  document.getElementById('btn-exit-hologram').addEventListener('click', () => {
+   767→    api('/api/v1/world/mode', { method: 'POST', body: JSON.stringify({ mode_id: 'living_presence' }) });
+   768→  });
+   769→
+   770→  // Inspector Drawer
+   771→  document.getElementById('btn-inspector-drawer').addEventListener('click', () => {
+   772→    const drw = document.getElementById('inspector-drawer');
+   773→    drw.classList.toggle('hidden');
+   774→    if (!drw.classList.contains('hidden')) renderInspectorTab(state.activeInspectorTab);
+   775→  });
+   776→  document.getElementById('btn-close-inspector').addEventListener('click', () => {
+   777→    document.getElementById('inspector-drawer').classList.add('hidden');
+   778→  });
+   779→  document.getElementById('inspector-tabs').addEventListener('click', (e) => {
+   780→    const tabBtn = e.target.closest('[data-tab]');
+   781→    if (tabBtn) renderInspectorTab(tabBtn.dataset.tab);
+   782→  });
+   783→
+   784→  // Scenario Launch Delegation inside Inspector
+   785→  document.getElementById('inspector-body').addEventListener('click', async (e) => {
+   786→    const launchBtn = e.target.closest('[data-launch-scenario]');
+   787→    if (launchBtn) {
+   788→      await api(`/api/v1/scenarios/${launchBtn.dataset.launchScenario}/activate`, {
+   789→        method: 'POST',
+   790→        body: JSON.stringify({ variables: {}, playing: true }),
+   791→      });
+   792→    }
+   793→  });
+   794→
+   795→  // Scenario Transport Bar Controls
+   796→  document.getElementById('sc-btn-playpause').addEventListener('click', (e) => {
+   797→    const sd = sanctuary.scenarioDirector;
+   798→    sd.playing = !sd.playing;
+   799→    e.target.textContent = sd.playing ? 'Pause' : 'Play';
+   800→  });
+   801→  document.getElementById('sc-btn-replay').addEventListener('click', () => {
+   802→    sanctuary.scenarioDirector.currentTime = 0;
+   803→    sanctuary.scenarioDirector.playing = true;
+   804→    document.getElementById('sc-btn-playpause').textContent = 'Pause';
+   805→  });
+   806→  document.getElementById('sc-rate-select').addEventListener('change', (e) => {
+   807→    sanctuary.scenarioDirector.playbackRate = Number(e.target.value);
+   808→  });
+   809→  document.getElementById('sc-timeline-slider').addEventListener('input', (e) => {
+   810→    sanctuary.scenarioDirector.playing = false;
+   811→    sanctuary.scenarioDirector.currentTime = Number(e.target.value);
+   812→    document.getElementById('sc-btn-playpause').textContent = 'Play';
+   813→  });
+   814→  document.getElementById('sc-variables-row').addEventListener('input', (e) => {
+   815→    const key = e.target.dataset.scVar;
+   816→    if (!key) return;
+   817→    const val = Number(e.target.value);
+   818→    const lbl = document.getElementById(`var-val-${key}`);
+   819→    if (lbl) lbl.textContent = String(val);
+   820→    sanctuary.scenarioDirector.updateVariables({ [key]: val });
+   821→    updateScenarioBranchBanner(state.activeScenarioDef, sanctuary.scenarioDirector.variables);
+   822→  });
+   823→  document.getElementById('sc-btn-restore').addEventListener('click', () => {
+   824→    api('/api/v1/scenarios/restore', { method: 'POST' });
+   825→  });
+   826→  document.getElementById('sc-btn-record').addEventListener('click', toggleWebMScenarioRecording);
+   827→
+   828→  // First-Launch Wake Banner Actions
+   829→  document.getElementById('btn-wake-dismiss').addEventListener('click', async () => {
+   830→    document.getElementById('first-wake-banner').classList.add('hidden');
+   831→    await api('/api/v1/world/complete-onboarding', { method: 'POST' });
+   832→  });
+   833→  document.getElementById('btn-wake-compute').addEventListener('click', async () => {
+   834→    document.getElementById('first-wake-banner').classList.add('hidden');
+   835→    await api('/api/v1/world/complete-onboarding', { method: 'POST' });
+   836→    document.getElementById('inspector-drawer').classList.remove('hidden');
+   837→    renderInspectorTab('compute');
+   838→  });
+   839→  document.getElementById('btn-wake-scenario').addEventListener('click', async () => {
+   840→    document.getElementById('first-wake-banner').classList.add('hidden');
+   841→    await api('/api/v1/world/complete-onboarding', { method: 'POST' });
+   842→    await api('/api/v1/scenarios/cryo_manifold_forensic/activate', {
+   843→      method: 'POST',
+   844→      body: JSON.stringify({ variables: {}, playing: true }),
+   845→    });
+   846→  });
+   847→
+   848→  // Multimodal Chat Form, Voice PTT, Optical Snap, Interrupt & Resume
+   849→  document.getElementById('chat-form').addEventListener('submit', async (e) => {
+   850→    e.preventDefault();
+   851→    const input = document.getElementById('chat-input');
+   852→    const text = input.value.trim();
+   853→    if (!text) return;
+   854→    input.value = '';
+   855→    await api('/api/v1/conversations/send', {
+   856→      method: 'POST',
+   857→      body: JSON.stringify({ content: text, modality: 'text' }),
+   858→    });
+   859→  });
+   860→
+   861→  document.getElementById('btn-interrupt').addEventListener('click', async () => {
+   862→    sanctuary.jarvis.interruptSpeech();
+   863→    document.getElementById('btn-interrupt').classList.add('hidden');
+   864→    await api('/api/v1/world/interrupt?reason=Owner+interrupted+speech', { method: 'POST' });
+   865→  });
+   866→
+   867→  document.getElementById('btn-resume-task').addEventListener('click', async () => {
+   868→    await api('/api/v1/world/resume', { method: 'POST' });
+   869→  });
+   870→
+   871→  document.getElementById('btn-mic-ptt').addEventListener('click', handleVoiceCaptureClick);
+   872→  document.getElementById('btn-cam-snap').addEventListener('click', handleVisionSnapshotClick);
+   873→}
+   874→
+   875→async function handleVoiceCaptureClick() {
+   876→  if (!state.switches.microphone) {
+   877→    alert('Microphone Switch (#2) is currently OFF. Enable MIC in the top switch bar to authorise audio capture.');
+   878→    return;
+   879→  }
+   880→  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+   881→  if (!SR) {
+   882→    alert('Browser Web Speech Recognition API is unavailable in this browser. Type directly or connect an audio worker.');
+   883→    return;
+   884→  }
+   885→  const rec = new SR();
+   886→  rec.lang = 'en-US';
+   887→  rec.interimResults = false;
+   888→  state.recognition = rec;
+   889→  document.getElementById('mic-state-label').textContent = 'LISTENING...';
+   890→  rec.onresult = async (ev) => {
+   891→    const transcript = ev.results[0][0].transcript;
+   892→    document.getElementById('mic-state-label').textContent = 'MIC READY';
+   893→    await api('/api/v1/conversations/send', {
+   894→      method: 'POST',
+   895→      body: JSON.stringify({ content: transcript, modality: 'voice' }),
+   896→    });
+   897→  };
+   898→  rec.onerror = () => {
+   899→    document.getElementById('mic-state-label').textContent = 'MIC READY';
+   900→  };
+   901→  rec.start();
+   902→}
+   903→
+   904→async function handleVisionSnapshotClick() {
+   905→  if (!state.switches.camera) {
+   906→    alert('Optical Camera Switch (#3) is currently OFF. Enable CAM in the top switch bar to authorise optical capture.');
+   907→    return;
+   908→  }
+   909→  await enforceBrowserSensorGates();
+   910→  await api('/api/v1/conversations/send', {
+   911→    method: 'POST',
+   912→    body: JSON.stringify({
+   913→      content: 'Inspect current live optical camera frame at Vision Station.',
+   914→      modality: 'vision',
+   915→      media_ref: 'live_optical_frame',
+   916→    }),
+   917→  });
+   918→}
+   919→
+   920→function toggleWebMScenarioRecording(e) {
+   921→  const btn = e.target;
+   922→  if (state.mediaRecorder && state.mediaRecorder.state === 'recording') {
+   923→    state.mediaRecorder.stop();
+   924→    btn.textContent = 'Rec WebM';
+   925→    return;
+   926→  }
+   927→  if (!canvas.captureStream || typeof MediaRecorder === 'undefined') {
+   928→    alert('MediaRecorder WebM capture is not supported by this browser.');
+   929→    return;
+   930→  }
+   931→  const stream = canvas.captureStream(30);
+   932→  const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+   933→  state.recordedChunks = [];
+   934→  recorder.ondataavailable = (ev) => {
+   935→    if (ev.data.size > 0) state.recordedChunks.push(ev.data);
+   936→  };
+   937→  recorder.onstop = async () => {
+   938→    const blob = new Blob(state.recordedChunks, { type: 'video/webm' });
+   939→    const fd = new FormData();
+   940→    fd.append('title', `Scenario Recording ${new Date().toISOString().slice(11, 19)}`);
+   941→    fd.append('source_kind', 'scenario_recording');
+   942→    fd.append('file', blob, 'scenario_capture.webm');
+   943→    await api('/api/v1/media/upload', { method: 'POST', body: fd });
+   944→    const url = URL.createObjectURL(blob);
+   945→    const a = document.createElement('a');
+   946→    a.href = url;
+   947→    a.download = 'jarvis_nexus_scenario.webm';
+   948→    a.click();
+   949→  };
+   950→  recorder.start();
+   951→  state.mediaRecorder = recorder;
+   952→  btn.textContent = 'Stop Rec';
+   953→}
+   954→
+   955→// ---------------------------------------------------------------------------
+   956→// 8. Inspector Sub-Panel Event Helpers
+   957→// ---------------------------------------------------------------------------
+   958→function bindMediaPanelHandlers(curMedia) {
+   959→  const mId = curMedia?.id || 'media-turbine-bench-01';
+   960→  document.getElementById('vid-btn-walk')?.addEventListener('click', () => {
+   961→    api('/api/v1/media/video-state', {
+   962→      method: 'POST',
+   963→      body: JSON.stringify({ media_id: mId, playing: false, current_time: 14.2, extracted_3d_twin: false }),
+   964→    });
+   965→  });
+   966→  document.getElementById('vid-btn-play')?.addEventListener('click', () => {
+   967→    api('/api/v1/media/video-state', {
+   968→      method: 'POST',
+   969→      body: JSON.stringify({ media_id: mId, playing: true, current_time: sanctuary.schlierenFeed.currentTime, extracted_3d_twin: false }),
+   970→    });
+   971→  });
+   972→  document.getElementById('vid-btn-pause-crit')?.addEventListener('click', () => {
+   973→    api('/api/v1/media/video-state', {
+   974→      method: 'POST',
+   975→      body: JSON.stringify({ media_id: mId, playing: false, current_time: 14.2, extracted_3d_twin: false }),
+   976→    });
+   977→  });
+   978→  document.getElementById('vid-btn-extract3d')?.addEventListener('click', () => {
+   979→    api('/api/v1/media/video-state', {
+   980→      method: 'POST',
+   981→      body: JSON.stringify({ media_id: mId, playing: false, current_time: 14.2, extracted_3d_twin: true }),
+   982→    });
+   983→  });
+   984→  document.getElementById('video-upload-form')?.addEventListener('submit', async (e) => {
+   985→    e.preventDefault();
+   986→    const fd = new FormData(e.target);
+   987→    const uploaded = await api('/api/v1/media/upload', { method: 'POST', body: fd });
+   988→    uploadedVideoEl.crossOrigin = 'anonymous';
+   989→    uploadedVideoEl.src = coreHttpUrl(uploaded.url);
+   990→    await uploadedVideoEl.play().catch(() => {});
+   991→    sanctuary.setExternalVideoTexture(uploadedVideoEl);
+   992→    renderInspectorTab('media');
+   993→  });
+   994→}
+   995→
+   996→function bindMemoryPanelHandlers() {
+   997→  document.getElementById('mem-create-form')?.addEventListener('submit', async (e) => {
+   998→    e.preventDefault();
+   999→    const fd = new FormData(e.target);
+  1000→    const payload = Object.fromEntries(fd.entries());
+  1001→    payload.is_sensitive = payload.category === 'sensitive';
+  1002→    await api('/api/v1/memories', { method: 'POST', body: JSON.stringify(payload) });
+  1003→    renderInspectorTab('memory');
+  1004→  });
+  1005→  document.querySelectorAll('[data-forget-mem]').forEach((btn) => {
+  1006→    btn.addEventListener('click', async () => {
+  1007→      await api(`/api/v1/memories/${btn.dataset.forgetMem}`, { method: 'DELETE' });
+  1008→      renderInspectorTab('memory');
+  1009→    });
+  1010→  });
+  1011→}
+  1012→
+  1013→function bindGoalsPanelHandlers() {
+  1014→  document.getElementById('goal-create-form')?.addEventListener('submit', async (e) => {
+  1015→    e.preventDefault();
+  1016→    const fd = new FormData(e.target);
+  1017→    const p = Object.fromEntries(fd.entries());
+  1018→    p.priority = Number(p.priority);
+  1019→    await api('/api/v1/goals', { method: 'POST', body: JSON.stringify(p) });
+  1020→    renderInspectorTab('goals');
+  1021→  });
+  1022→  document.querySelectorAll('[data-goal-act]').forEach((btn) => {
+  1023→    btn.addEventListener('click', async () => {
+  1024→      try {
+  1025→        const body = { status: btn.dataset.status };
+  1026→        if (btn.dataset.prog) body.progress = Number(btn.dataset.prog);
+  1027→        await api(`/api/v1/goals/${btn.dataset.goalAct}/status`, { method: 'PATCH', body: JSON.stringify(body) });
+  1028→        renderInspectorTab('goals');
+  1029→      } catch (err) {
+  1030→        alert(err.message);
+  1031→      }
+  1032→    });
+  1033→  });
+  1034→}
+  1035→
+  1036→function bindAgentsAndToolsHandlers() {
+  1037→  document.querySelectorAll('[data-dispatch-agent]').forEach((btn) => {
+  1038→    btn.addEventListener('click', async () => {
+  1039→      try {
+  1040→        await api(`/api/v1/agents/${btn.dataset.dispatchAgent}/dispatch`, {
+  1041→          method: 'POST',
+  1042→          body: JSON.stringify({ objective: 'Execute live sanctuary integrity and parameter verification.' }),
+  1043→        });
+  1044→        renderInspectorTab('agents');
+  1045→      } catch (err) {
+  1046→        alert(err.message);
+  1047→      }
+  1048→    });
+  1049→  });
+  1050→
+  1051→  document.querySelectorAll('[data-exec-tool]').forEach((btn) => {
+  1052→    btn.addEventListener('click', async () => {
+  1053→      const outEl = document.getElementById('tool-exec-result');
+  1054→      const res = await api('/api/v1/tools/execute', {
+  1055→        method: 'POST',
+  1056→        body: JSON.stringify({ tool_name: btn.dataset.execTool, arguments: {} }),
+  1057→      });
+  1058→      if (res.status === 'awaiting_confirmation') {
+  1059→        outEl.innerHTML = `
+  1060→          <span style="color:var(--amber)">${res.detail}</span>
+  1061→          <button class="btn-chip btn-danger-outline" id="btn-confirm-destructive" style="margin-left:6px">Confirm Irreversible Action</button>
+  1062→        `;
+  1063→        document.getElementById('btn-confirm-destructive')?.addEventListener('click', async () => {
+  1064→          const confirmed = await api('/api/v1/tools/execute', {
+  1065→            method: 'POST',
+  1066→            body: JSON.stringify({
+  1067→              tool_name: btn.dataset.execTool,
+  1068→              arguments: {},
+  1069→              confirmation_token: res.confirmation_token,
+  1070→            }),
+  1071→          });
+  1072→          outEl.textContent = `Confirmed & Completed: ${JSON.stringify(confirmed.output)}`;
+  1073→        });
+  1074→      } else {
+  1075→        outEl.textContent = `${res.status}: ${JSON.stringify(res.output || res.detail).slice(0, 260)}`;
+  1076→      }
+  1077→    });
+  1078→  });
+  1079→}
+  1080→
+  1081→function bindKaggleHandlers() {
+  1082→  document.querySelectorAll('[data-kaggle-form]').forEach((form) => {
+  1083→    form.addEventListener('submit', async (e) => {
+  1084→      e.preventDefault();
+  1085→      const fd = new FormData(form);
+  1086→      const body = Object.fromEntries(fd.entries());
+  1087→      await api(`/api/v1/compute/kaggle/profiles/${form.dataset.kaggleForm}`, {
+  1088→        method: 'PATCH',
+  1089→        body: JSON.stringify(body),
+  1090→      });
+  1091→      renderInspectorTab('compute');
+  1092→    });
+  1093→  });
+  1094→
+  1095→  document.querySelectorAll('[data-kaggle-select]').forEach((btn) => {
+  1096→    btn.addEventListener('click', async () => {
+  1097→      await api(`/api/v1/compute/kaggle/profiles/${btn.dataset.kaggleSelect}`, {
+  1098→        method: 'PATCH',
+  1099→        body: JSON.stringify({
+  1100→          profile_name: btn.dataset.kname,
+  1101→          preferred_model: btn.dataset.kmodel,
+  1102→          gpu_accelerator: btn.dataset.kgpu,
+  1103→          is_active: true,
+  1104→        }),
+  1105→      });
+  1106→      renderInspectorTab('compute');
+  1107→    });
+  1108→  });
+  1109→
+  1110→  document.querySelectorAll('[data-kaggle-test]').forEach((btn) => {
+  1111→    btn.addEventListener('click', async () => {
+  1112→      await api(`/api/v1/compute/kaggle/profiles/${btn.dataset.kaggleTest}/test`, { method: 'POST' });
+  1113→      renderInspectorTab('compute');
+  1114→    });
+  1115→  });
+  1116→
+  1117→  document.getElementById('kaggle-add-form')?.addEventListener('submit', async (e) => {
+  1118→    e.preventDefault();
+  1119→    const fd = new FormData(e.target);
+  1120→    const body = Object.fromEntries(fd.entries());
+  1121→    await api('/api/v1/compute/kaggle/profiles', { method: 'POST', body: JSON.stringify(body) });
+  1122→    renderInspectorTab('compute');
+  1123→  });
+  1124→}
+  1125→
+  1126→function startTelemetryPoll() {
+  1127→  setInterval(async () => {
+  1128→    try {
+  1129→      const tel = await api('/api/v1/telemetry');
+  1130→      sanctuary.updateTelemetryBoard(tel);
+  1131→    } catch { /* ignore transient */ }
+  1132→  }, 8000);
+  1133→}
+  1134→
+  1135→bootstrap();
+  1136→
