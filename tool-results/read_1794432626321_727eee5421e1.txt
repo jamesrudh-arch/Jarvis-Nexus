@@ -1,0 +1,652 @@
+    45→    45→
+    46→    46→export class JarvisCharacterController {
+    47→    47→  constructor(scene) {
+    48→    48→    this.scene = scene;
+    49→    49→    this.root = new THREE.Group();
+    50→    50→    this.root.name = 'JARVIS_Embodiment_Root';
+    51→    51→    this.root.position.set(1.45, 0, 0.95);
+    52→    52→    this.root.rotation.y = -0.42;
+    53→    53→    this.scene.add(this.root);
+    54→    54→
+    55→    55→    this.armature = null;
+    56→    56→    this.mixer = null;
+    57→    57→    this.actions = {};
+    58→    58→    this.activeActionName = null;
+    59→    59→    this.bones = {};
+    60→    60→    this.morphMeshes = [];
+    61→    61→    this.gestureWorldTarget = null; // when set (scenario directing), she POINTS here
+    62→    62→    this._armAimWeight = 0;
+    63→    63→    this._audioCtx = null;
+    64→    64→    this.voiceAnalyser = null;
+    65→    65→    this.activeAudioSource = null;
+    66→    66→
+    67→    67→    const isSmallScreen = typeof window !== 'undefined' && window.innerWidth <= 860;
+    68→    68→
+    69→    69→    // Dedicated character 3-point motivated lighting rig — repositioned every frame
+    70→    70→    // RELATIVE TO THE CAMERA so the cyan rim always separates her from the scene
+    71→    71→    // and the warm key always flatters the face toward the viewer. (Rig lives in
+    72→    72→    // world space, not under root, so it never rotates with her body.)
+    73→    73→    this.lightRig = new THREE.Group();
+    74→    74→    this.keyLight = new THREE.SpotLight(0xffe4c8, 7.5, 8.5, Math.PI * 0.24, 0.8, 1.4);
+    75→    75→    this.keyLight.castShadow = !isSmallScreen; // real contact grounding on desktop-class GPUs
+    76→    76→    if (this.keyLight.castShadow) {
+    77→    77→      this.keyLight.shadow.mapSize.set(1024, 1024);
+    78→    78→      this.keyLight.shadow.bias = -0.0022;
+    79→    79→      this.keyLight.shadow.camera.near = 0.4;
+    80→    80→      this.keyLight.shadow.camera.far = 8.0;
+    81→    81→    }
+    82→    82→    this.keyTarget = new THREE.Object3D();
+    83→    83→    this.lightRig.add(this.keyTarget);
+    84→    84→    this.keyLight.target = this.keyTarget;
+    85→    85→
+    86→    86→    this.fillLight = new THREE.PointLight(0xf5cbb0, 0.3, 5.5, 1.6); // LOW fill — ~4:1 key ratio sculpts the face
+    87→    87→    this.rimLight = new THREE.PointLight(0x62e6f2, 3.0, 5.5, 1.5);
+    88→    88→    // Cyan bounce from the holo-table side — the room's light kissing her front
+    89→    89→    // (kept subtle: cyan spill on chest/skin reads as a bad comp)
+    90→    90→    this.bounceLight = new THREE.PointLight(0x62e6f2, 0.6, 2.8, 1.8);
+    91→    91→    // Dedicated soft warm face light — her face is ALWAYS readable, never a dark wax mask
+    92→    92→    this.faceLight = new THREE.PointLight(0xffe9d8, 2.4, 3.4, 1.8);
+    93→    93→    // Warm low kicker from the key-opposite side — models the dark torso so the
+    94→    94→    // outfit keeps form instead of reading as a black cardboard cutout.
+    95→    95→    this.kickerLight = new THREE.PointLight(0xffd9b0, 1.5, 6.5, 1.6);
+    96→    96→    this.lightRig.add(this.keyLight, this.fillLight, this.rimLight, this.bounceLight, this.faceLight, this.kickerLight);
+    97→    97→    this.scene.add(this.lightRig);
+    98→    98→
+    99→    99→    // Subtle ground contact shadow disc beneath feet (soft radial falloff)
+   100→   100→    const contactGeo = new THREE.CircleGeometry(0.4, 40);
+   101→   101→    const contactMat = new THREE.MeshBasicMaterial({
+   102→   102→      map: createSoftContactShadowTexture(),
+   103→   103→      transparent: true,
+   104→   104→      opacity: 0.55,
+   105→   105→      depthWrite: false,
+   106→   106→    });
+   107→   107→    const contactDisc = new THREE.Mesh(new THREE.CircleGeometry(0.52, 40), contactMat);
+   108→   108→    contactMat.opacity = 0.78;
+   109→   109→    contactDisc.rotation.x = -Math.PI / 2;
+   110→   110→    contactDisc.position.y = 0.006;
+   111→   111→    this.root.add(contactDisc);
+   112→   112→    // Dense inner core — grounded feet, never a floating mannequin
+   113→   113→    const coreDisc = new THREE.Mesh(
+   114→   114→      new THREE.CircleGeometry(0.26, 32),
+   115→   115→      new THREE.MeshBasicMaterial({
+   116→   116→        map: createSoftContactShadowTexture(),
+   117→   117→        transparent: true,
+   118→   118→        opacity: 0.6,
+   119→   119→        depthWrite: false,
+   120→   120→      })
+   121→   121→    );
+   122→   122→    coreDisc.rotation.x = -Math.PI / 2;
+   123→   123→    coreDisc.position.y = 0.007;
+   124→   124→    this.root.add(coreDisc);
+   125→   125→
+   126→   126→    // Locomotion & Navigation state
+   127→   127→    this.waypoints = [];
+   128→   128→    this.targetYaw = -0.42;
+   129→   129→    this.currentSpeed = 0;
+   130→   130→    this.urgentRun = false;
+   131→   131→    this.postureMode = 'console_interaction'; // console_interaction | conversational_focus | scenario_construct | scenario_direct | video_present | standby
+   132→   132→    this.emotionalState = 'attentive'; // neutral | listening | focused | concerned | urgent
+   133→   133→    this.lookWorldTarget = new THREE.Vector3(0, 1.4, 3.5);
+   134→   134→    this.focusCamera = true;
+   135→   135→
+   136→   136→    // Blinking & Breathing timers
+   137→   137→    this.blinkTimer = 2.4;
+   138→   138→    this.blinkPhase = -1;
+   139→   139→    this.breathClock = 0;
+   140→   140→
+   141→   141→    // Lip-sync & Speech Engine
+   142→   142→    this.lipsync = new LipsyncEn();
+   143→   143→    this.isSpeaking = false;
+   144→   144→    this.speechTimeline = []; // [{ viseme, startMs, endMs }]
+   145→   145→    this.speechStartPerf = 0;
+   146→   146→    this.activeUtterance = null;
+   147→   147→    this.onSpeechEndCallback = null;
+   148→   148→
+   149→   149→    this.loaded = false;
+   150→   150→  }
+   151→   151→
+   152→   152→  async load(onProgress) {
+   153→   153→    const gltfLoader = new GLTFLoader();
+   154→   154→    const fbxLoader = new FBXLoader();
+   155→   155→
+   156→   156→    const [avatarGltf, xbotGltf, walkFbx] = await Promise.all([
+   157→   157→      gltfLoader.loadAsync('/models/jarvis_avaturn.glb', onProgress),
+   158→   158→      gltfLoader.loadAsync('/models/xbot_locomotion.glb'),
+   159→   159→      fbxLoader.loadAsync('/models/walking.fbx'),
+   160→   160→    ]);
+   161→   161→
+   162→   162→    this.armature = avatarGltf.scene.getObjectByName('Armature') || avatarGltf.scene;
+   163→   163→    this.armature.scale.setScalar(1);
+   164→   164→
+   165→   165→    // Calibrate skeleton to standard Mixamo coordinate rolls & scale
+   166→   166→    retarget(this.armature, AVATURN_RETARGET);
+   167→   167→
+   168→   168→    // --- Cross-rig quaternion retargeting tables -------------------------------
+   169→   169→    // The Avaturn rig's leg bones rest ~180deg (Z) away from the Mixamo
+   170→   170→    // convention, so raw Mixamo clip quaternions would flip the legs upward.
+   171→   171→    // Every clip quaternion is therefore converted delta-from-rest:
+   172→   172→    //   q_target = q_targetRest * inverse(q_sourceRest) * q_sourceAnim
+   173→   173→    const captureRest = (root) => {
+   174→   174→      const rest = {};
+   175→   175→      root.traverse((o) => {
+   176→   176→        if (o.isBone) {
+   177→   177→          const clean = o.name.replace(/^mixamorig:/, '').replace(/^mixamorig/, '');
+   178→   178→          if (!rest[clean]) rest[clean] = o.quaternion.clone();
+   179→   179→        }
+   180→   180→      });
+   181→   181→      return rest;
+   182→   182→    };
+   183→   183→    const targetRest = captureRest(this.armature); // post-retarget bind pose
+   184→   184→    const xbotRest = captureRest(xbotGltf.scene);
+   185→   185→    const walkRest = captureRest(walkFbx);
+   186→   186→    this._retargetTables = { targetRest, xbotRest, walkRest };
+   187→   187→
+   188→   188→    // Tailor PBR materials to match approved Storyboard Character Direction
+   189→   189→    const microNormalSkin = createMicroNormalTexture({ size: 256, scale: 42, strength: 1.15, seed: 811 });
+   190→   190→    microNormalSkin.repeat.set(6, 6);
+   191→   191→    const weaveNormal = createMicroNormalTexture({ size: 256, scale: 30, strength: 1.0, weave: true, seed: 313 });
+   192→   192→    weaveNormal.repeat.set(4, 4);
+   193→   193→    // High-frequency strand breakup for the hair surface (kills the carved-slab read)
+   194→   194→    const strandNormal = createMicroNormalTexture({ size: 256, scale: 68, strength: 1.5, seed: 77 });
+   195→   195→    strandNormal.repeat.set(7, 7);
+   196→   196→
+   197→   197→    const injectFresnelRim = (mat, rimColor, strength, power = 2.8) => {
+   198→   198→      mat.onBeforeCompile = (shader) => {
+   199→   199→        shader.fragmentShader = shader.fragmentShader.replace(
+   200→   200→          '#include <emissivemap_fragment>',
+   201→   201→          `#include <emissivemap_fragment>
+   202→   202→          {
+   203→   203→            float rimFres = pow(1.0 - clamp(dot(normalize(vNormal), normalize(vViewPosition)), 0.0, 1.0), ${power.toFixed(2)});
+   204→   204→            totalEmissiveRadiance += vec3(${rimColor[0]}, ${rimColor[1]}, ${rimColor[2]}) * rimFres * ${strength.toFixed(3)};
+   205→   205→          }`
+   206→   206→        );
+   207→   207→      };
+   208→   208→      mat.needsUpdate = true;
+   209→   209→    };
+   210→   210→
+   211→   211→    this.armature.traverse((obj) => {
+   212→   212→      if (obj.isBone) {
+   213→   213→        this.bones[obj.name] = obj;
+   214→   214→      }
+   215→   215→      if (obj.isMesh) {
+   216→   216→        obj.castShadow = true;
+   217→   217→        obj.receiveShadow = true;
+   218→   218→        obj.frustumCulled = false;
+   219→   219→
+   220→   220→        if (obj.morphTargetDictionary && obj.morphTargetInfluences) {
+   221→   221→          this.morphMeshes.push(obj);
+   222→   222→        }
+   223→   223→
+   224→   224→        const mat = obj.material;
+   225→   225→        if (mat) {
+   226→   226→          const mName = (mat.name || obj.name || '').toLowerCase();
+   227→   227→          const objName = (obj.name || '').toLowerCase();
+   228→   228→          if (mName.includes('look')) {
+   229→   229→            // Tailored suit: woven micro normal + cool fresnel rim so cloth separates from the dark room
+   230→   230→            mat.map = tailorSuitAlbedoTexture(mat.map);
+   231→   231→            mat.normalMap = weaveNormal;
+   232→   232→            mat.normalScale = new THREE.Vector2(0.42, 0.42);
+   233→   233→            mat.roughness = 0.72;
+   234→   234→            mat.metalness = 0.06;
+   235→   235→            mat.envMapIntensity = 0.6;
+   236→   236→            injectFresnelRim(mat, [0.18, 0.42, 0.48], 0.42);
+   237→   237→            mat.needsUpdate = true;
+   238→   238→          } else if (mName.includes('hair')) {
+   239→   239→            // Hair v4: deep espresso, matte fiber feel, STRAND-LEVEL normal breakup
+   240→   240→            // so the mass reads as thousands of fibers, not carved slabs.
+   241→   241→            const hairPhys = new THREE.MeshPhysicalMaterial({
+   242→   242→              map: mat.map,
+   243→   243→              normalMap: strandNormal,
+   244→   244→              normalScale: new THREE.Vector2(0.85, 0.85),
+   245→   245→              color: 0x1d130d,
+   246→   246→              roughness: 0.58,
+   247→   247→              metalness: 0.02,
+   248→   248→              sheen: 0.35,
+   249→   249→              sheenRoughness: 0.55,
+   250→   250→              sheenColor: new THREE.Color(0x3d5a66),
+   251→   251→              clearcoat: 0.08,
+   252→   252→              clearcoatRoughness: 0.5,
+   253→   253→              envMapIntensity: 0.75,
+   254→   254→            });
+   255→   255→            injectFresnelRim(hairPhys, [0.28, 0.62, 0.72], 0.35, 3.2);
+   256→   256→            obj.material = hairPhys;
+   257→   257→          } else if (mName.includes('shoe')) {
+   258→   258→            mat.color = new THREE.Color(0x12161c);
+   259→   259→            mat.roughness = 0.42;
+   260→   260→            mat.metalness = 0.12;
+   261→   261→            mat.needsUpdate = true;
+   262→   262→          } else if (mName === 'eyes') {
+   263→   263→            // Wet, living eyes: mirror-gloss clearcoat + strong env reflection
+   264→   264→            obj.material = new THREE.MeshPhysicalMaterial({
+   265→   265→              map: mat.map,
+   266→   266→              color: 0xffffff,
+   267→   267→              roughness: 0.05,
+   268→   268→              metalness: 0.0,
+   269→   269→              clearcoat: 1.0,
+   270→   270→              clearcoatRoughness: 0.03,
+   271→   271→              envMapIntensity: 2.6,
+   272→   272→            });
+   273→   273→          } else if (mName === 'eyelash') {
+   274→   274→            mat.roughness = 0.55;
+   275→   275→            mat.envMapIntensity = 0.5;
+   276→   276→            mat.needsUpdate = true;
+   277→   277→          } else if (mName === 'teeth' && objName.includes('tongue')) {
+   278→   278→            obj.material = new THREE.MeshPhysicalMaterial({
+   279→   279→              map: mat.map,
+   280→   280→              color: 0xc4736a,
+   281→   281→              roughness: 0.32,
+   282→   282→              clearcoat: 0.35,
+   283→   283→              clearcoatRoughness: 0.3,
+   284→   284→              envMapIntensity: 0.6,
+   285→   285→            });
+   286→   286→          } else if (mName === 'teeth') {
+   287→   287→            obj.material = new THREE.MeshPhysicalMaterial({
+   288→   288→              map: mat.map,
+   289→   289→              color: 0xf6f2ea,
+   290→   290→              roughness: 0.2,
+   291→   291→              clearcoat: 0.55,
+   292→   292→              clearcoatRoughness: 0.25,
+   293→   293→              envMapIntensity: 0.9,
+   294→   294→            });
+   295→   295→          } else if (mName === 'head' || mName === 'body') {
+   296→   296→            // Body skin gets a gentle warm tint so the neck/chest tone matches
+   297→   297→            // the face (kills the jawline seam between Head and Body meshes).
+   298→   298→            const isBody = mName === 'body';
+   299→   299→            const phys = new THREE.MeshPhysicalMaterial({
+   300→   300→              map: mat.map,
+   301→   301→              normalMap: mat.normalMap,
+   302→   302→              roughnessMap: mat.roughnessMap,
+   303→   303→              color: isBody ? 0xffdcc8 : 0xffffff,
+   304→   304→              roughness: 0.4,
+   305→   305→              metalness: 0.0,
+   306→   306→              sheen: 0.55,
+   307→   307→              sheenRoughness: 0.55,
+   308→   308→              sheenColor: new THREE.Color(0xd98a76),
+   309→   309→              clearcoat: 0.08,
+   310→   310→              clearcoatRoughness: 0.38,
+   311→   311→              ior: 1.38,
+   312→   312→              specularIntensity: 0.75,
+   313→   313→              envMapIntensity: 0.55,
+   314→   314→              emissive: new THREE.Color(0x0e0704), // faint warm scatter bleed in the shadow side
+   315→   315→            });
+   316→   316→            // Pore-level specular breakup so skin never reads as airbrushed wax
+   317→   317→            phys.normalMap = microNormalSkin;
+   318→   318→            phys.normalScale = new THREE.Vector2(isBody ? 0.34 : 0.5, isBody ? 0.34 : 0.5);
+   319→   319→            obj.material = phys;
+   320→   320→          }
+   321→   321→        }
+   322→   322→      }
+   323→   323→    });
+   324→   324→
+   325→   325→    this.root.add(this.armature);
+   326→   326→
+   327→   327→    // Living eyes: camera-facing catchlight sprites parented to the head bone
+   328→   328→    this._buildEyeCatchlights();
+   329→   329→    // Sanctuary tech accents: emissive wrist cuffs + collar light
+   330→   330→    this._buildSuitAccents();
+   331→   331→
+   332→   332→    // Initialize AnimationMixer & retarget locomotion clips cleanly (removing X/Z root drift)
+   333→   333→    this.mixer = new THREE.AnimationMixer(this.armature);
+   334→   334→
+   335→   335→    const walkClip = this._prepareMixamoClip(walkFbx.animations[0], 'female_walk', 0.01, true, walkRest, targetRest);
+   336→   336→    this.actions.walk = this.mixer.clipAction(walkClip);
+   337→   337→
+   338→   338→    // Natural arm carry for the xbot ready-stance clips (idle/agree/headshake hold
+   339→   339→    // arms out from the T-pose bind; walk & run are authored with natural arms).
+   340→   340→    // The legacy Euler carry alone left arms splayed ~60-80° from vertical (A-pose
+   341→   341→    // remnant), so an additional X-axis swing drops the hands to a relaxed
+   342→   342→    // hip-level stance (calibrated live against the rig's world-space arm angles).
+   343→   343→    const ARM_CARRY = {
+   344→   344→      left: new THREE.Quaternion()
+   345→   345→        .setFromEuler(new THREE.Euler(0.2, 0, -0.62))
+   346→   346→        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), 1.1)),
+   347→   347→      right: new THREE.Quaternion()
+   348→   348→        .setFromEuler(new THREE.Euler(0.2, 0, -0.34))
+   349→   349→        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), 1.25)),
+   350→   350→    };
+   351→   351→
+   352→   352→    for (const rawClip of xbotGltf.animations) {
+   353→   353→      const cname = rawClip.name.toLowerCase();
+   354→   354→      if (['idle', 'run', 'agree', 'headshake'].includes(cname)) {
+   355→   355→        const carry = ['idle', 'agree', 'headshake'].includes(cname) ? ARM_CARRY : null;
+   356→   356→        const prepped = this._prepareMixamoClip(rawClip.clone(), cname, 0.01, true, xbotRest, targetRest, carry);
+   357→   357→        this.actions[cname] = this.mixer.clipAction(prepped);
+   358→   358→      }
+   359→   359→    }
+   360→   360→
+   361→   361→    this._fadeToAction('idle', 0.01);
+   362→   362→
+   363→   363→    // Capture the right-arm bind orientation for the pointing aim-solver
+   364→   364→    // (before any animation ticks — this is the parent-space rest direction).
+   365→   365→    if (this.bones.RightArm) {
+   366→   366→      this._rightArmRestQuat = this.bones.RightArm.quaternion.clone();
+   367→   367→    }
+   368→   368→    this.loaded = true;
+   369→   369→  }
+   370→   370→
+   371→   371→  /**
+   372→   372→   * Camera-facing catchlight sprites on both eyes — the single cheapest trick that
+   373→   373→   * turns "painted dead eyes" into a living gaze. Parented to the head bone with
+   374→   374→   * offsets calibrated against the Avaturn rig; modulated during blinks.
+   375→   375→   */
+   376→   376→  _buildEyeCatchlights() {
+   377→   377→    const c = document.createElement('canvas');
+   378→   378→    c.width = c.height = 64;
+   379→   379→    const ctx = c.getContext('2d');
+   380→   380→    // Hard corneal glint core + faint ambient halo — the two-part catchlight
+   381→   381→    // that real wet eyes have (a hard key glint + a soft broad reflection).
+   382→   382→    const halo = ctx.createRadialGradient(32, 32, 2, 32, 32, 30);
+   383→   383→    halo.addColorStop(0, 'rgba(235,250,255,0.34)');
+   384→   384→    halo.addColorStop(0.4, 'rgba(190,235,248,0.1)');
+   385→   385→    halo.addColorStop(1, 'rgba(160,225,240,0)');
+   386→   386→    ctx.fillStyle = halo;
+   387→   387→    ctx.fillRect(0, 0, 64, 64);
+   388→   388→    ctx.fillStyle = 'rgba(255,255,255,1)';
+   389→   389→    ctx.beginPath();
+   390→   390→    ctx.arc(25, 25, 8.5, 0, Math.PI * 2);
+   391→   391→    ctx.fill();
+   392→   392→    ctx.fillStyle = 'rgba(245,253,255,0.92)';
+   393→   393→    ctx.beginPath();
+   394→   394→    ctx.arc(40, 37, 3.6, 0, Math.PI * 2);
+   395→   395→    ctx.fill();
+   396→   396→    const tex = new THREE.CanvasTexture(c);
+   397→   397→
+   398→   398→    const head = this.bones.Head;
+   399→   399→    if (!head) return;
+   400→   400→    this.catchlights = [];
+   401→   401→    for (const sideSign of [-1, 1]) {
+   402→   402→      const mat = new THREE.SpriteMaterial({
+   403→   403→        map: tex,
+   404→   404→        transparent: true,
+   405→   405→        opacity: sideSign < 0 ? 1.0 : 0.82, // asymmetric — the far eye catches less key
+   406→   406→        depthWrite: false,
+   407→   407→      });
+   408→   408→      const sp = new THREE.Sprite(mat);
+   409→   409→      sp.scale.setScalar(sideSign < 0 ? 0.038 : 0.03);
+   410→   410→      sp.position.set(sideSign * 0.031, 0.052, 0.093);
+   411→   411→      head.add(sp);
+   412→   412→      this.catchlights.push(sp);
+   413→   413→      this._catchlightBase = this._catchlightBase || [];
+   414→   414→      this._catchlightBase.push(sp.scale.x);
+   415→   415→
+   416→   416→      // Lower-lid tear-film glint — a thin wet streak under each eye. The
+   417→   417→      // classic VFX tell of moist, living eyes.
+   418→   418→      const wetMat = new THREE.SpriteMaterial({
+   419→   419→        map: tex,
+   420→   420→        transparent: true,
+   421→   421→        opacity: sideSign < 0 ? 0.55 : 0.4,
+   422→   422→        depthWrite: false,
+   423→   423→      });
+   424→   424→      const wet = new THREE.Sprite(wetMat);
+   425→   425→      wet.scale.set(sideSign < 0 ? 0.026 : 0.02, 0.0065, 1);
+   426→   426→      wet.position.set(sideSign * 0.031, 0.036, 0.093);
+   427→   427→      head.add(wet);
+   428→   428→    }
+   429→   429→  }
+   430→   430→
+   431→   431→  /** Emissive sanctuary tech accents: wrist cuffs + collar filament. */
+   432→   432→  _buildSuitAccents() {
+   433→   433→    const accentMat = new THREE.MeshBasicMaterial({
+   434→   434→      color: 0x62e6f2,
+   435→   435→      transparent: true,
+   436→   436→      opacity: 0.6, // restrained — her FACE owns the exposure hierarchy, not her cuffs
+   437→   437→    });
+   438→   438→    const attachments = [
+   439→   439→      { bone: 'LeftHand', geo: new THREE.TorusGeometry(0.045, 0.0075, 8, 24) },
+   440→   440→      { bone: 'RightHand', geo: new THREE.TorusGeometry(0.045, 0.0075, 8, 24) },
+   441→   441→      { bone: 'Neck', geo: new THREE.TorusGeometry(0.056, 0.006, 8, 26) },
+   442→   442→    ];
+   443→   443→    for (const a of attachments) {
+   444→   444→      const bone = this.bones[a.bone];
+   445→   445→      if (!bone) continue;
+   446→   446→      const ring = new THREE.Mesh(a.geo, accentMat);
+   447→   447→      ring.rotation.x = Math.PI / 2;
+   448→   448→      if (a.bone === 'Neck') ring.position.y = 0.075;
+   449→   449→      bone.add(ring);
+   450→   450→    }
+   451→   451→  }
+   452→   452→
+   453→   453→  /**
+   454→   454→   * Reposition the 3-point rig around her head relative to the ACTIVE camera:
+   455→   455→   * warm key from the viewer's side, cool fill opposite, cyan rim from the room
+   456→   456→   * behind her — so she is always separated from the background and never looks
+   457→   457→   * composited with a private frontal light.
+   458→   458→   */
+   459→   459→  _updateCameraRelativeLighting(cameraWorldPos) {
+   460→   460→    if (!this.keyLight) return;
+   461→   461→    const head = this.getHeadWorldPosition(this._tmpHead || (this._tmpHead = new THREE.Vector3()));
+   462→   462→    const toCam = this._tmpDir || (this._tmpDir = new THREE.Vector3());
+   463→   463→    toCam.copy(cameraWorldPos).sub(head);
+   464→   464→    toCam.y = Math.max(toCam.y, 0.15); // keep the geometry stable when camera dips
+   465→   465→    toCam.normalize();
+   466→   466→    const side = this._tmpSide || (this._tmpSide = new THREE.Vector3());
+   467→   467→    side.crossVectors(toCam, THREE.Object3D.DEFAULT_UP);
+   468→   468→    if (side.lengthSq() < 1e-4) side.set(1, 0, 0);
+   469→   469→    side.normalize();
+   470→   470→
+   471→   471→    this.keyLight.position.copy(head).addScaledVector(toCam, 1.45).addScaledVector(side, 1.35);
+   472→   472→    this.keyLight.position.y += 1.0;
+   473→   473→    this.keyTarget.position.copy(head);
+   474→   474→
+   475→   475→    // Camera-distance light compensation: a fixed intensity that flatters the
+   476→   476→    // wide shot clips to pure white in a 65mm closeup. Map the key & face lights
+   477→   477→    // down as the camera approaches so skin always lands in the filmic rolloff.
+   478→   478→    // (Distance is measured BEFORE toCam is normalized below.)
+   479→   479→    const camDist = cameraWorldPos.distanceTo(head);
+   480→   480→    this.keyLight.intensity = THREE.MathUtils.clamp(
+   481→   481→      THREE.MathUtils.mapLinear(THREE.MathUtils.clamp(camDist, 1.4, 6.5), 1.4, 6.5, 4.8, 7.8),
+   482→   482→      4.8, 7.8
+   483→   483→    );
+   484→   484→    this.faceLight.intensity = THREE.MathUtils.clamp(
+   485→   485→      THREE.MathUtils.mapLinear(THREE.MathUtils.clamp(camDist, 1.4, 6.5), 1.4, 6.5, 0.7, 2.0),
+   486→   486→      0.7, 2.0
+   487→   487→    );
+   488→   488→    // Face light leans to the KEY side (never frontal) so it lifts without
+   489→   489→    // flattening the sculpt.
+   490→   490→    this.faceLight.position.copy(head).addScaledVector(toCam, 0.62).addScaledVector(side, 0.4);
+   491→   491→    this.faceLight.position.y += 0.18;
+   492→   492→
+   493→   493→    // Warm kicker: low, key-opposite — carves her body's dark edge.
+   494→   494→    this.kickerLight.position.copy(head).addScaledVector(toCam, 1.2).addScaledVector(side, -1.35);
+   495→   495→    this.kickerLight.position.y -= 0.75;
+   496→   496→    this.kickerLight.intensity = THREE.MathUtils.clamp(
+   497→   497→      THREE.MathUtils.mapLinear(THREE.MathUtils.clamp(camDist, 1.4, 6.5), 1.4, 6.5, 0.9, 1.9),
+   498→   498→      0.9, 1.9
+   499→   499→    );
+   500→   500→
+   501→   501→    // Crossed backlight rim: opposite the key side so it CARVES the silhouette
+   502→   502→    // instead of flattening it with a uniform teal halo.
+   503→   503→    this.rimLight.position.copy(head).addScaledVector(toCam, -1.35).addScaledVector(side, -0.85);
+   504→   504→    this.rimLight.position.y += 0.6;
+   505→   505→
+   506→   506→    this.fillLight.position.copy(head).addScaledVector(toCam, 1.1).addScaledVector(side, -0.6);
+   507→   507→    this.fillLight.position.y -= 0.55;
+   508→   508→
+   509→   509→    // Cyan bounce: from the central holo-table toward her (fixed world motivation)
+   510→   510→    const tableDir = this._tmpTable || (this._tmpTable = new THREE.Vector3());
+   511→   511→    tableDir.set(0, 1.48, 0).sub(head).normalize();
+   512→   512→    this.bounceLight.position.copy(head).addScaledVector(tableDir, 1.15);
+   513→   513→    this.bounceLight.position.y -= 0.25;
+   514→   514→  }
+   515→   515→
+   516→   516→  _prepareMixamoClip(clip, newName, posScale = 0.01, stripXZRoot = true, srcRest = null, tgtRest = null, armCarry = null) {
+   517→   517→    clip.name = newName;
+   518→   518→    const keptTracks = [];
+   519→   519→    const tmpQ = new THREE.Quaternion();
+   520→   520→    for (const t of clip.tracks) {
+   521→   521→      t.name = t.name.replaceAll('mixamorig:', '').replaceAll('mixamorig', '');
+   522→   522→      const [boneName, prop] = t.name.split('.');
+   523→   523→      if (!this.bones[boneName]) continue;
+   524→   524→
+   525→   525→      if (prop === 'quaternion') {
+   526→   526→        // Delta-from-rest conversion between source rig and Avaturn bind pose
+   527→   527→        const qa = srcRest ? srcRest[boneName] : null;
+   528→   528→        const qb = tgtRest ? tgtRest[boneName] : null;
+   529→   529→        if (qa && qb) {
+   530→   530→          const qaInv = qa.clone().invert();
+   531→   531→          for (let i = 0; i < t.values.length; i += 4) {
+   532→   532→            tmpQ.set(t.values[i], t.values[i + 1], t.values[i + 2], t.values[i + 3]);
+   533→   533→            tmpQ.premultiply(qaInv).premultiply(qb);
+   534→   534→            t.values[i] = tmpQ.x;
+   535→   535→            t.values[i + 1] = tmpQ.y;
+   536→   536→            t.values[i + 2] = tmpQ.z;
+   537→   537→            t.values[i + 3] = tmpQ.w;
+   538→   538→          }
+   539→   539→        }
+   540→   540→        // Optional natural arm carry (post-multiplied local rotation)
+   541→   541→        if (armCarry) {
+   542→   542→          const carry = boneName === 'LeftArm' ? armCarry.left : (boneName === 'RightArm' ? armCarry.right : null);
+   543→   543→          if (carry) {
+   544→   544→            for (let i = 0; i < t.values.length; i += 4) {
+   545→   545→              tmpQ.set(t.values[i], t.values[i + 1], t.values[i + 2], t.values[i + 3]);
+   546→   546→              tmpQ.multiply(carry);
+   547→   547→              t.values[i] = tmpQ.x;
+   548→   548→              t.values[i + 1] = tmpQ.y;
+   549→   549→              t.values[i + 2] = tmpQ.z;
+   550→   550→              t.values[i + 3] = tmpQ.w;
+   551→   551→            }
+   552→   552→          }
+   553→   553→        }
+   554→   554→        keptTracks.push(t);
+   555→   555→        continue;
+   556→   556→      }
+   557→   557→
+   558→   558→      if (prop === 'position') {
+   559→   559→        if (boneName !== 'Hips') continue;
+   560→   560→        const baseY = t.values[1] * (t.values[1] > 3 ? posScale : 1.0);
+   561→   561→        const factor = t.values[1] > 3 ? posScale : 1.0;
+   562→   562→        for (let i = 0; i < t.values.length; i += 3) {
+   563→   563→          t.values[i] = stripXZRoot ? 0 : t.values[i] * factor;
+   564→   564→          t.values[i + 1] = Math.max(0.92, t.values[i + 1] * factor || baseY);
+   565→   565→          t.values[i + 2] = stripXZRoot ? 0 : t.values[i + 2] * factor;
+   566→   566→        }
+   567→   567→      }
+   568→   568→      keptTracks.push(t);
+   569→   569→    }
+   570→   570→    clip.tracks = keptTracks;
+   571→   571→    return clip;
+   572→   572→  }
+   573→   573→
+   574→   574→  _fadeToAction(name, duration = 0.32) {
+   575→   575→    if (!this.actions[name] || this.activeActionName === name) return;
+   576→   576→    const next = this.actions[name];
+   577→   577→    next.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).fadeIn(duration).play();
+   578→   578→    if (this.activeActionName && this.actions[this.activeActionName]) {
+   579→   579→      this.actions[this.activeActionName].fadeOut(duration);
+   580→   580→    }
+   581→   581→    this.activeActionName = name;
+   582→   582→  }
+   583→   583→
+   584→   584→  /**
+   585→   585→   * Navigate smoothly around the central holo-table obstacle (radius 2.15m at origin)
+   586→   586→   * so JARVIS never clips through consoles or slides sideways.
+   587→   587→   */
+   588→   588→  navigateTo(targetX, targetZ, targetYaw, { urgent = false, posture = 'console_interaction', emotion = 'focused' } = {}) {
+   589→   589→    this.urgentRun = Boolean(urgent);
+   590→   590→    this.postureMode = posture;
+   591→   591→    this.emotionalState = emotion;
+   592→   592→    this.targetYaw = targetYaw;
+   593→   593→
+   594→   594→    const start = new THREE.Vector2(this.root.position.x, this.root.position.z);
+   595→   595→    const goal = new THREE.Vector2(targetX, targetZ);
+   596→   596→    const dist = start.distanceTo(goal);
+   597→   597→    if (dist < 0.14) {
+   598→   598→      this.waypoints = [];
+   599→   599→      return;
+   600→   600→    }
+   601→   601→
+   602→   602→    // Check if straight segment intersects central circular holo-table (r = 1.95m)
+   603→   603→    const seg = goal.clone().sub(start);
+   604→   604→    const segLenSq = seg.lengthSq();
+   605→   605→    const tProj = Math.max(0, Math.min(1, (-start.x * seg.x - start.z * seg.y) / segLenSq));
+   606→   606→    const closest = start.clone().addScaledVector(seg, tProj);
+   607→   607→    const clearanceRadius = 2.15;
+   608→   608→
+   609→   609→    this.waypoints = [];
+   610→   610→    if (closest.length() < clearanceRadius && start.length() > 1.2 && goal.length() > 1.2) {
+   611→   611→      // Compute tangent arc waypoint around the central ring
+   612→   612→      const a1 = Math.atan2(start.y, start.x);
+   613→   613→      const a2 = Math.atan2(goal.y, goal.x);
+   614→   614→      let delta = a2 - a1;
+   615→   615→      while (delta > Math.PI) delta -= Math.PI * 2;
+   616→   616→      while (delta < -Math.PI) delta += Math.PI * 2;
+   617→   617→      const midAng = a1 + delta * 0.5;
+   618→   618→      this.waypoints.push(new THREE.Vector2(Math.cos(midAng) * 2.55, Math.sin(midAng) * 2.55));
+   619→   619→    }
+   620→   620→    this.waypoints.push(goal);
+   621→   621→  }
+   622→   622→
+   623→   623→  acknowledgeInterruption(cameraWorldPos) {
+   624→   624→    this.waypoints = [];
+   625→   625→    this.currentSpeed = 0;
+   626→   626→    this.urgentRun = false;
+   627→   627→    this.postureMode = 'conversational_focus';
+   628→   628→    this.emotionalState = 'listening';
+   629→   629→    this.focusCamera = true;
+   630→   630→    this.interruptSpeech();
+   631→   631→
+   632→   632→    const dx = cameraWorldPos.x - this.root.position.x;
+   633→   633→    const dz = cameraWorldPos.z - this.root.position.z;
+   634→   634→    this.targetYaw = Math.atan2(dx, dz);
+   635→   635→  }
+   636→   636→
+   637→   637→  /**
+   638→   638→   * Speak with real-time phoneme-to-Oculus-viseme facial synchronization.
+   639→   639→   * Primary voice: server-synthesized audio (base64) with the viseme timeline
+   640→   640→   * elastically scaled to the real audio duration. Fallback: browser SpeechSynthesis.
+   641→   641→   */
+   642→   642→  speak(text, { onStart, onEnd, audio } = {}) {
+   643→   643→    this.interruptSpeech();
+   644→   644→    if (!text) return;
+   645→   645→
+   646→   646→    const clean = text.replace(/\[.*?\]/g, '').trim();
+   647→   647→    if (!clean) return;
+   648→   648→
+   649→   649→    // Build phoneme/viseme schedule using LipsyncEn
+   650→   650→    const words = clean.split(/\s+/);
+   651→   651→    const timeline = [];
+   652→   652→    let cursorMs = 60;
+   653→   653→
+   654→   654→    for (const rawWord of words) {
+   655→   655→      const upper = this.lipsync.preProcessText(rawWord);
+   656→   656→      const oculusSeq = this.lipsync.wordsToVisemes(upper);
+   657→   657→      const wordDurMs = Math.max(150, Math.min(540, rawWord.length * 58));
+   658→   658→
+   659→   659→      if (oculusSeq && oculusSeq.visemes && oculusSeq.visemes.length > 0) {
+   660→   660→        const totalRel = oculusSeq.durations.reduce((a, b) => a + b, 0) || 1;
+   661→   661→        for (let i = 0; i < oculusSeq.visemes.length; i++) {
+   662→   662→          const vCode = oculusSeq.visemes[i];
+   663→   663→          const segMs = (oculusSeq.durations[i] / totalRel) * wordDurMs;
+   664→   664→          timeline.push({
+   665→   665→            viseme: `viseme_${vCode}`,
+   666→   666→            startMs: cursorMs,
+   667→   667→            endMs: cursorMs + segMs,
+   668→   668→          });
+   669→   669→          cursorMs += segMs;
+   670→   670→        }
+   671→   671→      } else {
+   672→   672→        timeline.push({ viseme: 'viseme_aa', startMs: cursorMs, endMs: cursorMs + wordDurMs * 0.7 });
+   673→   673→        cursorMs += wordDurMs;
+   674→   674→      }
+   675→   675→      cursorMs += 42;
+   676→   676→    }
+   677→   677→
+   678→   678→    this.speechTimeline = timeline;
+   679→   679→    this.speechStartPerf = performance.now();
+   680→   680→    this.isSpeaking = true;
+   681→   681→    this.onSpeechEndCallback = onEnd || null;
+   682→   682→    if (onStart) onStart();
+   683→   683→
+   684→   684→    // Primary: server voice decoded through a WebAudio AnalyserNode — the mouth
+   685→   685→    // is driven by the REAL waveform (true sync incl. pauses & emphasis), and the
+   686→   686→    // viseme clock starts the instant the buffer starts playing (zero drift).
+   687→   687→    if (audio && audio.data) {
+   688→   688→      this._playVoiceThroughAnalyser(audio).then((ok) => {
+   689→   689→        if (!ok) this._playVoiceElement(audio, clean);
+   690→   690→      });
+   691→   691→      return;
+   692→   692→    }
+   693→   693→
+   694→   694→    this._browserTtsFallback(clean);
+
+[showing lines 45-694 of 1234; use offset=695 with limit to continue reading]

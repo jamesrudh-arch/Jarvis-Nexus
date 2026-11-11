@@ -1,0 +1,843 @@
+     1→'use client';
+     2→/**
+     3→ * JARVIS NEXUS — Client Orchestrator.
+     4→ * Ported from the reference repo's main.js: connects the real-time 3D Sanctuary
+     5→ * and living character to CORE (/api/v1). Replaces the Vite/WebSocket transport
+     6→ * with request/response + telemetry polling, and adds server-side voice (TTS/ASR).
+     7→ */
+     8→import * as THREE from 'three';
+     9→import { NexusSanctuaryScene } from './world/NexusSanctuaryScene.js';
+    10→
+    11→export interface WorldSnapshot {
+    12→  owner_name: string;
+    13→  first_launch_completed: boolean;
+    14→  active_mode: string;
+    15→  current_zone: string;
+    16→  position: { x: number; y: number; z: number; yaw: number };
+    17→  locomotion_state: string;
+    18→  posture: string;
+    19→  emotional_state: string;
+    20→  active_activity_summary: string;
+    21→  interrupted_task_stack: Array<Record<string, unknown>>;
+    22→  active_camera_preset: string;
+    23→  reduced_motion: boolean;
+    24→  switches: Record<string, boolean>;
+    25→  active_scenario: ScenarioRuntime | null;
+    26→  active_video: { media_id: string; playing: boolean; current_time: number; extracted_3d_twin: boolean };
+    27→  zones: Record<string, { id: string; label: string; look_target?: [number, number, number]; [k: string]: unknown }>;
+    28→  modes: Array<{ id: string; index: number; label: string; zone: string; camera: string }>;
+    29→}
+    30→
+    31→export interface ScenarioRuntime {
+    32→  scenario_id: string;
+    33→  title: string;
+    34→  classification: string;
+    35→  variables: Record<string, number>;
+    36→  playing: boolean;
+    37→  current_time: number;
+    38→  playback_rate: number;
+    39→}
+    40→
+    41→export interface ScenarioDef {
+    42→  id: string;
+    43→  title: string;
+    44→  classification: string;
+    45→  summary: string;
+    46→  duration_sec: number;
+    47→  variables: Array<{ key: string; label: string; min: number; max: number; default: number; step: number; unit: string }>;
+    48→  branches: Array<{ id: string; condition: string; label: string; outcome: string; severity: string }>;
+    49→  timeline: Array<{ t: number; phase: string; camera: string; narration: string }>;
+    50→  actors_props: { voxel_structure: string; [k: string]: unknown };
+    51→  evidence_notes: Array<{ kind: string; text: string }>;
+    52→}
+    53→
+    54→export interface JarvisMessage {
+    55→  id: string;
+    56→  content: string;
+    57→  inference_source: string;
+    58→  emotional_tone: string;
+    59→  target_zone: string | null;
+    60→  created_at: string;
+    61→  audio: string | null;
+    62→  audio_mime: string | null;
+    63→}
+    64→
+    65→export interface Telemetry {
+    66→  cpu_percent: number;
+    67→  cpu_cores: number;
+    68→  memory_used_mb: number;
+    69→  memory_total_mb: number;
+    70→  memory_percent: number;
+    71→  disk_free_gb: number;
+    72→  uptime_sec: number;
+    73→  database_records: { memories: number; goals: number; scenarios: number; switches: number };
+    74→  embodiment_clients: number;
+    75→  inference: { active_backend: string; connected_workers: number };
+    76→}
+    77→
+    78→export interface NexusSnapshot {
+    79→  ready: boolean;
+    80→  loadingText: string;
+    81→  error: string | null;
+    82→  world: WorldSnapshot | null;
+    83→  scenarios: ScenarioDef[];
+    84→  activeScenarioDef: ScenarioDef | null;
+    85→  scenarioPhase: string;
+    86→  scenarioTimeReadout: string;
+    87→  subtitle: JarvisMessage | null;
+    88→  interruptAvailable: boolean;
+    89→  micState: 'off' | 'listening' | 'processing';
+    90→  camState: 'off' | 'live';
+    91→  recording: boolean;
+    92→  telemetry: Telemetry | null;
+    93→  holoLayout: string;
+    94→  speaking: boolean;
+    95→}
+    96→
+    97→type SnapshotListener = (snap: NexusSnapshot) => void;
+    98→
+    99→async function api<T = Record<string, unknown>>(path: string, options: RequestInit = {}): Promise<T> {
+   100→  const headers = options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' };
+   101→  const res = await fetch(path, { ...options, headers: { ...headers, ...(options.headers as Record<string, string> | undefined) } });
+   102→  if (!res.ok) {
+   103→    let detail = `HTTP ${res.status}`;
+   104→    try {
+   105→      const err = await res.json();
+   106→      detail = (err as { detail?: string }).detail || detail;
+   107→    } catch { /* ignore */ }
+   108→    throw new Error(detail);
+   109→  }
+   110→  return (await res.json()) as T;
+   111→}
+   112→
+   113→export class NexusClient {
+   114→  sanctuary: NexusSanctuaryScene | null = null;
+   115→  private disposed = false;
+   116→  private canvas: HTMLCanvasElement;
+   117→  private labelsLayer: HTMLElement;
+   118→  private opticalCamEl: HTMLVideoElement | null = null;
+   119→  private listener: SnapshotListener;
+   120→
+   121→  private world: WorldSnapshot | null = null;
+   122→  private scenarios: ScenarioDef[] = [];
+   123→  private activeScenarioDef: ScenarioDef | null = null;
+   124→  private loadingText = 'Igniting sanctuary emitters…';
+   125→  private error: string | null = null;
+   126→  private ready = false;
+   127→  private subtitle: JarvisMessage | null = null;
+   128→  private interruptAvailable = false;
+   129→  private micState: 'off' | 'listening' | 'processing' = 'off';
+   130→  private camState: 'off' | 'live' = 'off';
+   131→  private recording = false;
+   132→  private telemetry: Telemetry | null = null;
+   133→  private holoLayout = 'peppers_ghost';
+   134→  private speaking = false;
+   135→  private scenarioPhase = '';
+   136→  private scenarioTimeReadout = '';
+   137→  private lastTickEmit = 0;
+   138→  private lastNarrCueIndex = -1;
+   139→  private narratingScenario = false;
+   140→
+   141→  private micStream: MediaStream | null = null;
+   142→  private camStream: MediaStream | null = null;
+   143→  private mediaRecorder: MediaRecorder | null = null;
+   144→  private recordedChunks: Blob[] = [];
+   145→  private animClock = new THREE.Clock();
+   146→  private telemetryTimer: ReturnType<typeof setInterval> | null = null;
+   147→
+   148→  constructor(
+   149→    canvas: HTMLCanvasElement,
+   150→    labelsLayer: HTMLElement,
+   151→    opticalCamEl: HTMLVideoElement | null,
+   152→    listener: SnapshotListener
+   153→  ) {
+   154→    this.canvas = canvas;
+   155→    this.labelsLayer = labelsLayer;
+   156→    this.opticalCamEl = opticalCamEl;
+   157→    this.listener = listener;
+   158→    // The sanctuary is created synchronously so that dispose() can always
+   159→    // stop its render loop — critical under React StrictMode double-mount,
+   160→    // where a deferred async creation would leave an orphaned render loop
+   161→    // fighting over the same canvas (ghosted/duplicated character).
+   162→    this.sanctuary = new NexusSanctuaryScene(canvas, labelsLayer);
+   163→  }
+   164→
+   165→  emit() {
+   166→    this.listener({
+   167→      ready: this.ready,
+   168→      loadingText: this.loadingText,
+   169→      error: this.error,
+   170→      world: this.world,
+   171→      scenarios: this.scenarios,
+   172→      activeScenarioDef: this.activeScenarioDef,
+   173→      scenarioPhase: this.scenarioPhase,
+   174→      scenarioTimeReadout: this.scenarioTimeReadout,
+   175→      subtitle: this.subtitle,
+   176→      interruptAvailable: this.interruptAvailable,
+   177→      micState: this.micState,
+   178→      camState: this.camState,
+   179→      recording: this.recording,
+   180→      telemetry: this.telemetry,
+   181→      holoLayout: this.holoLayout,
+   182→      speaking: this.speaking,
+   183→    });
+   184→  }
+   185→
+   186→  private set speakingState(v: boolean) {
+   187→    this.speaking = v;
+   188→    this.emit();
+   189→  }
+   190→
+   191→  async bootstrap() {
+   192→    this.emit();
+   193→    // Yield one tick so React StrictMode's double-mount cleanup lands before
+   194→    // the heavy 14 MB character download starts (prevents a duplicate load).
+   195→    await new Promise((r) => setTimeout(r, 0));
+   196→    const sanctuary = this.sanctuary;
+   197→    if (!sanctuary || this.disposed) return;
+   198→
+   199→    try {
+   200→      await sanctuary.initCharacter((xhr: { loaded: number; total: number } | undefined) => {
+   201→        if (this.disposed) return;
+   202→        if (xhr && xhr.total) {
+   203→          const pct = Math.round((xhr.loaded / xhr.total) * 100);
+   204→          this.loadingText = `Loading rigged 3D character & skeletal clips (${pct}%)…`;
+   205→          this.emit();
+   206→        }
+   207→      });
+   208→    } catch (err) {
+   209→      this.loadingText = `Character asset warning: ${(err as Error).message}`;
+   210→      this.emit();
+   211→    }
+   212→    if (this.disposed) return;
+   213→
+   214→    try {
+   215→      const [worldSnap, scenariosRes] = await Promise.all([
+   216→        api<WorldSnapshot>('/api/v1/world'),
+   217→        api<{ scenarios: ScenarioDef[] }>('/api/v1/scenarios'),
+   218→      ]);
+   219→      if (this.disposed) return;
+   220→      this.scenarios = scenariosRes.scenarios || [];
+   221→      this.applyWorldState(worldSnap, true);
+   222→    } catch (err) {
+   223→      this.error = (err as Error).message;
+   224→      this.emit();
+   225→      return;
+   226→    }
+   227→
+   228→    this.ready = true;
+   229→    this.loadingText = 'NEXUS online.';
+   230→    this.emit();
+   231→
+   232→    // Animation loop
+   233→    sanctuary.renderer.setAnimationLoop(() => {
+   234→      const dt = this.animClock.getDelta();
+   235→      sanctuary.renderFrame(dt, this.opticalCamEl, Boolean(this.world?.switches.camera));
+   236→      this.tickScenarioUI();
+   237→    });
+   238→
+   239→    // Telemetry poll
+   240→    this.telemetryTimer = setInterval(async () => {
+   241→      try {
+   242→        this.telemetry = await api<Telemetry>('/api/v1/telemetry');
+   243→        sanctuary.updateTelemetryBoard({
+   244→          ...this.telemetry,
+   245→          inference: this.telemetry.inference,
+   246→        } as never);
+   247→        this.emit();
+   248→      } catch { /* transient */ }
+   249→    }, 8000);
+   250→    void this.fetchTelemetryOnce();
+   251→  }
+   252→
+   253→  private async fetchTelemetryOnce() {
+   254→    try {
+   255→      this.telemetry = await api<Telemetry>('/api/v1/telemetry');
+   256→      this.sanctuary?.updateTelemetryBoard(this.telemetry as never);
+   257→      this.emit();
+   258→    } catch { /* ignore */ }
+   259→  }
+   260→
+   261→  dispose() {
+   262→    this.disposed = true;
+   263→    if (this.telemetryTimer) clearInterval(this.telemetryTimer);
+   264→    this.sanctuary?.renderer.setAnimationLoop(null);
+   265→  }
+   266→
+   267→  // ------------------------------------------------------------------
+   268→  // World state application
+   269→  // ------------------------------------------------------------------
+   270→  applyWorldState(snap: WorldSnapshot, initialSnap = false) {
+   271→    if (!snap || !this.sanctuary) return;
+   272→    this.world = snap;
+   273→    const sanctuary = this.sanctuary;
+   274→    sanctuary.reducedMotion = Boolean(snap.reduced_motion);
+   275→
+   276→    const zoneInfo = snap.zones?.[snap.current_zone];
+   277→    if (zoneInfo?.look_target) {
+   278→      sanctuary.jarvis.lookWorldTarget.set(...(zoneInfo.look_target as [number, number, number]));
+   279→    }
+   280→    sanctuary.jarvis.focusCamera = ['conversational_focus', 'wake_auth', 'digital_human_embodiment', 'holographic_presence'].includes(snap.active_mode);
+   281→
+   282→    const postureMap: Record<string, string> = {
+   283→      simulation_stage: snap.active_scenario ? 'scenario_direct' : 'scenario_construct',
+   284→      media_presentation: 'video_present',
+   285→      central_operations: snap.active_mode === 'conversational_focus' ? 'conversational_focus' : 'console_interaction',
+   286→    };
+   287→    const posture = postureMap[snap.current_zone] || 'console_interaction';
+   288→    const pos = snap.position;
+   289→
+   290→    // Autonomous behavior permission: only in ambient modes, autonomy switch ON,
+   291→    // no active scenario, and no pending conversation. She lives on her own.
+   292→    const ambientModes = ['living_presence', 'wake_auth', 'digital_human_embodiment'];
+   293→    sanctuary.behaviorDirector?.setServerPermitted(
+   294→      Boolean(snap.switches?.autonomy)
+   295→      && !snap.active_scenario
+   296→      && ambientModes.includes(snap.active_mode)
+   297→    );
+   298→
+   299→    if (initialSnap) {
+   300→      sanctuary.jarvis.root.position.set(pos.x, 0, pos.z);
+   301→      sanctuary.jarvis.root.rotation.y = pos.yaw;
+   302→      sanctuary.jarvis.targetYaw = pos.yaw;
+   303→      sanctuary.jarvis.postureMode = posture;
+   304→      sanctuary.jarvis.emotionalState = snap.emotional_state;
+   305→    } else {
+   306→      // Presenter's mark: while a scenario plays she stands BESIDE the hologram
+   307→      // (never inside the emitter volume), framed with the evidence she directs.
+   308→      let navX = pos.x;
+   309→      let navZ = pos.z;
+   310→      let navYaw = pos.yaw;
+   311→      if (snap.active_scenario && snap.current_zone === 'simulation_stage') {
+   312→        navX = 1.9;
+   313→        navZ = 2.9;
+   314→        navYaw = -2.11;
+   315→      }
+   316→      sanctuary.jarvis.navigateTo(navX, navZ, navYaw, {
+   317→        urgent: snap.locomotion_state === 'running' || snap.emotional_state === 'urgent',
+   318→        posture,
+   319→        emotion: snap.emotional_state || 'focused',
+   320→      });
+   321→    }
+   322→
+   323→    const isHolo = snap.active_mode === 'holographic_presence';
+   324→    sanctuary.setHologramMode(isHolo, this.holoLayout);
+   325→
+   326→    if (snap.active_camera_preset) {
+   327→      sanctuary.cameraDirector.setPreset(snap.active_camera_preset, sanctuary.reducedMotion);
+   328→    }
+   329→
+   330→    if (snap.active_scenario && !sanctuary.scenarioDirector.activeScenario) {
+   331→      const def = this.scenarios.find((s) => s.id === snap.active_scenario.scenario_id);
+   332→      if (def) this.activateClientScenario(def, snap.active_scenario);
+   333→    } else if (!snap.active_scenario && sanctuary.scenarioDirector.activeScenario) {
+   334→      sanctuary.scenarioDirector.clearStage();
+   335→      this.activeScenarioDef = null;
+   336→    }
+   337→
+   338→    sanctuary.syncPhysicalSwitchLevers(snap.switches || {});
+   339→    void this.enforceBrowserSensorGates();
+   340→    this.emit();
+   341→  }
+   342→
+   343→  // ------------------------------------------------------------------
+   344→  // Conversation
+   345→  // ------------------------------------------------------------------
+   346→  async sendConversation(content: string, modality: 'text' | 'voice' | 'vision' = 'text') {
+   347→    // She stops autonomous wandering the moment you address her
+   348→    this.sanctuary?.behaviorDirector?.pause(18);
+   349→    try {
+   350→      const payload = await api<{
+   351→        jarvis_message: JarvisMessage;
+   352→        world: WorldSnapshot;
+   353→        activated_scenario: ScenarioRuntime | null;
+   354→      }>('/api/v1/conversations/send', {
+   355→        method: 'POST',
+   356→        body: JSON.stringify({ content, modality }),
+   357→      });
+   358→
+   359→      this.applyWorldState(payload.world, false);
+   360→      this.showJarvisResponse(payload.jarvis_message);
+   361→
+   362→      if (payload.activated_scenario) {
+   363→        const def = this.scenarios.find((s) => s.id === payload.activated_scenario.scenario_id);
+   364→        if (def) this.activateClientScenario(def, payload.activated_scenario);
+   365→      }
+   366→    } catch (err) {
+   367→      this.error = (err as Error).message;
+   368→      this.emit();
+   369→      setTimeout(() => { this.error = null; this.emit(); }, 4200);
+   370→    }
+   371→  }
+   372→
+   373→  showJarvisResponse(jarvisMsg: JarvisMessage | null) {
+   374→    if (!jarvisMsg || !this.sanctuary) return;
+   375→    this.subtitle = jarvisMsg;
+   376→    this.interruptAvailable = true;
+   377→    this.speakingState = true;
+   378→    this.emit();
+   379→
+   380→    if (this.world?.switches.embodiment !== false) {
+   381→      this.sanctuary.jarvis.speak(jarvisMsg.content, {
+   382→        audio: jarvisMsg.audio ? { data: jarvisMsg.audio, mime: jarvisMsg.audio_mime || 'audio/wav' } : undefined,
+   383→        onEnd: () => {
+   384→          this.interruptAvailable = false;
+   385→          this.speakingState = false;
+   386→          this.emit();
+   387→        },
+   388→      });
+   389→    }
+   390→  }
+   391→
+   392→  async interruptSpeech() {
+   393→    this.sanctuary?.jarvis.interruptSpeech();
+   394→    this.interruptAvailable = false;
+   395→    this.speakingState = false;
+   396→    this.narratingScenario = false;
+   397→    this.emit();
+   398→    try {
+   399→      const world = await api<WorldSnapshot>('/api/v1/world/interrupt', { method: 'POST' });
+   400→      this.applyWorldState(world, false);
+   401→    } catch { /* ignore */ }
+   402→  }
+   403→
+   404→  async resumeTask() {
+   405→    try {
+   406→      const world = await api<WorldSnapshot>('/api/v1/world/resume', { method: 'POST' });
+   407→      this.applyWorldState(world, false);
+   408→    } catch (err) {
+   409→      this.error = (err as Error).message;
+   410→      this.emit();
+   411→    }
+   412→  }
+   413→
+   414→  // ------------------------------------------------------------------
+   415→  // Owner switches, modes, camera, onboarding
+   416→  // ------------------------------------------------------------------
+   417→  async toggleSwitch(key: string) {
+   418→    if (!this.world) return;
+   419→    const nextState = !this.world.switches[key];
+   420→    try {
+   421→      const res = await api<{ world: WorldSnapshot }>(`/api/v1/switches/${key}`, {
+   422→        method: 'PATCH',
+   423→        body: JSON.stringify({ enabled: nextState }),
+   424→      });
+   425→      this.applyWorldState(res.world, false);
+   426→      await this.enforceBrowserSensorGates();
+   427→    } catch (err) {
+   428→      this.error = (err as Error).message;
+   429→      this.emit();
+   430→    }
+   431→  }
+   432→
+   433→  async setMode(modeId: string) {
+   434→    try {
+   435→      const world = await api<WorldSnapshot>('/api/v1/world/mode', {
+   436→        method: 'POST',
+   437→        body: JSON.stringify({ mode_id: modeId }),
+   438→      });
+   439→      this.applyWorldState(world, false);
+   440→    } catch (err) {
+   441→      this.error = (err as Error).message;
+   442→      this.emit();
+   443→    }
+   444→  }
+   445→
+   446→  setCameraPreset(value: string) {
+   447→    this.sanctuary?.cameraDirector.setManualSelect(value, this.sanctuary.reducedMotion);
+   448→    // Manual framing = you're directing HER: autonomy yields, and conversational
+   449→    // framing means EYE CONTACT with the lens.
+   450→    this.sanctuary?.behaviorDirector?.pause(30);
+   451→    const j = this.sanctuary?.jarvis;
+   452→    if (j) {
+   453→      if (value === 'conversation') {
+   454→        j.focusCamera = true;
+   455→        if (!j.isSpeaking) j.postureMode = 'conversational_focus';
+   456→      } else if (value === 'living_presence') {
+   457→        j.focusCamera = true;
+   458→      }
+   459→    }
+   460→  }
+   461→
+   462→  async completeOnboarding(action: 'dismiss' | 'compute' | 'scenario') {
+   463→    try {
+   464→      const world = await api<WorldSnapshot>('/api/v1/world/complete-onboarding', { method: 'POST' });
+   465→      this.applyWorldState(world, false);
+   466→      if (action === 'scenario') {
+   467→        await this.activateScenario('cryo_manifold_forensic');
+   468→      }
+   469→    } catch (err) {
+   470→      this.error = (err as Error).message;
+   471→      this.emit();
+   472→    }
+   473→  }
+   474→
+   475→  async setReducedMotion(enabled: boolean) {
+   476→    try {
+   477→      const world = await api<WorldSnapshot>(`/api/v1/world/reduced-motion?enabled=${enabled}`, { method: 'POST' });
+   478→      this.applyWorldState(world, false);
+   479→    } catch { /* ignore */ }
+   480→  }
+   481→
+   482→  setHoloLayout(layout: string) {
+   483→    this.holoLayout = layout;
+   484→    this.sanctuary?.setHologramMode(true, layout);
+   485→    this.emit();
+   486→  }
+   487→
+   488→  // ------------------------------------------------------------------
+   489→  // Scenario Director transport
+   490→  // ------------------------------------------------------------------
+   491→  activateClientScenario(def: ScenarioDef, runtime: ScenarioRuntime) {
+   492→    if (!this.sanctuary) return;
+   493→    this.activeScenarioDef = def;
+   494→    this.sanctuary.behaviorDirector?.pause(20);
+   495→    this.sanctuary.scenarioDirector.loadScenario(def, runtime);
+   496→    // She directs the documentary: camera returns to auto (cue choreography),
+   497→    // posture + aim at the holographic evidence.
+   498→    this.sanctuary.cameraDirector.setManualSelect('auto', this.sanctuary.reducedMotion);
+   499→    const j = this.sanctuary.jarvis;
+   500→    j.gestureWorldTarget = this.sanctuary.scenarioDirector.originPoint.clone();
+   501→    j.postureMode = 'scenario_direct';
+   502→    j.emotionalState = 'focused';
+   503→    this.narratingScenario = true;
+   504→    this.emit();
+   505→  }
+   506→
+   507→  async activateScenario(id: string) {
+   508→    try {
+   509→      const res = await api<{ world: WorldSnapshot; runtime: ScenarioRuntime }>(`/api/v1/scenarios/${id}/activate`, {
+   510→        method: 'POST',
+   511→        body: JSON.stringify({ variables: {}, playing: true }),
+   512→      });
+   513→      this.applyWorldState(res.world, false);
+   514→      const def = this.scenarios.find((s) => s.id === id);
+   515→      if (def && res.runtime) this.activateClientScenario(def, res.runtime);
+   516→    } catch (err) {
+   517→      this.error = (err as Error).message;
+   518→      this.emit();
+   519→    }
+   520→  }
+   521→
+   522→  async restoreScenario() {
+   523→    try {
+   524→      const world = await api<WorldSnapshot>('/api/v1/scenarios/restore', { method: 'POST' });
+   525→      this.sanctuary?.scenarioDirector.clearStage();
+   526→      if (this.sanctuary) {
+   527→        this.sanctuary.jarvis.gestureWorldTarget = null;
+   528→        this.sanctuary.jarvis.interruptSpeech();
+   529→      }
+   530→      this.narratingScenario = false;
+   531→      this.lastNarrCueIndex = -1;
+   532→      this.activeScenarioDef = null;
+   533→      this.applyWorldState(world, false);
+   534→    } catch (err) {
+   535→      this.error = (err as Error).message;
+   536→      this.emit();
+   537→    }
+   538→  }
+   539→
+   540→  scenarioPlayPause(): boolean {
+   541→    const sd = this.sanctuary?.scenarioDirector;
+   542→    if (!sd) return false;
+   543→    sd.playing = !sd.playing;
+   544→    this.emit();
+   545→    return sd.playing;
+   546→  }
+   547→
+   548→  scenarioReplay() {
+   549→    const sd = this.sanctuary?.scenarioDirector;
+   550→    if (!sd) return;
+   551→    sd.currentTime = 0;
+   552→    sd.playing = true;
+   553→    this.emit();
+   554→  }
+   555→
+   556→  scenarioSeek(t: number) {
+   557→    const sd = this.sanctuary?.scenarioDirector;
+   558→    if (!sd) return;
+   559→    sd.playing = false;
+   560→    sd.currentTime = t;
+   561→    this.emit();
+   562→  }
+   563→
+   564→  scenarioSetRate(rate: number) {
+   565→    const sd = this.sanctuary?.scenarioDirector;
+   566→    if (sd) sd.playbackRate = rate;
+   567→  }
+   568→
+   569→  scenarioUpdateVariable(key: string, value: number) {
+   570→    this.sanctuary?.scenarioDirector.updateVariables({ [key]: value });
+   571→  }
+   572→
+   573→  toggleScenarioRecording(): boolean {
+   574→    if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+   575→      this.mediaRecorder.stop();
+   576→      this.recording = false;
+   577→      this.emit();
+   578→      return false;
+   579→    }
+   580→    if (!this.canvas.captureStream || typeof MediaRecorder === 'undefined') {
+   581→      this.error = 'MediaRecorder WebM capture is not supported by this browser.';
+   582→      this.emit();
+   583→      setTimeout(() => { this.error = null; this.emit(); }, 3600);
+   584→      return false;
+   585→    }
+   586→    const stream = this.canvas.captureStream(30);
+   587→    const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+   588→    this.recordedChunks = [];
+   589→    recorder.ondataavailable = (ev) => {
+   590→      if (ev.data.size > 0) this.recordedChunks.push(ev.data);
+   591→    };
+   592→    recorder.onstop = () => {
+   593→      const blob = new Blob(this.recordedChunks, { type: 'video/webm' });
+   594→      const url = URL.createObjectURL(blob);
+   595→      const a = document.createElement('a');
+   596→      a.href = url;
+   597→      a.download = 'jarvis_nexus_scenario.webm';
+   598→      a.click();
+   599→    };
+   600→    recorder.start();
+   601→    this.mediaRecorder = recorder;
+   602→    this.recording = true;
+   603→    this.emit();
+   604→    return true;
+   605→  }
+   606→
+   607→  private tickScenarioUI() {
+   608→    const sd = this.sanctuary?.scenarioDirector;
+   609→    if (!sd || !sd.activeScenario) {
+   610→      if (this.scenarioTimeReadout) {
+   611→        this.scenarioTimeReadout = '';
+   612→        this.scenarioPhase = '';
+   613→        this.emit();
+   614→      }
+   615→      this.lastNarrCueIndex = -1;
+   616→      return;
+   617→    }
+   618→
+   619→    // Scenario narration: when the timeline crosses into a new cue she SPEAKS
+   620→    // the phase narration with her synthesized voice + synced mouth, pointing
+   621→    // at the hologram. Skipped while she's already speaking (never overlaps).
+   622→    const cueIdx = sd.lastCueIndex;
+   623→    if (sd.playing && cueIdx !== this.lastNarrCueIndex && !this.speaking) {
+   624→      this.lastNarrCueIndex = cueIdx;
+   625→      const cue = sd.activeScenario.timeline?.[Math.max(0, cueIdx)];
+   626→      if (cue?.narration && this.narratingScenario) {
+   627→        void this.speakScenarioNarration(cue.narration);
+   628→      }
+   629→    }
+   630→
+   631→    const now = performance.now();
+   632→    if (now - this.lastTickEmit < 200) return;
+   633→    this.lastTickEmit = now;
+   634→
+   635→    this.scenarioTimeReadout = `${sd.currentTime.toFixed(1).padStart(4, '0')}s / ${sd.duration.toFixed(1)}s`;
+   636→    const tl = sd.activeScenario.timeline || [];
+   637→    let activeCue = tl[0];
+   638→    for (const cue of tl) {
+   639→      if (sd.currentTime >= cue.t) activeCue = cue;
+   640→    }
+   641→    if (activeCue) this.scenarioPhase = activeCue.phase;
+   642→    this.emit();
+   643→  }
+   644→
+   645→  /** Narrate one scenario timeline cue with her real voice (server TTS) and
+   646→   *  audio-driven viseme lip-sync. Falls back to silent-browser TTS on error. */
+   647→  private async speakScenarioNarration(text: string) {
+   648→    const sanctuary = this.sanctuary;
+   649→    if (!sanctuary || !sanctuary.jarvis.loaded) return;
+   650→    if (sanctuary.jarvis.isSpeaking) return;
+   651→    try {
+   652→      const voice = await api<{ audio?: string; mime?: string }>('/api/v1/voice/tts', {
+   653→        method: 'POST',
+   654→        body: JSON.stringify({ text, emotion: 'focused' }),
+   655→      });
+   656→      if (!sanctuary.scenarioDirector.activeScenario) return; // scenario closed mid-fetch
+   657→      sanctuary.jarvis.speak(text, {
+   658→        audio: voice?.audio ? { data: voice.audio, mime: voice.mime || 'audio/wav' } : undefined,
+   659→        onEnd: () => {
+   660→          this.narratingScenario = Boolean(sanctuary.scenarioDirector.activeScenario);
+   661→        },
+   662→      });
+   663→    } catch {
+   664→      if (sanctuary.scenarioDirector.activeScenario) {
+   665→        sanctuary.jarvis.speak(text);
+   666→      }
+   667→    }
+   668→  }
+   669→
+   670→  get scenarioDirector() {
+   671→    return this.sanctuary?.scenarioDirector ?? null;
+   672→  }
+   673→
+   674→  // ------------------------------------------------------------------
+   675→  // Real browser sensor enforcement (no hidden capture)
+   676→  // ------------------------------------------------------------------
+   677→  async enforceBrowserSensorGates() {
+   678→    if (!this.sanctuary || !this.world) return;
+   679→    const sw = this.world.switches;
+   680→
+   681→    if (!sw.microphone || !sw.master) {
+   682→      if (this.micStream) {
+   683→        this.micStream.getTracks().forEach((t) => t.stop());
+   684→        this.micStream = null;
+   685→      }
+   686→    }
+   687→
+   688→    if (!sw.camera || !sw.master) {
+   689→      if (this.camStream) {
+   690→        this.camStream.getTracks().forEach((t) => t.stop());
+   691→        this.camStream = null;
+   692→        if (this.opticalCamEl) this.opticalCamEl.srcObject = null;
+   693→        this.camState = 'off';
+   694→      }
+   695→      this.sanctuary.updateVisionBoard(false, null);
+   696→    } else if (!this.camStream && navigator.mediaDevices?.getUserMedia) {
+   697→      try {
+   698→        this.camStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 360 } });
+   699→        if (this.opticalCamEl) {
+   700→          this.opticalCamEl.srcObject = this.camStream;
+   701→          await this.opticalCamEl.play().catch(() => undefined);
+   702→        }
+   703→        this.sanctuary.updateVisionBoard(true, this.opticalCamEl);
+   704→        this.camState = 'live';
+   705→      } catch {
+   706→        this.sanctuary.updateVisionBoard(false, null);
+   707→        this.camState = 'off';
+   708→      }
+   709→    }
+   710→    this.emit();
+   711→  }
+   712→
+   713→  // ------------------------------------------------------------------
+   714→  // Voice input: SpeechRecognition preferred, MediaRecorder+ASR fallback
+   715→  // ------------------------------------------------------------------
+   716→  async startVoiceCapture(): Promise<void> {
+   717→    if (!this.world?.switches.microphone) {
+   718→      this.error = 'Microphone Switch (#2) is OFF. Enable MIC in the top switch bar to authorise audio capture.';
+   719→      this.emit();
+   720→      setTimeout(() => { this.error = null; this.emit(); }, 4200);
+   721→      return;
+   722→    }
+   723→
+   724→    const SR = (window as unknown as { SpeechRecognition?: new () => SpeechRecognition; webkitSpeechRecognition?: new () => SpeechRecognition }).SpeechRecognition
+   725→      ?? (window as unknown as { webkitSpeechRecognition?: new () => SpeechRecognition }).webkitSpeechRecognition;
+   726→
+   727→    if (SR) {
+   728→      const rec = new SR();
+   729→      rec.lang = 'en-US';
+   730→      rec.interimResults = false;
+   731→      this.micState = 'listening';
+   732→      this.emit();
+   733→      rec.onresult = async (ev: SpeechRecognitionEvent) => {
+   734→        const transcript = ev.results[0][0].transcript;
+   735→        this.micState = 'processing';
+   736→        this.emit();
+   737→        await this.sendConversation(transcript, 'voice');
+   738→        this.micState = 'off';
+   739→        this.emit();
+   740→      };
+   741→      rec.onerror = () => {
+   742→        this.micState = 'off';
+   743→        this.emit();
+   744→      };
+   745→      rec.onend = () => {
+   746→        if (this.micState === 'listening') {
+   747→          this.micState = 'off';
+   748→          this.emit();
+   749→        }
+   750→      };
+   751→      try { rec.start(); } catch { /* already started */ }
+   752→      return;
+   753→    }
+   754→
+   755→    // Fallback: record webm/opus, transcribe via CORE ASR
+   756→    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+   757→      this.error = 'Voice capture is unavailable in this browser. Type directly instead.';
+   758→      this.emit();
+   759→      setTimeout(() => { this.error = null; this.emit(); }, 4200);
+   760→      return;
+   761→    }
+   762→    try {
+   763→      this.micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+   764→      const recorder = new MediaRecorder(this.micStream);
+   765→      const chunks: Blob[] = [];
+   766→      this.micState = 'listening';
+   767→      this.emit();
+   768→      recorder.ondataavailable = (ev) => { if (ev.data.size > 0) chunks.push(ev.data); };
+   769→      recorder.onstop = async () => {
+   770→        this.micStream?.getTracks().forEach((t) => t.stop());
+   771→        this.micState = 'processing';
+   772→        this.emit();
+   773→        try {
+   774→          const blob = new Blob(chunks, { type: chunks[0]?.type || 'audio/webm' });
+   775→          const b64 = await blobToBase64(blob);
+   776→          const res = await api<{ text: string }>('/api/v1/asr', {
+   777→            method: 'POST',
+   778→            body: JSON.stringify({ audio_base64: b64 }),
+   779→          });
+   780→          if (res.text) {
+   781→            await this.sendConversation(res.text, 'voice');
+   782→          } else {
+   783→            this.error = 'No speech detected.';
+   784→            this.emit();
+   785→            setTimeout(() => { this.error = null; this.emit(); }, 3000);
+   786→          }
+   787→        } catch (err) {
+   788→          this.error = `Voice transcription failed: ${(err as Error).message}`;
+   789→          this.emit();
+   790→          setTimeout(() => { this.error = null; this.emit(); }, 4200);
+   791→        }
+   792→        this.micState = 'off';
+   793→        this.emit();
+   794→      };
+   795→      recorder.start();
+   796→      // Auto-stop after 12s safety window
+   797→      setTimeout(() => {
+   798→        if (recorder.state === 'recording') recorder.stop();
+   799→      }, 12000);
+   800→      this._pendingRecorder = recorder;
+   801→    } catch {
+   802→      this.micState = 'off';
+   803→      this.error = 'Microphone permission denied.';
+   804→      this.emit();
+   805→      setTimeout(() => { this.error = null; this.emit(); }, 3600);
+   806→    }
+   807→  }
+   808→
+   809→  private _pendingRecorder: MediaRecorder | null = null;
+   810→
+   811→  stopVoiceCapture() {
+   812→    if (this._pendingRecorder && this._pendingRecorder.state === 'recording') {
+   813→      this._pendingRecorder.stop();
+   814→    }
+   815→  }
+   816→
+   817→  async visionSnapshot() {
+   818→    if (!this.world?.switches.camera) {
+   819→      this.error = 'Optical Camera Switch (#3) is OFF. Enable CAM to authorise optical capture.';
+   820→      this.emit();
+   821→      setTimeout(() => { this.error = null; this.emit(); }, 4200);
+   822→      return;
+   823→    }
+   824→    await this.enforceBrowserSensorGates();
+   825→    await this.sendConversation(
+   826→      'Inspect current live optical camera frame at Vision Station.',
+   827→      'vision'
+   828→    );
+   829→  }
+   830→}
+   831→
+   832→function blobToBase64(blob: Blob): Promise<string> {
+   833→  return new Promise((resolve, reject) => {
+   834→    const reader = new FileReader();
+   835→    reader.onloadend = () => {
+   836→      const result = String(reader.result || '');
+   837→      resolve(result.split(',')[1] || '');
+   838→    };
+   839→    reader.onerror = reject;
+   840→    reader.readAsDataURL(blob);
+   841→  });
+   842→}
+   843→

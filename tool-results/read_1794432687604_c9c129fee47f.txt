@@ -1,0 +1,701 @@
+     1→     1→/**
+     2→     2→ * JARVIS NEXUS — Procedural PBR Material Maps, Micro-Surface Normals & Feed Renderers.
+     3→     3→ *
+     4→     4→ * Ensures architectural basalt, honed slate, brushed titanium, spatial displays and
+     5→     5→ * the character's skin/suit have distinct, grounded physical response rather than
+     6→     6→ * flat uniform plastic. All textures request maximum anisotropic filtering so
+     7→     7→ * grazing-angle zoom stays crisp (kills the "blurry when I zoom in" failure).
+     8→     8→ */
+     9→     9→import * as THREE from 'three';
+    10→    10→
+    11→    11→let MAX_ANISO = 8;
+    12→    12→export function setGlobalAnisotropy(n) {
+    13→    13→  MAX_ANISO = Math.max(1, Math.min(16, n | 0));
+    14→    14→}
+    15→    15→function applyAniso(tex) {
+    16→    16→  tex.anisotropy = MAX_ANISO;
+    17→    17→  tex.needsUpdate = true;
+    18→    18→  return tex;
+    19→    19→}
+    20→    20→
+    21→    21→function mulberry32(seed) {
+    22→    22→  let a = seed >>> 0;
+    23→    23→  return function () {
+    24→    24→    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    25→    25→    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    26→    26→    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    27→    27→    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    28→    28→  };
+    29→    29→}
+    30→    30→
+    31→    31→export function createBasaltTextures() {
+    32→    32→  const size = 1024;
+    33→    33→  const colorCanvas = document.createElement('canvas');
+    34→    34→  const roughCanvas = document.createElement('canvas');
+    35→    35→  const bumpCanvas = document.createElement('canvas');
+    36→    36→  colorCanvas.width = roughCanvas.width = bumpCanvas.width = size;
+    37→    37→  colorCanvas.height = roughCanvas.height = bumpCanvas.height = size;
+    38→    38→
+    39→    39→  const cCtx = colorCanvas.getContext('2d');
+    40→    40→  const rCtx = roughCanvas.getContext('2d');
+    41→    41→  const bCtx = bumpCanvas.getContext('2d');
+    42→    42→
+    43→    43→  cCtx.fillStyle = '#06121a';
+    44→    44→  cCtx.fillRect(0, 0, size, size);
+    45→    45→  rCtx.fillStyle = '#c8c8c8';
+    46→    46→  rCtx.fillRect(0, 0, size, size);
+    47→    47→  bCtx.fillStyle = '#808080';
+    48→    48→  bCtx.fillRect(0, 0, size, size);
+    49→    49→
+    50→    50→  // Horizontal split-stone basalt strata + micro fracture grain
+    51→    51→  const rand = mulberry32(4219);
+    52→    52→  for (let i = 0; i < 5200; i++) {
+    53→    53→    const x = rand() * size;
+    54→    54→    const y = rand() * size;
+    55→    55→    const w = 12 + rand() * 92;
+    56→    56→    const h = 3 + rand() * 26;
+    57→    57→    const v = Math.floor(8 + rand() * 18);
+    58→    58→    cCtx.fillStyle = `rgb(${Math.floor(v * 0.45)}, ${Math.floor(v * 0.85)}, ${v + 8})`;
+    59→    59→    cCtx.fillRect(x, y, w, h);
+    60→    60→
+    61→    61→    const bVal = Math.floor(70 + rand() * 115);
+    62→    62→    bCtx.fillStyle = `rgb(${bVal},${bVal},${bVal})`;
+    63→    63→    bCtx.fillRect(x, y, w, h * 0.65);
+    64→    64→
+    65→    65→    const rVal = Math.floor(175 + rand() * 65);
+    66→    66→    rCtx.fillStyle = `rgb(${rVal},${rVal},${rVal})`;
+    67→    67→    rCtx.fillRect(x, y, w, h);
+    68→    68→  }
+    69→    69→  // Fine fracture hairlines for close-up readability
+    70→    70→  cCtx.strokeStyle = 'rgba(3, 8, 12, 0.55)';
+    71→    71→  bCtx.strokeStyle = 'rgba(40, 40, 40, 0.6)';
+    72→    72→  for (let i = 0; i < 260; i++) {
+    73→    73→    const x = rand() * size;
+    74→    74→    const y = rand() * size;
+    75→    75→    const len = 30 + rand() * 160;
+    76→    76→    const ang = rand() * Math.PI;
+    77→    77→    for (const ctx of [cCtx, bCtx]) {
+    78→    78→      ctx.lineWidth = rand() > 0.7 ? 1.6 : 0.8;
+    79→    79→      ctx.beginPath();
+    80→    80→      ctx.moveTo(x, y);
+    81→    81→      ctx.lineTo(x + Math.cos(ang) * len, y + Math.sin(ang) * len * 0.22);
+    82→    82→      ctx.stroke();
+    83→    83→    }
+    84→    84→  }
+    85→    85→
+    86→    86→  const map = new THREE.CanvasTexture(colorCanvas);
+    87→    87→  const roughnessMap = new THREE.CanvasTexture(roughCanvas);
+    88→    88→  const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+    89→    89→  for (const t of [map, roughnessMap, bumpMap]) {
+    90→    90→    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    91→    91→    t.repeat.set(3, 2);
+    92→    92→    applyAniso(t);
+    93→    93→  }
+    94→    94→  map.colorSpace = THREE.SRGBColorSpace;
+    95→    95→  return { map, roughnessMap, bumpMap };
+    96→    96→}
+    97→    97→
+    98→    98→export function createHonedSlateFloorTextures() {
+    99→    99→  const size = 2048;
+   100→   100→  const colorCanvas = document.createElement('canvas');
+   101→   101→  const roughCanvas = document.createElement('canvas');
+   102→   102→  const bumpCanvas = document.createElement('canvas');
+   103→   103→  colorCanvas.width = roughCanvas.width = bumpCanvas.width = size;
+   104→   104→  colorCanvas.height = roughCanvas.height = bumpCanvas.height = size;
+   105→   105→
+   106→   106→  const cCtx = colorCanvas.getContext('2d');
+   107→   107→  const rCtx = roughCanvas.getContext('2d');
+   108→   108→  const bCtx = bumpCanvas.getContext('2d');
+   109→   109→
+   110→   110→  cCtx.fillStyle = '#050e15';
+   111→   111→  cCtx.fillRect(0, 0, size, size);
+   112→   112→  rCtx.fillStyle = '#5c666d';
+   113→   113→  rCtx.fillRect(0, 0, size, size);
+   114→   114→  bCtx.fillStyle = '#7d7d7d';
+   115→   115→  bCtx.fillRect(0, 0, size, size);
+   116→   116→
+   117→   117→  const rand = mulberry32(9913);
+   118→   118→  for (let i = 0; i < 11000; i++) {
+   119→   119→    const x = rand() * size;
+   120→   120→    const y = rand() * size;
+   121→   121→    const r = 5 + rand() * 52;
+   122→   122→    const shade = Math.floor(6 + rand() * 14);
+   123→   123→    cCtx.fillStyle = `rgba(${shade}, ${shade + 7}, ${shade + 12}, 0.22)`;
+   124→   124→    cCtx.beginPath();
+   125→   125→    cCtx.arc(x, y, r, 0, Math.PI * 2);
+   126→   126→    cCtx.fill();
+   127→   127→
+   128→   128→    const rv = Math.floor(68 + rand() * 75);
+   129→   129→    rCtx.fillStyle = `rgba(${rv}, ${rv}, ${rv}, 0.24)`;
+   130→   130→    rCtx.beginPath();
+   131→   131→    rCtx.arc(x, y, r * 1.1, 0, Math.PI * 2);
+   132→   132→    rCtx.fill();
+   133→   133→
+   134→   134→    const bv = Math.floor(110 + rand() * 60);
+   135→   135→    bCtx.fillStyle = `rgba(${bv},${bv},${bv},0.2)`;
+   136→   136→    bCtx.beginPath();
+   137→   137→    bCtx.arc(x, y, r * 0.8, 0, Math.PI * 2);
+   138→   138→    bCtx.fill();
+   139→   139→  }
+   140→   140→
+   141→   141→  // Architectural slab expansion joints (with chamfer highlight so seams read at distance)
+   142→   142→  const grid = size / 8;
+   143→   143→  for (let g = 0; g <= size; g += grid) {
+   144→   144→    cCtx.strokeStyle = 'rgba(2, 5, 8, 0.9)';
+   145→   145→    cCtx.lineWidth = 5;
+   146→   146→    cCtx.beginPath(); cCtx.moveTo(g, 0); cCtx.lineTo(g, size); cCtx.stroke();
+   147→   147→    cCtx.beginPath(); cCtx.moveTo(0, g); cCtx.lineTo(size, g); cCtx.stroke();
+   148→   148→    cCtx.strokeStyle = 'rgba(70, 105, 120, 0.16)';
+   149→   149→    cCtx.lineWidth = 1.4;
+   150→   150→    cCtx.beginPath(); cCtx.moveTo(g + 3.4, 0); cCtx.lineTo(g + 3.4, size); cCtx.stroke();
+   151→   151→    cCtx.beginPath(); cCtx.moveTo(0, g + 3.4); cCtx.lineTo(size, g + 3.4); cCtx.stroke();
+   152→   152→    bCtx.strokeStyle = 'rgba(30,30,30,0.9)';
+   153→   153→    bCtx.lineWidth = 6;
+   154→   154→    bCtx.beginPath(); bCtx.moveTo(g, 0); bCtx.lineTo(g, size); bCtx.stroke();
+   155→   155→    bCtx.beginPath(); bCtx.moveTo(0, g); bCtx.lineTo(size, g); bCtx.stroke();
+   156→   156→  }
+   157→   157→
+   158→   158→  const map = new THREE.CanvasTexture(colorCanvas);
+   159→   159→  const roughnessMap = new THREE.CanvasTexture(roughCanvas);
+   160→   160→  const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+   161→   161→  for (const t of [map, roughnessMap, bumpMap]) {
+   162→   162→    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+   163→   163→    t.repeat.set(7, 7);
+   164→   164→    applyAniso(t);
+   165→   165→  }
+   166→   166→  map.colorSpace = THREE.SRGBColorSpace;
+   167→   167→  return { map, roughnessMap, bumpMap };
+   168→   168→}
+   169→   169→
+   170→   170→/**
+   171→   171→ * Tiling micro-surface normal map generated from value noise (finite-difference
+   172→   172→ * bump → normal). Gives skin pore-level and fabric weave specular breakup so
+   173→   173→ * close-ups never read as airbrushed wax or flat cloth.
+   174→   174→ */
+   175→   175→export function createMicroNormalTexture({ size = 256, scale = 24, strength = 1.0, weave = false, seed = 1337 } = {}) {
+   176→   176→  const height = document.createElement('canvas');
+   177→   177→  height.width = height.height = size;
+   178→   178→  const hCtx = height.getContext('2d');
+   179→   179→  const img = hCtx.createImageData(size, size);
+   180→   180→  const rand = mulberry32(seed);
+   181→   181→
+   182→   182→  // Multi-octave value noise field
+   183→   183→  const gridN = Math.max(2, Math.round(scale));
+   184→   184→  const grids = [];
+   185→   185→  for (let o = 0; o < 3; o++) {
+   186→   186→    const n = gridN * (1 << o);
+   187→   187→    const g = new Float32Array((n + 1) * (n + 1));
+   188→   188→    for (let i = 0; i < g.length; i++) g[i] = rand();
+   189→   189→    grids.push({ n, g });
+   190→   190→  }
+   191→   191→  const sample = (x, y) => {
+   192→   192→    let v = 0, amp = 1, tot = 0;
+   193→   193→    for (const { n, g } of grids) {
+   194→   194→      const fx = x * n, fy = y * n;
+   195→   195→      const x0 = Math.floor(fx), y0 = Math.floor(fy);
+   196→   196→      const tx = fx - x0, ty = fy - y0;
+   197→   197→      const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+   198→   198→      const i00 = g[(y0 % (n + 1)) * (n + 1) + (x0 % (n + 1))];
+   199→   199→      const i10 = g[(y0 % (n + 1)) * (n + 1) + ((x0 + 1) % (n + 1))];
+   200→   200→      const i01 = g[((y0 + 1) % (n + 1)) * (n + 1) + (x0 % (n + 1))];
+   201→   201→      const i11 = g[((y0 + 1) % (n + 1)) * (n + 1) + ((x0 + 1) % (n + 1))];
+   202→   202→      v += (i00 * (1 - sx) + i10 * sx) * (1 - sy) * amp + (i01 * (1 - sx) + i11 * sx) * sy * amp;
+   203→   203→      tot += amp;
+   204→   204→      amp *= 0.5;
+   205→   205→    }
+   206→   206→    return v / tot;
+   207→   207→  };
+   208→   208→
+   209→   209→  for (let y = 0; y < size; y++) {
+   210→   210→    for (let x = 0; x < size; x++) {
+   211→   211→      const u = x / size, v = y / size;
+   212→   212→      let h = sample(u, v);
+   213→   213→      if (weave) {
+   214→   214→        // crossed warp/weft threads
+   215→   215→        const warp = Math.sin(u * Math.PI * 2 * 46) * 0.5 + 0.5;
+   216→   216→        const weft = Math.sin(v * Math.PI * 2 * 46) * 0.5 + 0.5;
+   217→   217→        h = h * 0.45 + Math.max(warp, weft) * 0.4 + Math.min(warp, weft) * 0.15;
+   218→   218→      }
+   219→   219→      img.data[(y * size + x) * 4] = img.data[(y * size + x) * 4 + 1] = img.data[(y * size + x) * 4 + 2] = h * 255;
+   220→   220→      img.data[(y * size + x) * 4 + 3] = 255;
+   221→   221→    }
+   222→   222→  }
+   223→   223→  hCtx.putImageData(img, 0, 0);
+   224→   224→
+   225→   225→  // Finite-difference → normal map (wrap-around for tiling)
+   226→   226→  const out = document.createElement('canvas');
+   227→   227→  out.width = out.height = size;
+   228→   228→  const oCtx = out.getContext('2d');
+   229→   229→  const oImg = oCtx.createImageData(size, size);
+   230→   230→  const lum = (x, y) => img.data[(((y + size) % size) * size + ((x + size) % size)) * 4] / 255;
+   231→   231→  for (let y = 0; y < size; y++) {
+   232→   232→    for (let x = 0; x < size; x++) {
+   233→   233→      const dx = (lum(x + 1, y) - lum(x - 1, y)) * strength;
+   234→   234→      const dy = (lum(x, y + 1) - lum(x, y - 1)) * strength;
+   235→   235→      const inv = 1 / Math.sqrt(dx * dx + dy * dy + 1);
+   236→   236→      const i = (y * size + x) * 4;
+   237→   237→      oImg.data[i] = (-dx * inv * 0.5 + 0.5) * 255;
+   238→   238→      oImg.data[i + 1] = (-dy * inv * 0.5 + 0.5) * 255;
+   239→   239→      oImg.data[i + 2] = inv * 255;
+   240→   240→      oImg.data[i + 3] = 255;
+   241→   241→    }
+   242→   242→  }
+   243→   243→  oCtx.putImageData(oImg, 0, 0);
+   244→   244→  const tex = new THREE.CanvasTexture(out);
+   245→   245→  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+   246→   246→  applyAniso(tex);
+   247→   247→  return tex;
+   248→   248→}
+   249→   249→
+   250→   250→/** Soft radial ground-contact shadow disc (character & props). */
+   251→   251→export function createSoftContactShadowTexture() {
+   252→   252→  const size = 256;
+   253→   253→  const c = document.createElement('canvas');
+   254→   254→  c.width = c.height = size;
+   255→   255→  const ctx = c.getContext('2d');
+   256→   256→  const g = ctx.createRadialGradient(size / 2, size / 2, size * 0.08, size / 2, size / 2, size * 0.5);
+   257→   257→  g.addColorStop(0, 'rgba(0,0,0,0.62)');
+   258→   258→  g.addColorStop(0.55, 'rgba(0,0,0,0.28)');
+   259→   259→  g.addColorStop(1, 'rgba(0,0,0,0)');
+   260→   260→  ctx.fillStyle = g;
+   261→   261→  ctx.fillRect(0, 0, size, size);
+   262→   262→  return new THREE.CanvasTexture(c);
+   263→   263→}
+   264→   264→
+   265→   265→/** Vertical gradient alpha texture for volumetric light cones & holo projection cones. */
+   266→   266→export function createConeGradientTexture(topAlpha = 0.0, midAlpha = 0.34, bottomAlpha = 0.02) {
+   267→   267→  const c = document.createElement('canvas');
+   268→   268→  c.width = 8;
+   269→   269→  c.height = 256;
+   270→   270→  const ctx = c.getContext('2d');
+   271→   271→  const g = ctx.createLinearGradient(0, 0, 0, 256);
+   272→   272→  g.addColorStop(0, `rgba(255,255,255,${topAlpha})`);
+   273→   273→  g.addColorStop(0.42, `rgba(255,255,255,${midAlpha})`);
+   274→   274→  g.addColorStop(1, `rgba(255,255,255,${bottomAlpha})`);
+   275→   275→  ctx.fillStyle = g;
+   276→   276→  ctx.fillRect(0, 0, 8, 256);
+   277→   277→  const tex = new THREE.CanvasTexture(c);
+   278→   278→  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+   279→   279→  return tex;
+   280→   280→}
+   281→   281→
+   282→   282→/** Floating architectural zone signage plate texture (etched glass look). */
+   283→   283→export function createZoneLabelTexture(index, title, sub, accent = '#62e6f2') {
+   284→   284→  const w = 512, h = 192;
+   285→   285→  const c = document.createElement('canvas');
+   286→   286→  c.width = w; c.height = h;
+   287→   287→  const ctx = c.getContext('2d');
+   288→   288→  ctx.clearRect(0, 0, w, h);
+   289→   289→
+   290→   290→  ctx.fillStyle = 'rgba(4, 14, 20, 0.66)';
+   291→   291→  ctx.beginPath();
+   292→   292→  ctx.roundRect(6, 6, w - 12, h - 12, 14);
+   293→   293→  ctx.fill();
+   294→   294→  ctx.strokeStyle = accent;
+   295→   295→  ctx.lineWidth = 2.5;
+   296→   296→  ctx.stroke();
+   297→   297→
+   298→   298→  // corner ticks
+   299→   299→  ctx.lineWidth = 3;
+   300→   300→  for (const [cx, cy, dx, dy] of [[18, 18, 1, 1], [w - 18, 18, -1, 1], [18, h - 18, 1, -1], [w - 18, h - 18, -1, -1]]) {
+   301→   301→    ctx.beginPath();
+   302→   302→    ctx.moveTo(cx + dx * 16, cy); ctx.lineTo(cx, cy); ctx.lineTo(cx, cy + dy * 16);
+   303→   303→    ctx.stroke();
+   304→   304→  }
+   305→   305→
+   306→   306→  ctx.fillStyle = accent;
+   307→   307→  ctx.font = 'bold 17px monospace';
+   308→   308→  ctx.fillText(`ZONE ${String(index).padStart(2, '0')}`, 34, 52);
+   309→   309→  ctx.fillStyle = '#e6f8ff';
+   310→   310→  ctx.font = 'bold 34px monospace';
+   311→   311→  ctx.fillText(title.toUpperCase(), 34, 100);
+   312→   312→  ctx.fillStyle = '#8fb6c2';
+   313→   313→  ctx.font = '19px monospace';
+   314→   314→  ctx.fillText(sub.toUpperCase(), 34, 140);
+   315→   315→
+   316→   316→  const tex = new THREE.CanvasTexture(c);
+   317→   317→  tex.colorSpace = THREE.SRGBColorSpace;
+   318→   318→  applyAniso(tex);
+   319→   319→  return tex;
+   320→   320→}
+   321→   321→
+   322→   322→/**
+   323→   323→ * Remaps bright white inner-blouse pixels on Avaturn's suit texture to a tailored
+   324→   324→ * midnight-slate knit (#0E1822) and deepens suit charcoal (#1C252E) to match our approved storyboard.
+   325→   325→ */
+   326→   326→export function tailorSuitAlbedoTexture(sourceTex) {
+   327→   327→  if (!sourceTex || !sourceTex.image) return sourceTex;
+   328→   328→  const img = sourceTex.image;
+   329→   329→  const w = img.width || 1024;
+   330→   330→  const h = img.height || 1024;
+   331→   331→  const canvas = document.createElement('canvas');
+   332→   332→  canvas.width = w;
+   333→   333→  canvas.height = h;
+   334→   334→  const ctx = canvas.getContext('2d');
+   335→   335→  ctx.drawImage(img, 0, 0, w, h);
+   336→   336→
+   337→   337→  const imgData = ctx.getImageData(0, 0, w, h);
+   338→   338→  const d = imgData.data;
+   339→   339→  for (let i = 0; i < d.length; i += 4) {
+   340→   340→    const r = d[i];
+   341→   341→    const g = d[i + 1];
+   342→   342→    const b = d[i + 2];
+   343→   343→    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+   344→   344→    const sat = Math.max(r, g, b) - Math.min(r, g, b);
+   345→   345→
+   346→   346→    if (lum > 145 && sat < 38) {
+   347→   347→      // Inner white shirt -> deep midnight mock-neck knit (#0E1822) preserving fold shading
+   348→   348→      const shade = lum / 255;
+   349→   349→      d[i] = Math.round(14 * shade);
+   350→   350→      d[i + 1] = Math.round(25 * shade);
+   351→   351→      d[i + 2] = Math.round(36 * shade);
+   352→   352→    } else {
+   353→   353→      // Tailor grey suit -> rich architectural charcoal-slate (#1D2630)
+   354→   354→      const factor = 0.62;
+   355→   355→      d[i] = Math.min(255, Math.round(r * factor * 0.92));
+   356→   356→      d[i + 1] = Math.min(255, Math.round(g * factor * 0.98));
+   357→   357→      d[i + 2] = Math.min(255, Math.round(b * factor * 1.08));
+   358→   358→    }
+   359→   359→  }
+   360→   360→  ctx.putImageData(imgData, 0, 0);
+   361→   361→  const out = new THREE.CanvasTexture(canvas);
+   362→   362→  out.flipY = sourceTex.flipY;
+   363→   363→  out.colorSpace = THREE.SRGBColorSpace;
+   364→   364→  applyAniso(out);
+   365→   365→  out.needsUpdate = true;
+   366→   366→  return out;
+   367→   367→}
+   368→   368→
+   369→   369→/**
+   370→   370→ * Real-time procedural feeds for the frameless Media Wall.
+   371→   371→ *  - Schlieren optical stator benchmark (default idle clip)
+   372→   372→ *  - Explainer mode: a documentary-style annotated panel synced live to the
+   373→   373→ *    active 3D scenario (phase captions, cue timeline, measured curves,
+   374→   374→ *    live variable readouts, verified-fact vs inference legend).
+   375→   375→ */
+   376→   376→export class SchlierenFeedRenderer {
+   377→   377→  constructor() {
+   378→   378→    this.canvas = document.createElement('canvas');
+   379→   379→    this.canvas.width = 1280;
+   380→   380→    this.canvas.height = 720;
+   381→   381→    this.ctx = this.canvas.getContext('2d');
+   382→   382→    this.texture = new THREE.CanvasTexture(this.canvas);
+   383→   383→    this.texture.colorSpace = THREE.SRGBColorSpace;
+   384→   384→    applyAniso(this.texture);
+   385→   385→    this.currentTime = 14.2;
+   386→   386→    this.playing = false;
+   387→   387→    this.duration = 24.0;
+   388→   388→    this.mode = 'schlieren';
+   389→   389→    this.renderFrame(14.2);
+   390→   390→  }
+   391→   391→
+   392→   392→  update(dt) {
+   393→   393→    if (this.playing) {
+   394→   394→      this.currentTime = (this.currentTime + dt) % this.duration;
+   395→   395→      this.renderFrame(this.currentTime);
+   396→   396→    }
+   397→   397→  }
+   398→   398→
+   399→   399→  seek(t) {
+   400→   400→    this.currentTime = Math.max(0, Math.min(this.duration, t));
+   401→   401→    this.renderFrame(this.currentTime);
+   402→   402→  }
+   403→   403→
+   404→   404→  renderFrame(t) {
+   405→   405→    if (this.mode === 'explainer') return; // drawn per-state, not per-clock
+   406→   406→    const { ctx, canvas } = this;
+   407→   407→    const w = canvas.width;
+   408→   408→    const h = canvas.height;
+   409→   409→
+   410→   410→    // High-contrast monochrome/ice Schlieren optical wind-tunnel field
+   411→   411→    const grad = ctx.createLinearGradient(0, 0, w, h);
+   412→   412→    grad.addColorStop(0, '#071017');
+   413→   413→    grad.addColorStop(0.5, '#172733');
+   414→   414→    grad.addColorStop(1, '#060d13');
+   415→   415→    ctx.fillStyle = grad;
+   416→   416→    ctx.fillRect(0, 0, w, h);
+   417→   417→
+   418→   418→    const cx = w * 0.48;
+   419→   419→    const cy = h * 0.5;
+   420→   420→    const outerR = 250;
+   421→   421→    const hubR = 96;
+   422→   422→
+   423→   423→    ctx.strokeStyle = '#c8e4ec';
+   424→   424→    ctx.lineWidth = 4;
+   425→   425→    ctx.beginPath(); ctx.arc(cx, cy, outerR, 0, Math.PI * 2); ctx.stroke();
+   426→   426→    ctx.beginPath(); ctx.arc(cx, cy, hubR, 0, Math.PI * 2); ctx.stroke();
+   427→   427→
+   428→   428→    const vortexSurge = Math.exp(-Math.pow(t - 14.2, 2) / 6.5);
+   429→   429→    for (let i = 0; i < 18; i++) {
+   430→   430→      const ang = (i / 18) * Math.PI * 2 + t * 0.65;
+   431→   431→      const x1 = cx + Math.cos(ang) * hubR;
+   432→   432→      const y1 = cy + Math.sin(ang) * hubR;
+   433→   433→      const x2 = cx + Math.cos(ang + 0.14) * outerR;
+   434→   434→      const y2 = cy + Math.sin(ang + 0.14) * outerR;
+   435→   435→
+   436→   436→      ctx.strokeStyle = 'rgba(221, 251, 255, 0.86)';
+   437→   437→      ctx.lineWidth = 3;
+   438→   438→      ctx.beginPath();
+   439→   439→      ctx.moveTo(x1, y1);
+   440→   440→      ctx.quadraticCurveTo(
+   441→   441→        cx + Math.cos(ang + 0.09) * ((hubR + outerR) * 0.52),
+   442→   442→        cy + Math.sin(ang + 0.09) * ((hubR + outerR) * 0.52),
+   443→   443→        x2, y2
+   444→   444→      );
+   445→   445→      ctx.stroke();
+   446→   446→
+   447→   447→      ctx.strokeStyle = vortexSurge > 0.45 && i % 3 === 0
+   448→   448→        ? `rgba(231, 174, 91, ${0.35 + 0.5 * vortexSurge})`
+   449→   449→        : 'rgba(98, 230, 242, 0.26)';
+   450→   450→      ctx.lineWidth = 1.8;
+   451→   451→      ctx.beginPath();
+   452→   452→      ctx.arc(cx, cy, hubR + 26 + (i % 5) * 24, ang, ang + 0.24 + vortexSurge * 0.22);
+   453→   453→      ctx.stroke();
+   454→   454→    }
+   455→   455→
+   456→   456→    if (vortexSurge > 0.35) {
+   457→   457→      const vx = cx + 122;
+   458→   458→      const vy = cy - 56;
+   459→   459→      ctx.strokeStyle = `rgba(231, 174, 91, ${vortexSurge})`;
+   460→   460→      ctx.lineWidth = 2.4;
+   461→   461→      ctx.strokeRect(vx - 48, vy - 48, 96, 96);
+   462→   462→      ctx.fillStyle = '#e7ae5b';
+   463→   463→      ctx.font = '17px monospace';
+   464→   464→      ctx.fillText('DETACHMENT LOCUS · dP/dr SPIKE', vx + 58, vy - 14);
+   465→   465→    }
+   466→   466→
+   467→   467→    // Frame telemetry overlay
+   468→   468→    ctx.fillStyle = 'rgba(2, 7, 11, 0.78)';
+   469→   469→    ctx.fillRect(0, h - 52, w, 52);
+   470→   470→    ctx.fillStyle = '#62e6f2';
+   471→   471→    ctx.fillRect(0, h - 52, (t / this.duration) * w, 3);
+   472→   472→
+   473→   473→    ctx.fillStyle = '#ddfbff';
+   474→   474→    ctx.font = '17px monospace';
+   475→   475→    ctx.fillText(`SCHLIEREN OPTICAL BENCH · TC ${t.toFixed(2).padStart(5, '0')}s / ${this.duration.toFixed(1)}s`, 24, h - 20);
+   476→   476→    ctx.fillStyle = '#7799a5';
+   477→   477→    ctx.fillText(this.playing ? 'PLAYING · 60 HZ' : 'PAUSED FOR 3D EXTRACTION', w - 330, h - 20);
+   478→   478→
+   479→   479→    this.texture.needsUpdate = true;
+   480→   480→  }
+   481→   481→
+   482→   482→  /**
+   483→   483→   * Documentary-style explanatory "video frame" for the active scenario.
+   484→   484→   * state = { title, classification, phase, t, duration, cues, variables,
+   485→   485→   *           series, branch, scrubHint }
+   486→   486→   */
+   487→   487→  renderExplainer(state) {
+   488→   488→    if (!state) return;
+   489→   489→    const { ctx, canvas } = this;
+   490→   490→    const W = canvas.width;
+   491→   491→    const H = canvas.height;
+   492→   492→    const CYAN = '#62e6f2';
+   493→   493→    const AMBER = '#e7ae5b';
+   494→   494→    const ICE = '#ddfbff';
+   495→   495→
+   496→   496→    // Base glass panel
+   497→   497→    const bg = ctx.createLinearGradient(0, 0, 0, H);
+   498→   498→    bg.addColorStop(0, '#050f16');
+   499→   499→    bg.addColorStop(1, '#030a10');
+   500→   500→    ctx.fillStyle = bg;
+   501→   501→    ctx.fillRect(0, 0, W, H);
+   502→   502→    // faint grid
+   503→   503→    ctx.strokeStyle = 'rgba(98, 230, 242, 0.05)';
+   504→   504→    ctx.lineWidth = 1;
+   505→   505→    for (let x = 0; x < W; x += 64) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+   506→   506→    for (let y = 0; y < H; y += 64) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+   507→   507→
+   508→   508→    // Header
+   509→   509→    ctx.fillStyle = 'rgba(2, 7, 11, 0.85)';
+   510→   510→    ctx.fillRect(0, 0, W, 96);
+   511→   511→    ctx.strokeStyle = 'rgba(98, 230, 242, 0.5)';
+   512→   512→    ctx.lineWidth = 2;
+   513→   513→    ctx.beginPath(); ctx.moveTo(0, 96); ctx.lineTo(W, 96); ctx.stroke();
+   514→   514→
+   515→   515→    ctx.fillStyle = CYAN;
+   516→   516→    ctx.font = 'bold 21px monospace';
+   517→   517→    ctx.fillText('VOLUMETRIC EXPLAINER · LIVE SYNC', 28, 38);
+   518→   518→    ctx.fillStyle = ICE;
+   519→   519→    ctx.font = 'bold 30px monospace';
+   520→   520→    const title = (state.title || 'SCENARIO').toUpperCase();
+   521→   521→    ctx.fillText(title.length > 52 ? title.slice(0, 52) + '…' : title, 28, 76);
+   522→   522→
+   523→   523→    // Classification chip
+   524→   524→    ctx.font = 'bold 17px monospace';
+   525→   525→    const chip = (state.classification || 'illustration').replaceAll('_', ' ').toUpperCase();
+   526→   526→    const chipW = ctx.measureText(chip).width + 34;
+   527→   527→    ctx.strokeStyle = AMBER;
+   528→   528→    ctx.lineWidth = 1.6;
+   529→   529→    ctx.strokeRect(W - chipW - 26, 30, chipW, 38);
+   530→   530→    ctx.fillStyle = AMBER;
+   531→   531→    ctx.fillText(chip, W - chipW - 9, 55);
+   532→   532→
+   533→   533→    // Left column: phase + cue timeline
+   534→   534→    const colL = 28;
+   535→   535→    const colW = 470;
+   536→   536→    let y = 148;
+   537→   537→    ctx.fillStyle = '#7799a5';
+   538→   538→    ctx.font = 'bold 18px monospace';
+   539→   539→    ctx.fillText('ACTIVE PHASE', colL, y);
+   540→   540→    y += 42;
+   541→   541→    ctx.fillStyle = ICE;
+   542→   542→    ctx.font = 'bold 33px monospace';
+   543→   543→    const phase = (state.phase || '—').toUpperCase();
+   544→   544→    const lines = [];
+   545→   545→    let cur = '';
+   546→   546→    for (const word of phase.split(' ')) {
+   547→   547→      if ((cur + ' ' + word).trim().length > 24) { lines.push(cur.trim()); cur = word; } else cur += ' ' + word;
+   548→   548→    }
+   549→   549→    if (cur.trim()) lines.push(cur.trim());
+   550→   550→    for (const ln of lines.slice(0, 3)) { ctx.fillText(ln, colL, y); y += 42; }
+   551→   551→
+   552→   552→    // Cue timeline with ticks & progress
+   553→   553→    y += 28;
+   554→   554→    const tlW = colW;
+   555→   555→    ctx.strokeStyle = 'rgba(143, 182, 194, 0.7)';
+   556→   556→    ctx.lineWidth = 3;
+   557→   557→    ctx.beginPath(); ctx.moveTo(colL, y); ctx.lineTo(colL + tlW, y); ctx.stroke();
+   558→   558→    const cues = state.cues || [];
+   559→   559→    for (const cue of cues) {
+   560→   560→      const cx = colL + (cue.t / Math.max(1, state.duration)) * tlW;
+   561→   561→      ctx.strokeStyle = cue.t <= state.t ? CYAN : '#5a727c';
+   562→   562→      ctx.lineWidth = 3;
+   563→   563→      ctx.beginPath(); ctx.moveTo(cx, y - 12); ctx.lineTo(cx, y + 12); ctx.stroke();
+   564→   564→      ctx.fillStyle = cue.t <= state.t ? CYAN : '#5a727c';
+   565→   565→      ctx.font = '13px monospace';
+   566→   566→      const lbl = `T+${cue.t.toFixed(1)}`;
+   567→   567→      ctx.fillText(lbl, Math.min(cx + 5, colL + tlW - 52), y + 30);
+   568→   568→    }
+   569→   569→    const px = colL + (state.t / Math.max(1, state.duration)) * tlW;
+   570→   570→    ctx.fillStyle = ICE;
+   571→   571→    ctx.beginPath();
+   572→   572→    ctx.moveTo(px, y - 9); ctx.lineTo(px - 8, y - 21); ctx.lineTo(px + 8, y - 21);
+   573→   573→    ctx.closePath(); ctx.fill();
+   574→   574→
+   575→   575→    // Variables readout
+   576→   576→    y += 66;
+   577→   577→    ctx.fillStyle = '#7799a5';
+   578→   578→    ctx.font = 'bold 18px monospace';
+   579→   579→    ctx.fillText('LIVE PARAMETERS (OWNER-ADJUSTABLE)', colL, y);
+   580→   580→    y += 16;
+   581→   581→    const vars = state.variables || [];
+   582→   582→    for (const v of vars.slice(0, 5)) {
+   583→   583→      y += 40;
+   584→   584→      ctx.strokeStyle = v.tone === 'amber' ? AMBER : CYAN;
+   585→   585→      ctx.lineWidth = 1.4;
+   586→   586→      ctx.strokeRect(colL, y - 27, tlW, 34);
+   587→   587→      ctx.fillStyle = '#9fc0cb';
+   588→   588→      ctx.font = '16px monospace';
+   589→   589→      ctx.fillText(v.label.toUpperCase().slice(0, 30), colL + 12, y - 5);
+   590→   590→      ctx.fillStyle = v.tone === 'amber' ? AMBER : ICE;
+   591→   591→      ctx.font = 'bold 19px monospace';
+   592→   592→      const valTxt = `${v.value} ${v.unit || ''}`.trim();
+   593→   593→      ctx.fillText(valTxt, colL + tlW - 18 - ctx.measureText(valTxt).width, y - 5);
+   594→   594→    }
+   595→   595→
+   596→   596→    // Right column: measured curves plot
+   597→   597→    const plotX = 540, plotY = 150, plotW = W - plotX - 30, plotH = 360;
+   598→   598→    ctx.fillStyle = 'rgba(6, 18, 26, 0.6)';
+   599→   599→    ctx.fillRect(plotX, plotY, plotW, plotH);
+   600→   600→    ctx.strokeStyle = 'rgba(98, 230, 242, 0.45)';
+   601→   601→    ctx.lineWidth = 2;
+   602→   602→    ctx.strokeRect(plotX, plotY, plotW, plotH);
+   603→   603→    ctx.fillStyle = '#7799a5';
+   604→   604→    ctx.font = 'bold 18px monospace';
+   605→   605→    ctx.fillText('MEASURED TRACES · T-SERIES', plotX + 16, plotY + 32);
+   606→   606→
+   607→   607→    // grid
+   608→   608→    ctx.strokeStyle = 'rgba(143, 182, 194, 0.16)';
+   609→   609→    ctx.lineWidth = 1;
+   610→   610→    for (let gy = 1; gy < 4; gy++) {
+   611→   611→      ctx.beginPath(); ctx.moveTo(plotX, plotY + (plotH - 70) * gy / 4 + 20); ctx.lineTo(plotX + plotW, plotY + (plotH - 70) * gy / 4 + 20); ctx.stroke();
+   612→   612→    }
+   613→   613→
+   614→   614→    const plotBottom = plotY + plotH - 52;
+   615→   615→    const plotTopY = plotY + 56;
+   616→   616→    for (const s of (state.series || []).slice(0, 3)) {
+   617→   617→      if (!s.points || s.points.length < 2) continue;
+   618→   618→      ctx.strokeStyle = s.color;
+   619→   619→      ctx.lineWidth = 2.6;
+   620→   620→      ctx.beginPath();
+   621→   621→      let started = false;
+   622→   622→      for (const p of s.points) {
+   623→   623→        const x = plotX + 16 + (p.t / Math.max(0.001, state.duration)) * (plotW - 32);
+   624→   624→        const vNorm = Math.max(0, Math.min(1, (p.v - s.minV) / Math.max(0.001, s.maxV - s.minV)));
+   625→   625→        const yv = plotBottom - vNorm * (plotBottom - plotTopY);
+   626→   626→        if (!started) { ctx.moveTo(x, yv); started = true; } else ctx.lineTo(x, yv);
+   627→   627→      }
+   628→   628→      ctx.stroke();
+   629→   629→      // current value dot
+   630→   630→      const curP = this._sampleSeries(s, state.t);
+   631→   631→      if (curP !== null) {
+   632→   632→        const x = plotX + 16 + (state.t / Math.max(0.001, state.duration)) * (plotW - 32);
+   633→   633→        const vNorm = Math.max(0, Math.min(1, (curP - s.minV) / Math.max(0.001, s.maxV - s.minV)));
+   634→   634→        ctx.fillStyle = s.color;
+   635→   635→        ctx.beginPath(); ctx.arc(x, plotBottom - vNorm * (plotBottom - plotTopY), 5, 0, Math.PI * 2); ctx.fill();
+   636→   636→      }
+   637→   637→    }
+   638→   638→    // playhead
+   639→   639→    const phx = plotX + 16 + (state.t / Math.max(0.001, state.duration)) * (plotW - 32);
+   640→   640→    ctx.strokeStyle = 'rgba(221, 251, 255, 0.8)';
+   641→   641→    ctx.lineWidth = 1.6;
+   642→   642→    ctx.setLineDash([6, 5]);
+   643→   643→    ctx.beginPath(); ctx.moveTo(phx, plotTopY - 8); ctx.lineTo(phx, plotBottom); ctx.stroke();
+   644→   644→    ctx.setLineDash([]);
+   645→   645→
+   646→   646→    // Legend
+   647→   647→    const legY = plotY + plotH + 40;
+   648→   648→    let legX = plotX;
+   649→   649→    for (const l of (state.legend || [{ color: CYAN, text: 'CYAN · MEASURED FACT' }, { color: AMBER, text: 'AMBER · INFERENCE' }])) {
+   650→   650→      ctx.fillStyle = l.color;
+   651→   651→      ctx.fillRect(legX, legY - 12, 26, 6);
+   652→   652→      ctx.fillStyle = '#9fc0cb';
+   653→   653→      ctx.font = '15px monospace';
+   654→   654→      ctx.fillText(l.text, legX + 36, legY - 4);
+   655→   655→      legX += 36 + ctx.measureText(l.text).width + 44;
+   656→   656→    }
+   657→   657→
+   658→   658→    // Branch banner
+   659→   659→    if (state.branch) {
+   660→   660→      const bY = legY + 46;
+   661→   661→      const warn = state.branch.severity === 'critical' || state.branch.severity === 'warning';
+   662→   662→      ctx.strokeStyle = warn ? '#ff6b67' : CYAN;
+   663→   663→      ctx.lineWidth = 2;
+   664→   664→      ctx.strokeRect(plotX, bY - 30, W - plotX - 30, 58);
+   665→   665→      ctx.fillStyle = warn ? '#ff6b67' : CYAN;
+   666→   666→      ctx.font = 'bold 19px monospace';
+   667→   667→      ctx.fillText('▸ ' + (state.branch.label || 'BRANCH').toUpperCase(), plotX + 16, bY - 8);
+   668→   668→      ctx.fillStyle = '#9fc0cb';
+   669→   669→      ctx.font = '16px monospace';
+   670→   670→      const outcome = state.branch.outcome || '';
+   671→   671→      ctx.fillText(outcome.length > 74 ? outcome.slice(0, 74) + '…' : outcome, plotX + 16, bY + 16);
+   672→   672→    }
+   673→   673→
+   674→   674→    // Footer
+   675→   675→    ctx.fillStyle = 'rgba(2, 7, 11, 0.85)';
+   676→   676→    ctx.fillRect(0, H - 46, W, 46);
+   677→   677→    ctx.fillStyle = ICE;
+   678→   678→    ctx.font = '17px monospace';
+   679→   679→    ctx.fillText(`REPLAY ${state.t.toFixed(1).padStart(4, '0')}s / ${state.duration.toFixed(1)}s`, 28, H - 17);
+   680→   680→    ctx.fillStyle = '#7799a5';
+   681→   681→    ctx.fillText('STAGE GEOMETRY & TRACES SYNCHRONIZED · JARVIS NEXUS VOLUMETRIC DIRECTOR', 380, H - 17);
+   682→   682→
+   683→   683→    this.texture.needsUpdate = true;
+   684→   684→  }
+   685→   685→
+   686→   686→  _sampleSeries(s, t) {
+   687→   687→    if (!s.points || !s.points.length) return null;
+   688→   688→    if (t <= s.points[0].t) return s.points[0].v;
+   689→   689→    const last = s.points[s.points.length - 1];
+   690→   690→    if (t >= last.t) return last.v;
+   691→   691→    for (let i = 1; i < s.points.length; i++) {
+   692→   692→      if (s.points[i].t >= t) {
+   693→   693→        const a = s.points[i - 1], b = s.points[i];
+   694→   694→        const f = (t - a.t) / Math.max(0.001, b.t - a.t);
+   695→   695→        return a.v + (b.v - a.v) * f;
+   696→   696→      }
+   697→   697→    }
+   698→   698→    return last.v;
+   699→   699→  }
+   700→   700→}
+   701→   701→
