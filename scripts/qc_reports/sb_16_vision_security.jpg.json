@@ -1,0 +1,29 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "IDENTITY=8 LIGHT=6 HANDS=ok DEFECTS=garbled hologram text, slight plastic skin, weak face illumination from hologram VERDICT=KEEP - strong match; improve hologram glow on face and readable UI.",
+        "reasoning_content": "Identity: similar but reference unknown; from context image 1 same woman likely — slim face, bun, dark blazer/turtleneck. Score ~8. Light: hand glow yes, face minimal, floor glow ok — 6. Hands ok. Hologram text garbled.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1794355148,
+  "id": "202611110759052ebad8e804824a07",
+  "model": "glm-5.3-flash",
+  "object": "chat.completion",
+  "request_id": "202611110759052ebad8e804824a07",
+  "usage": {
+    "completion_tokens": 110,
+    "completion_tokens_details": {
+      "reasoning_tokens": 58
+    },
+    "prompt_tokens": 2233,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 2343
+  }
+}

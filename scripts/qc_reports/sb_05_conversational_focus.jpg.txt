@@ -1,0 +1,1 @@
+IDENTITY=9 LIGHT=6 HANDS=ok DEFECTS=none VERDICT=KEEP - identity solid; hologram glow weakly lights face/blazer, could be stronger.

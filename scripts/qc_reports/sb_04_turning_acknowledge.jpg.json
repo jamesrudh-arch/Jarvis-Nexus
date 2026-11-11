@@ -1,0 +1,29 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "IDENTITY=8 LIGHT=6 HANDS=ok DEFECTS=minor garbled hologram text; weak cyan spill on face VERDICT=KEEP - matches reference well; hologram lighting slightly painted-on.",
+        "reasoning_content": "Same woman plausibly; hologram glow on face minimal but hand lit; hands ok; minor garbled text.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1794355103,
+  "id": "20261111075821d3d5a7a6c5eb4660",
+  "model": "glm-5.3-flash",
+  "object": "chat.completion",
+  "request_id": "20261111075821d3d5a7a6c5eb4660",
+  "usage": {
+    "completion_tokens": 70,
+    "completion_tokens_details": {
+      "reasoning_tokens": 24
+    },
+    "prompt_tokens": 2233,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 2303
+  }
+}

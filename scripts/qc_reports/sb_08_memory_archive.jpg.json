@@ -1,0 +1,29 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "IDENTITY=9 LIGHT=7 HANDS=ok DEFECTS=none VERDICT=KEEP - same woman, hologram glow partially illuminates, fingers intact.",
+        "reasoning_content": "Identity matches well: slim face, bun, dark blazer, turtleneck. Light: face lit fairly; some glow on hand but hologram light doesn't strongly cast shadows—moderate. Hand in hologram: fingers overlap glow, some cyan tint on fingers—borderline ok.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1794355126,
+  "id": "20261111075843446e5a9c47614152",
+  "model": "glm-5.3-flash",
+  "object": "chat.completion",
+  "request_id": "20261111075843446e5a9c47614152",
+  "usage": {
+    "completion_tokens": 96,
+    "completion_tokens_details": {
+      "reasoning_tokens": 59
+    },
+    "prompt_tokens": 2233,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 2329
+  }
+}

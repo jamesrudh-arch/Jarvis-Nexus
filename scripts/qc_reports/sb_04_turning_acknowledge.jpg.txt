@@ -1,0 +1,1 @@
+IDENTITY=8 LIGHT=6 HANDS=ok DEFECTS=minor garbled hologram text; weak cyan spill on face VERDICT=KEEP - matches reference well; hologram lighting slightly painted-on.

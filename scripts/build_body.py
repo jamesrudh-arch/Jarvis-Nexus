@@ -365,12 +365,15 @@ for title, paras in CH3_LIGHT:
     for extra in paras[1:]:
         story.append(P(extra))
 story += styled_table(CH3_PALETTE)
-story += figure("concepts/env_hub.png",
-                "Plate 3.2 - Central Operations: dais, holotable and console ring under the "
-                "overhead light ring.", max_h=280)
-story += figure("concepts/env_spine.png",
-                "Plate 3.3 - The Spine axis: Memory Archive warm-left, Plan Wall right, the "
-                "Stage volume in the far distance.", max_h=280)
+story += figure("concepts/env_hub_v2.jpg",
+                "Plate 3.2 - Central Operations at idle: the glass pedestal holo-table, its "
+                "rotating wireframe hologram lighting the table and floor, the console ring "
+                "and radiating circuit rings. A controlled edit of the owner's environment "
+                "reference - no people, no text.", max_h=280)
+story += figure("concepts/env_spine_v2.jpg",
+                "Plate 3.3 - The Spine axis: the glowing guide line running into the distance, "
+                "Memory Archive data columns receding left, the hub glow far ahead. A "
+                "controlled edit of the owner's environment reference - no people, no text.", max_h=280)
 
 # ---- Chapter 4 ----
 story += h1_block("Chapter 4  —  Visual Storyboard", P(CH4_INTRO))
@@ -389,6 +392,7 @@ for fr in FRAMES:
         ("Visible information", fr["visible"]),
         ("Owner interaction", fr["owner"]),
         ("Entry / exit transitions", fr["transitions"]),
+        ("Identity audit", fr["qc"]),
     ]
     data = []
     for field, value in cap_rows:

@@ -14,29 +14,35 @@ DOC_SUBTITLE = "Phase Zero - Inspection, Character and Environment Direction, Vi
 # ----------------------------------------------------------------------------
 CH1_INTRO = (
     "This chapter reports the state of the connected repository (github.com/jamesrudh-arch/"
-    "Jarvis) exactly as found at Phase Zero revision 2. The first inspection found an empty "
-    "scaffold; a merged pull request has since delivered a substantial implementation claiming "
-    "Milestones 1-4. This revision inspects that implementation by direct code reading. The "
-    "inspection remained read-only: no files were deleted, overwritten or reinitialised, no "
-    "commits or pushes were made, no application source was modified and no dependencies were "
-    "installed. The only artifacts created during Phase Zero are the pre-production documents "
-    "and storyboard assets delivered alongside this package."
+    "Jarvis) exactly as found at Phase Zero revision 2, at merge commit 6affa6e. The first "
+    "inspection found an empty scaffold; pull request #1 then delivered a substantial "
+    "implementation claiming Milestones 1-4, and pull request #2 added deployment "
+    "configuration (zero-config Railway Dockerfile, Supabase pooler normalisation, optional "
+    "Vercel split support). This revision inspects the merged result by direct code reading. "
+    "The inspection remained read-only: no files were deleted, overwritten or reinitialised, "
+    "no commits or pushes were made, no application source was modified and no dependencies "
+    "were installed. The only artifacts created during Phase Zero are the pre-production "
+    "documents and storyboard assets delivered alongside this package."
 )
 
 CH1_SECTIONS = [
     ("1.1  What the repository contains", [
-        "Branch <b>main</b>, three commits: the initial scaffold, an implementation commit "
-        "<b>d3a25f9</b> (\"Implement JARVIS NEXUS Milestones 1-4\") arriving via merged pull "
-        "request #1 from branch <b>arena/3bdc7997-jarvis</b>, and the merge commit itself. "
-        "62 tracked files across four modules: a Python FastAPI backend (about 3,800 lines - "
-        "47 REST routes, 2 WebSocket endpoints, 16 SQLAlchemy models, services, an SQL "
-        "migration, 7 automated tests), a Vite + Three.js frontend (about 5,200 lines - "
+        "Branch <b>main</b>, five commits: the initial scaffold; implementation commit "
+        "<b>d3a25f9</b> (\"Implement JARVIS NEXUS Milestones 1-4\") via merged pull request "
+        "#1 from branch <b>arena/3bdc7997-jarvis</b>; its merge commit <b>0b21a52</b>; "
+        "deployment commit <b>e54cf3e</b> (Railway Dockerfile, Supabase pooler "
+        "normalisation, optional Vercel split) via merged pull request #2 from branch "
+        "<b>arena/9b6fc35d-jarvis</b>; and merge commit <b>6affa6e</b> (current HEAD). 66 "
+        "tracked files across four modules: a Python FastAPI backend (about 4,300 lines - "
+        "44 REST routes, 2 WebSocket endpoints, 15 SQLAlchemy models, services, an SQL "
+        "migration, automated tests), a Vite + Three.js frontend (about 5,800 lines - "
         "sanctuary scene, character controller, camera director, scenario director, "
         "procedural textures, MIT-licensed vendor modules for dynamic bones, lip-sync and "
         "retargeting), a private inference worker (290 lines), and a docs/preproduction "
-        "folder with its own baseline document and 18 storyboard plates. Model assets: a "
-        "13.8 MB rigged 66-bone GLB character with 72 ARKit/Oculus morph targets, plus "
-        "Mixamo locomotion clips.",
+        "folder with its own baseline document and 18 storyboard plates (its frame 06 was "
+        "substituted with a character reference and its frame 19 was merged into frame 20). "
+        "Model assets: a 13.8 MB rigged 66-bone GLB character with 72 ARKit/Oculus morph "
+        "targets, plus Mixamo locomotion clips.",
     ]),
     ("1.2  What is already functional (verified by code reading)", [
         "Substantially more than the first inspection found, and the claims largely check out "
@@ -67,13 +73,17 @@ CH1_SECTIONS = [
     ]),
     ("1.4  What is missing or must change", [
         "<b>Visual identity.</b> The repository's character baseline predates the owner's "
-        "approved direction. Its storyboard plates and character reference were generated "
-        "without identity locking - independent QC confirms re-rolled faces between plates, "
-        "waxy skin and vacant eyes - and its baseline document self-describes as \"Approved "
-        "by Owner\", which is not accurate: the owner's actual direction is the identity "
-        "anchor locked in Chapter 2 of this package. The shipped 3D character's wardrobe and "
-        "appearance must be aligned to that anchor (gate M0.5 in Chapter 6). The repo's own "
-        "storyboard plates are superseded by the twenty identity-locked frames in Chapter 4.",
+        "approved direction. An independent vision-model audit of its plates at current HEAD "
+        "finds the woman consistent within the repository's own set, but she is a different "
+        "woman from the owner's locked anchor, and the audit's lighting verdict on its "
+        "conversational frame is direct: the hologram glow \"doesn't register on her face, "
+        "chest, or hands; it reads as an emissive sprite... painted-on rather than "
+        "integrated\" - the exact defect the owner rejected. The baseline document also "
+        "self-describes as \"Approved by Owner\", which is not accurate: the owner's actual "
+        "direction is the identity anchor locked in Chapter 2 of this package. The shipped "
+        "3D character's wardrobe and appearance must be aligned to that anchor (gate M0.5 in "
+        "Chapter 6), and the repo's eighteen plates are superseded by the twenty "
+        "identity-locked, light-integrated frames in Chapter 4.",
         "<b>Runtime verification.</b> The automated tests were authored by the implementing "
         "agent and have not been executed in the owner's environment; the verification "
         "protocol in Section 6.3 applies in full, including a real browser session, real "
@@ -109,11 +119,11 @@ CH1_SECTIONS = [
 ]
 
 CH1_TABLE = {
-    "caption": "Table 1.1 - Repository modules and assessment (62 tracked files, 3 commits)",
+    "caption": "Table 1.1 - Repository modules and assessment (66 tracked files, 5 commits, HEAD 6affa6e)",
     "header": ["Module", "Content", "Assessment"],
     "widths": [0.16, 0.40, 0.44],
     "rows": [
-        ["backend/app", "FastAPI core: 47 REST routes, 2 WS endpoints, 16 models, inference hub, world hub, simulation and tools, seed data, Fernet crypto",
+        ["backend/app", "FastAPI core: 44 REST routes, 2 WS endpoints, 15 models, inference hub, world hub, simulation and tools, seed data (incl. the cryo-manifold forensic and dual-turbine scenarios), Fernet crypto",
          "Retain. Claims verified by code reading; runtime verification pending (Section 6.3)"],
         ["backend/migrations, tests", "Initial pgvector-ready SQL schema; 7 test functions covering switches, memory guardrails, goals, scenarios, worker streaming",
          "Retain; extend with owner-environment runs before any capability is called verified"],
@@ -124,14 +134,14 @@ CH1_TABLE = {
         ["worker/jarvis_worker.py", "Private model engine: Qwen2.5-14B default, NF4 4-bit CUDA quantisation, Kaggle Secrets, outbound authenticated WS, streaming, cancellation",
          "Retain; verify with a real GPU session before calling inference verified"],
         ["docs/preproduction", "Repo's own baseline document + 18 storyboard plates + 2 asset references",
-         "Superseded: plates are not identity-locked (QC-confirmed face re-rolls); replaced by this package upon approval"],
-        ["scripts, .env.example, README", "Start scripts, worker runner, environment template, honest capability notes",
+         "Superseded: not the owner's locked identity and painted-on glow (vision-model audit); frame 06 substituted, frame 19 missing; replaced by this package upon approval"],
+        ["Dockerfile, railway.json, vercel.json, .env.example", "Zero-config Railway deploy, Supabase pooler normalisation, optional Vercel split, environment template, honest capability notes",
          "Retain; .env no longer tracked - first-inspection hygiene defect resolved"],
     ],
 }
 
-CH1_CALLOUT = ("3 commits  ·  62 tracked files  ·  47 REST routes + 2 WebSocket endpoints  ·  approx. 9,300 LOC",
-               "Repository state at Phase Zero revision 2 - an M1-M4 skeleton implemented, pending owner-environment verification and identity alignment")
+CH1_CALLOUT = ("5 commits  ·  66 tracked files  ·  44 REST routes + 2 WebSocket endpoints  ·  approx. 10,700 LOC",
+               "Repository state at Phase Zero revision 2 (HEAD 6affa6e) - an M1-M4 implementation with deployment configuration, pending owner-environment verification and identity alignment")
 
 # ----------------------------------------------------------------------------
 # Chapter 2 - Character Direction
@@ -342,17 +352,26 @@ CH3_PALETTE = {
 # Chapter 4 - Storyboard frames
 # ----------------------------------------------------------------------------
 CH4_INTRO = (
-    "Twenty frames, one per page. Each frame is an individually composed concept study that "
-    "fixes action, emotion, camera, lighting, environment, visible information, owner "
-    "interaction and transitions. The images define composition and intent; the shipped "
-    "character and world come from the licensed pipelines in Chapter 2 and the architecture "
-    "in Chapter 3. Frames are numbered to match the mapping matrix in Chapter 5, and each "
+    "Twenty frames, one per page. Every frame is a controlled edit of the single "
+    "owner-approved identity anchor (Plate 2.1) - never an independent text-to-image roll - "
+    "so the same woman is guaranteed across the set. Each frame was then audited by an "
+    "independent vision model against four criteria: identity match to the anchor, physical "
+    "light integration (the hologram must genuinely illuminate her face, hands and "
+    "environment and cast her shadow), natural hands, and defects. Frames scoring below the "
+    "bar were re-generated with corrected prompts until the audit passed: the final set "
+    "holds identity at 8-9/10 wherever the face is visible, light integration at 6-8/10, "
+    "and twenty of twenty frames keep their verdict (the per-frame audit line appears under "
+    "each caption table). The images define composition and intent; the shipped character "
+    "and world come from the licensed pipelines in Chapter 2 and the architecture in "
+    "Chapter 3, where light integration is guaranteed physically by the engine rather than "
+    "by prompt. Frames are numbered to match the mapping matrix in Chapter 5, and each "
     "carries the operational mode it serves."
 )
 
 FRAMES = [
     {
-        "num": "01", "title": "FIRST WAKE", "img": "storyboard_v2/f01_first_wake.jpg",
+        "num": "01", "title": "FIRST WAKE", "img": "storyboard_locked/sb_01_first_wake.jpg",
+        "qc": "Audit: identity n/a (deliberate from-behind shot) · light 8/10 · verdict KEEP. Silhouette, low bun and blazer read; ring ignition lights her back and boots.",
         "mode": "MODE 1 · WAKE & AUTHENTICATION", "loc": "THE SPINE → HUB",
         "action": "Cold-start sequence completes; consoles cascade online along the Spine. JARVIS walks in from the west; her first anchor is the hub holotable, then the owner console.",
         "emotion": "Composed emergence - neutral baseline, gaze settling. No theatrical entrance, no speech yet.",
@@ -365,9 +384,10 @@ FRAMES = [
         "systems": "renderer cold-start pass · CORE boot truth · owner console auth · camera exposure ramp",
     },
     {
-        "num": "02", "title": "NORMAL LIVING PRESENCE", "img": "storyboard_v2/f02_living_presence.jpg",
+        "num": "02", "title": "NORMAL LIVING PRESENCE", "img": "storyboard_locked/sb_02_living_presence.jpg",
+        "qc": "Audit: identity 9/10 · light 8/10 · verdict KEEP after one correction pass.",
         "mode": "MODE 2 · LIVING PRESENCE", "loc": "CENTRAL HOLO-RING",
-        "action": "Unaddressed background work at the holo-ring: she assembles a turbine structure element by element above the pedestal table, one part half-attached and trailing voxel particles. She glances up as the owner's presence engages.",
+        "action": "Unaddressed background work at the holo-ring: she steadies a large modular habitat structure element by element above the pedestal table, fingertips grazing its glowing lower edge. She looks up as the owner's presence engages.",
         "emotion": "Quiet focus breaking into attentiveness; mild recognition (brow-raise trace). No broad smile, no greeting performance.",
         "camera": "50 mm medium-long from the hub axis; body three-quarters to the table; the head turn completes as the camera settles.",
         "lighting": "The hologram is the practical key - cyan on her face and hands; ring glow from the pedestal; deep ambient shadow around.",
@@ -378,25 +398,27 @@ FRAMES = [
         "systems": "ambient task scheduler · plan-wall surface · presence glance system",
     },
     {
-        "num": "03", "title": "WALKING TOWARD CENTRAL OPERATIONS", "img": "storyboard_v2/f03_walking_conversing.jpg",
+        "num": "03", "title": "WALKING TOWARD CENTRAL OPERATIONS", "img": "storyboard_locked/sb_03_walking_conversing.jpg",
+        "qc": "Audit: identity 9/10 · light 7/10 · verdict KEEP after two correction passes (painted-on glow eliminated).",
         "mode": "MODE 2 · LIVING PRESENCE", "loc": "THE SPINE",
-        "action": "Purposeful walk at 1.2 m/s along the Spine toward the Hub; earpiece dot amber (task queued); arm swing natural, stride matched to distance.",
-        "emotion": "Neutral purpose; baseline face. Moving because there is a reason, never pacing for effect.",
-        "camera": "Tracking dolly, 50 mm, trailing three-quarter rear at 2.5 m with a slight low bias; stabilised, no drift.",
-        "lighting": "Guide lines beneath, intermittent ceiling apertures casting soft pools; passing consoles as cool rim sources.",
+        "action": "Purposeful walk at 1.2 m/s along the Spine toward the Hub, caught mid-stride heel-to-toe through a floor circuit ring; her head is turned toward the owner mid-sentence, one hand raised in a small explanatory gesture.",
+        "emotion": "Neutral purpose with conversational animation - she speaks while moving, never pacing for effect.",
+        "camera": "Tracking shot at eye level, 50 mm; her face and stride clearly readable, the path receding behind her.",
+        "lighting": "The floor ring beneath her casts cyan up-light onto boots, trouser cuffs and jaw; the console banks she passes key her face from the side; no floating holograms in this beat.",
         "environment": "The Spine, west to east.",
-        "visible": "Floor guide line to the Hub; one task chip (compiling morning digest). Nothing else competes for attention.",
+        "visible": "The floor guide line to the Hub and the circuit ring she passes through; nothing else competes for attention.",
         "owner": "The owner may hail at any time; she transitions into a stop-and-plant-turn.",
         "transitions": "IN: from Frame 02 follow-on or cut. OUT: match-move into Hub arrival as the camera re-frames on deceleration.",
         "systems": "locomotion blend space · navmesh spine route · follow-camera dolly",
     },
     {
-        "num": "04", "title": "TURNING TO ACKNOWLEDGE ME", "img": "storyboard_v2/f04_turn_acknowledge.jpg",
+        "num": "04", "title": "TURNING TO ACKNOWLEDGE ME", "img": "storyboard_locked/sb_04_turning_acknowledge.jpg",
+        "qc": "Audit: identity 8/10 · light 6/10 · verdict KEEP after one correction pass.",
         "mode": "MODE 3 · CONVERSATIONAL FOCUS", "loc": "HUB EDGE",
-        "action": "Addressed mid-stride: deceleration, plant-turn of roughly 120 degrees in place. Head leads, eyes lock the owner camera, weight settles.",
+        "action": "Addressed mid-task at a console: her body still angles to the work, left hand on the console edge, but her head and eyes have already turned to the owner - gaze first, body catching up - with her right hand paused mid-reach toward a wireframe component.",
         "emotion": "Attentive recognition; a micro brow-raise; mouth neutral and ready to speak.",
-        "camera": "Owner point of view, 40 mm at eye height, medium-close. Her turn ends exactly on the camera axis.",
-        "lighting": "Hub ring key overhead, soft; cyan rim from the console behind her; face fully readable.",
+        "camera": "Owner point of view, 40 mm at eye height, medium shot from a slight low angle; her head-turn ends exactly on the camera axis.",
+        "lighting": "The console's wireframe hologram keys her cheek and jaw from the side; the room stays deep charcoal around her.",
         "environment": "Hub edge; consoles idle-cool around her.",
         "visible": "Deliberately minimal - one status chip dissolves; her attention is the information.",
         "owner": "Full. She is listening; voice and text input are live; she remains interruptible throughout.",
@@ -404,98 +426,106 @@ FRAMES = [
         "systems": "plant-turn state · gaze lock · conversation intake · interruption manager",
     },
     {
-        "num": "05", "title": "CONVERSATIONAL FOCUS", "img": "storyboard_v2/f05_conversational_focus.jpg",
+        "num": "05", "title": "CONVERSATIONAL FOCUS", "img": "storyboard_locked/sb_05_conversational_focus.jpg",
+        "qc": "Audit: identity 9/10 · light 6/10 · verdict KEEP.",
         "mode": "MODE 3 · CONVERSATIONAL FOCUS", "loc": "HUB · CONVERSATION ZONE",
-        "action": "Two-way exchange. She holds still; measured hand gestures on key phrases only; no pacing, no nod-per-sentence, no frozen smile.",
-        "emotion": "Engaged listening: a four-degree head tilt, sustained gaze, slow blink cadence.",
-        "camera": "Static two-shot profile, 65 mm over the owner's shoulder; her face in full light, the owner's presence implied foreground-left.",
-        "lighting": "Soft key from displays; warm practical behind the owner's shoulder; balanced contrast on her face.",
+        "action": "Two-way exchange across the holotable. She holds still with a faint intelligent half-smile and a slight head tilt; a small translucent data prism floats between her and the owner, lighting her face from below-front.",
+        "emotion": "Engaged listening: a four-degree head tilt, sustained direct gaze, slow blink cadence.",
+        "camera": "65 mm at eye level across the dark glass holo-table; her face in full light, the owner's position implied foreground.",
+        "lighting": "The floating prism is the practical key from below-front; single catchlight in each eye; background falls to darkness.",
         "environment": "Hub conversational zone, standing.",
-        "visible": "One contextual card at the frame edge (current project); the conversation stream stays minimal.",
+        "visible": "The data prism and its light on her face; the conversation stream stays minimal.",
         "owner": "Text, voice or image input; interruption is always honoured mid-word or mid-step.",
         "transitions": "IN: from Frame 04. OUT: on \"let me show you\", she turns toward the relevant zone and the camera pans with her.",
         "systems": "gesture budget · listening pose set · conversation CORE · context cards",
     },
     {
-        "num": "06", "title": "WORKING AT A CONSOLE", "img": "storyboard_v2/f06_console_work.jpg",
+        "num": "06", "title": "WORKING AT A CONSOLE", "img": "storyboard_locked/sb_06_console_work.jpg",
+        "qc": "Audit: identity 8/10 · light 7/10 · verdict KEEP (one of the four proof frames that validated the pipeline).",
         "mode": "MODES 7/12 · TOOLS & TELEMETRY", "loc": "HUB CONSOLE CLUSTER",
-        "action": "A diagnostic task at a curved console: hands on holo-panels, hinged-lean stance, periodic glance up to camera and back to work.",
+        "action": "Diagnostic assembly work beside a black console: her right hand turns a large wireframe turbine rotor in mid-air, fingers clearly separated; her left hand rests on the console edge, wristwatch visible; her eyes track the part.",
         "emotion": "Focused: brow lowered, extended blink interval, jaw set. Working because work exists.",
         "camera": "65 mm over-shoulder, high three-quarter; hands and profile face both readable.",
         "lighting": "Console glow as practical key from below-front; hair light from above; cool bias that keeps the face legible.",
         "environment": "Hub console cluster.",
-        "visible": "Diagnostic tree, telemetry traces, one amber-flagged node under investigation.",
+        "visible": "Two or three clean numeric callouts tied to the rotor by leader lines; one amber-flagged value under investigation; nothing else.",
         "owner": "Optional orbit and inspect camera unlock; she stays in flow unless addressed.",
         "transitions": "IN: cut from task dispatch. OUT: alert intrusion (Frame 07) or a task-complete acknowledgment.",
         "systems": "console interactable IK · task animator · diagnostics service · telemetry stream",
     },
     {
-        "num": "07", "title": "URGENT MOVEMENT DURING AN ALERT", "img": "storyboard_v2/f07_urgent_alert.jpg",
+        "num": "07", "title": "URGENT MOVEMENT DURING AN ALERT", "img": "storyboard_locked/sb_07_urgent_alert.jpg",
+        "qc": "Audit: identity 9/10 · light 7/10 · verdict KEEP after two correction passes (face and bun now clearly detailed).",
         "mode": "MODE 11 · DEFENSIVE SECURITY", "loc": "SPINE MID-ROUTE",
-        "action": "A priority alert interrupts console work. She pushes off into a run at 3.5 m/s toward Security; stride extension, jacket edge lifting.",
+        "action": "A priority alert interrupts console work. She runs at 3.25 m/s along the Spine toward Security; stride extension, blazer hem flared, one arm driving; the distant vault door is wrapped in a glowing orange wireframe containment lattice.",
         "emotion": "Measured urgency: lids wide and tight, jaw set - controlled, never panicked.",
-        "camera": "Low wide 28 mm from ahead of her path; steady, no shake; slight lens breathing only.",
-        "lighting": "The zone relights amber; cyan suppressed to forty percent; red reserved for confirmed-critical.",
+        "camera": "Medium-wide from ahead of her path, low bias, steady - close enough that her face and low bun read clearly; no shake, slight lens breathing only.",
+        "lighting": "Orange reserved for the single critical event: the containment lattice and the pulsing floor route line beneath her boots; the passing consoles keep her face and hands cyan.",
         "environment": "Spine mid-route, Hub to Security; the floor route line pulses amber.",
-        "visible": "Alert chip - perimeter anomaly · sector 3 · two sources - plus the route line and a cancellation control.",
+        "visible": "The orange containment lattice on the vault door, the pulsing route line, and nothing else - the alert is the information.",
         "owner": "One-gesture cancel or redirect available; otherwise hands-off.",
         "transitions": "IN: hard cut on the alert (motivated). OUT: deceleration into the security arc (Frame 16 state).",
         "systems": "alert bus · locomotion run state · zone light director · route line · cancel control",
     },
     {
-        "num": "08", "title": "MEMORY EXPLORATION", "img": "storyboard_v2/f08_memory_archive.jpg",
+        "num": "08", "title": "MEMORY EXPLORATION", "img": "storyboard_locked/sb_08_memory_archive.jpg",
+        "qc": "Audit: identity 9/10 · light 7/10 · verdict KEEP after one correction pass (garbled text removed, shadow added).",
         "mode": "MODE 4 · MEMORY", "loc": "MEMORY ARCHIVE",
-        "action": "In the Vault her hand hovers over a vitrine; a memory plate surfaces in amber light. She reads provenance before using anything.",
+        "action": "In the Archive her right hand reaches toward an amber record shard inside a tall glass data column, fingertips centimetres from the glass; columns recede into darkness, most shards ice-cyan, a few amber. She reads provenance before using anything.",
         "emotion": "Reflective concentration; a slower tempo than anywhere else on the floor.",
-        "camera": "85 mm medium-close; a foreground column creates a frame-within-frame; shallow but readable.",
-        "lighting": "Warm amber vitrine glow as key; cool Spine spill from behind.",
+        "camera": "Medium-wide; a foreground column creates a frame-within-frame; the colonnade receding gives depth.",
+        "lighting": "The column's cyan glow keys her face and reaching hand from the side; the amber shard answers with warm fill; her long shadow crosses the reflective floor.",
         "environment": "Memory Archive, west wing.",
-        "visible": "Vitrine tag (owner-provided · Nov 2025); provenance chips separating fact, preference and inference.",
+        "visible": "Abstract record shards - cyan verified facts, amber hypotheses - with no readable text; the epistemic separation is carried by colour alone.",
         "owner": "Pin, correct or request forgetting; she asks before recategorising anything.",
         "transitions": "IN: slow push. OUT: she turns to camera with the finding; cut.",
         "systems": "memory service (recall/pin/forget) · vault surface · provenance chips",
     },
     {
-        "num": "09", "title": "GOALS AND ONGOING WORK", "img": "storyboard_v2/f09_goals_wall.jpg",
+        "num": "09", "title": "GOALS AND ONGOING WORK", "img": "storyboard_locked/sb_09_goals_dag.jpg",
+        "qc": "Audit: identity 9/10 · light 7/10 · verdict KEEP.",
         "mode": "MODE 5 · GOALS & PROJECTS", "loc": "PLAN WALL",
-        "action": "She touches a project plate; its timeline extends; dependency lines light. She proposes the next action and waits.",
+        "action": "She reaches up to touch the bright active node of a holographic dependency graph floating at head height; the critical path glows, completed nodes render solid ice-white, dim nodes wait. She proposes the next action and waits.",
         "emotion": "Confident clarity; a trace of conviction on the proposal - comfortable being disagreed with.",
-        "camera": "40 mm profile medium; the wall's leading lines converge behind her.",
-        "lighting": "The wall itself is the practical: soft ice-white line light; her key from wall bounce.",
+        "camera": "40 mm medium, three-quarter; the graph's leading lines converge behind her.",
+        "lighting": "The graph is the practical: cyan spill across her face and blazer, her fingertips lit where they meet the active node.",
         "environment": "Plan Wall, centre-north.",
-        "visible": "Goals with priority, status and progress; a blocked dependency in amber; the proposed next action awaiting approval.",
+        "visible": "One floating label - GOAL 3 CRITICAL PATH - over the graph: node states, the active path, completed milestones.",
         "owner": "Approve, reweight, pause or cancel with a word; the audit trail is one glance away.",
         "transitions": "IN: cut. OUT: pull-back to the full wall in owner survey mode.",
         "systems": "goals service (priority/status/audit) · plan-wall timeline · approval gate",
     },
     {
-        "num": "10", "title": "MULTI-AGENT COLLABORATION", "img": "storyboard_v2/f10_multi_agent.jpg",
+        "num": "10", "title": "MULTI-AGENT COLLABORATION", "img": "storyboard_locked/sb_10_multi_agent.jpg",
+        "qc": "Audit: identity 9/10 · light 7/10 · verdict KEEP.",
         "mode": "MODE 6 · AGENTS", "loc": "THE ROUND",
         "action": "Geometric specialist-agent workspaces - glowing wireframe polyhedra - hover above the radial holo-table; one polyhedron burns brighter: its agent is speaking. She conducts: a glance to the speaker, an open-hand assignment to another.",
         "emotion": "Command calm; mild scrutiny on the conflicting finding.",
         "camera": "35 mm high three-quarter wide; she stands at the open end of the arc, plates arranged before her.",
         "lighting": "Cool plate pools on the table; her rim from the Spine behind.",
         "environment": "Agent Collaboration, centre-north.",
-        "visible": "Agent role chips (RESEARCH / EXEC / WATCH / VERIFY / REPORT), task assignments, one conflicting finding flagged for adjudication.",
+        "visible": "Five icosahedral agent workspaces - a molecule, a document tree, a network graph, a world map, a data stream - plus the speaking agent's brighter burn and her open-hand assignment.",
         "owner": "Listen in; promote or veto agent actions; request full transcripts.",
         "transitions": "IN: cut. OUT: she delegates, then turns to the owner with a synthesis line.",
         "systems": "agent coordinator (roles/permissions) · round presence plates · synthesis report",
     },
     {
-        "num": "11", "title": "LIVE RESEARCH", "img": "storyboard_v2/f11_live_research.jpg",
+        "num": "11", "title": "LIVE RESEARCH", "img": "storyboard_locked/sb_11_live_research.jpg",
+        "qc": "Audit: identity 9/10 · light 8/10 · verdict KEEP (proof frame).",
         "mode": "MODE 8 · RESEARCH", "loc": "RESEARCH LIBRARY",
-        "action": "At a carrel she traces a citation link between two documents on the curved display and pins the stronger source.",
-        "emotion": "Curiosity sharpening into interest; a slight forward lean.",
-        "camera": "65 mm over-shoulder, tight; her finger, profile and both documents share the plane.",
-        "lighting": "Warm 3000 K task pool key against cool screen fill - the classic warm/cool cross of the Library.",
+        "action": "At the Research alcove she validates a live spatial data reconstruction: analytics readouts hover beside her - reconstruction precision 0.98, confidence 99.1 percent - as she checks the model against incoming sources and pins the stronger ones.",
+        "emotion": "Curiosity sharpening into confirmation; a slight forward lean.",
+        "camera": "65 mm three-quarter medium; her profile, the readouts and the data field share the plane.",
+        "lighting": "The data field and readouts key her face cyan from the front-left; deep charcoal behind.",
         "environment": "Research, west wing.",
-        "visible": "Source cards with provenance (origin, date, confidence); extraction highlights; a weak source visibly greyed and rejected.",
+        "visible": "Reconstruction readouts - PRECISION 0.98, CONFIDENCE 99.1% - source chips and a weak source visibly greyed and rejected.",
         "owner": "Ask for any source; reject evidence; steer the thread.",
         "transitions": "IN: cut. OUT: she lifts a source toward the Stage - a drag gesture into scenario construction.",
         "systems": "research service · source provenance · citation trace · evidence pinning",
     },
     {
-        "num": "12", "title": "SIMULATION", "img": "storyboard_v2/f12_simulation.jpg",
+        "num": "12", "title": "SIMULATION", "img": "storyboard_locked/sb_12_simulation.jpg",
+        "qc": "Audit: identity 9/10 · light 6/10 · verdict KEEP. Matches the repository's seeded dual-turbine scenario beat for beat.",
         "mode": "MODE 9 · SIMULATION", "loc": "SIMULATION STAGE",
         "action": "On the Stage, two volumetric turbine simulations run side by side: Variant A in clean cyan laminar flow, Variant B in amber-turbulent stress with hub-corner shear vectors. She stands exactly between them, lit by both, comparing behaviour.",
         "emotion": "Analytic engagement; steady narration.",
@@ -508,12 +538,13 @@ FRAMES = [
         "systems": "simulation service · scenario director (playback) · variable panel · truth labels",
     },
     {
-        "num": "13", "title": "CONSTRUCTING A SCENARIO", "img": "storyboard_v2/f13_scenario_build.jpg",
+        "num": "13", "title": "CONSTRUCTING A SCENARIO", "img": "storyboard_locked/sb_13_scenario_construction.jpg",
+        "qc": "Audit: identity 9/10 · light 7/10 · verdict KEEP.",
         "mode": "MODE 9 · SIMULATION", "loc": "SIMULATION STAGE",
-        "action": "She builds a scenario on the empty stage: pulls a wireframe element from a floating palette; the scene assembles around her; a timeline strip builds at the floor edge.",
-        "emotion": "Creative focus; one flick of quiet satisfaction as a piece snaps into place.",
-        "camera": "40 mm three-quarter medium; assembly light-trails run between her hands and the growing scene.",
-        "lighting": "Drafting state: dim blue working light; elements transition wireframe-to-solid as they are committed.",
+        "action": "The 'let me show you' moment: her right hand conducts above the pedestal table as a small tabletop schematic unfolds and expands into a room-scale voxel reconstruction - a point-cloud building rising behind her, particle streams arcing from table to structure, walls and staircases crystallising out of drifting points.",
+        "emotion": "Creative focus; one flick of quiet satisfaction as the expansion takes shape.",
+        "camera": "Wide 35 mm; the expansion fills the hall behind her while she stays the anchor of the frame.",
+        "lighting": "The expanding volume is the practical: cyan wash over her raised hand and face, her long shadow thrown forward across the floor.",
         "environment": "Simulation Stage, pre-performance.",
         "visible": "Scenario outline chips appearing in sequence (system, flow, failure point); a truth label marking the piece as illustration; the timeline strip.",
         "owner": "Suggest elements live; insertion is immediate and reversible.",
@@ -521,25 +552,27 @@ FRAMES = [
         "systems": "scenario director (authoring) · prop palette · timeline strip · world snapshot",
     },
     {
-        "num": "14", "title": "DIRECTING A SCENARIO", "img": "storyboard_v2/f14_scenario_direct.jpg",
+        "num": "14", "title": "DIRECTING A SCENARIO", "img": "storyboard_locked/sb_14_scenario_directing.jpg",
+        "qc": "Audit: identity 8-9/10 · light 7-8/10 · verdict KEEP after one correction pass (hand now fully outside the volume).",
         "mode": "MODE 9 · SIMULATION", "loc": "SIMULATION STAGE",
-        "action": "Inside a paused room-scale incident reconstruction - a voxel-cloud pipe scene with one wireframe worker frozen mid-action - she points at the glowing orange Point of Origin; a timeline ring and phase labels encircle the scene; the scrub marker waits.",
+        "action": "One clear step outside a paused room-scale incident reconstruction - a voxel-cloud pipe scene with one wireframe worker frozen mid-action - she points at the glowing orange Point of Origin; a timeline ring encircles the scene; the scrub marker waits.",
         "emotion": "A director's decisiveness; one beat of light humour when a prop misplaces itself.",
         "camera": "28 mm wide from a stage corner; the overhead grid is visible and the full stage reads.",
         "lighting": "Performance state; actors render as soft cyan translucent figures - clearly temporary, clearly not JARVIS.",
         "environment": "Simulation Stage, performance.",
-        "visible": "Camera markers with shot numbers; actor cue lines; prop labels; an available director-view seat.",
+        "visible": "One floating label - INCIDENT RECONSTRUCTION - the orange Point of Origin, the frozen worker, the timeline ring; voxel resolution 3 mm.",
         "owner": "Take the director's seat or watch; branch variables remain live.",
         "transitions": "IN: from Frame 13. OUT: \"from the top\" - playback begins, or the run is recorded.",
         "systems": "scenario director (blocking) · scenario actors · camera markers · annotations",
     },
     {
-        "num": "15", "title": "PRESENTING AND PAUSING A VIDEO", "img": "storyboard_v2/f15_video_present.jpg",
+        "num": "15", "title": "PRESENTING AND PAUSING A VIDEO", "img": "storyboard_locked/sb_15_video_to_3d.jpg",
+        "qc": "Audit: identity 9/10 · light 8/10 · verdict KEEP.",
         "mode": "MODES 3/9 · MEDIA", "loc": "MEDIA & SCREENING",
-        "action": "In the screening room a clip runs on the four-metre wall, now paused at a significant frame; her hand holds the pause; she stands beside the screen, never in front of it.",
+        "action": "Beside the frameless media wall, a paused industrial clip holds on the wall while a translucent wireframe volumetric twin of the site's main vehicle is extracted from the frozen frame into the room, still tethered by a bridge of drifting particles; she presents it with an open upturned palm, mid-explanation.",
         "emotion": "Pointed emphasis; her glance moves between the owner and the frame.",
         "camera": "40 mm from the owner's position; the screen and her profile both stay sharp.",
-        "lighting": "The screen is the key source; the room dims to twenty percent; her face is edge-lit by screen spill.",
+        "lighting": "The paused frame glows softly on the wall; the extracted twin keys her palm, face and shoulder cyan; the room stays dark.",
         "environment": "Media and Screening, east-north.",
         "visible": "Timeline scrubber, frame stamp, an annotation pinned to the frame region, and a \"show this in 3D\" link.",
         "owner": "Scrub, step frames, A-B compare two clips, approve frame extraction into a scenario.",
@@ -547,38 +580,41 @@ FRAMES = [
         "systems": "media service (spatial player) · frame extraction · timestamp commentary · 2D-to-3D handoff",
     },
     {
-        "num": "16", "title": "VISION AND DEFENSIVE SECURITY", "img": "storyboard_v2/f16_vision_security.jpg",
+        "num": "16", "title": "VISION AND DEFENSIVE SECURITY", "img": "storyboard_locked/sb_16_vision_security.jpg",
+        "qc": "Audit: identity 8/10 · light 6/10 · verdict KEEP after one correction pass (scan-beam artifact removed).",
         "mode": "MODES 10/11 · VISION & SECURITY", "loc": "SECURITY ARC",
-        "action": "An anomaly trace crosses the monitors. She leans in, one hand on the console edge, and calls for the evidence chain before recommending anything.",
-        "emotion": "Concerned vigilance; controlled breathing. Red appears only if the state is confirmed-critical.",
-        "camera": "65 mm low profile across the console; the monitors' cool wash carries the frame.",
-        "lighting": "Cool base with a single restrained red accent; her face lit by monitor spill.",
+        "action": "At the optical input station she stands calmly inside a thin hexagonal defensive boundary lattice while a floating sensor plane with a single camera iris hovers before her at chest height, its steady cyan glow washing over her; chin slightly lifted, patient, holding still for the scan.",
+        "emotion": "Composed cooperation; deliberate stillness - the capture is explicit, never hidden.",
+        "camera": "65 mm medium straight-on; the sensor plane between camera and her, the lattice framing the space.",
+        "lighting": "The sensor plane and lattice cast cyan onto her blazer and cheekbones; her shadow crisp on the black floor.",
         "environment": "Defensive Security, centre-south.",
-        "visible": "The anomaly trace, a two-source evidence chain, and a containment action queue awaiting owner authorization.",
+        "visible": "The sensor iris and its steady glow, the hexagonal boundary lattice - capture state is shown by the geometry itself; no other text in frame.",
         "owner": "Authorization gate for irreversible actions; request clarification; stand down.",
         "transitions": "IN: from Frame 07 arrival. OUT: resolution - the room cools back to cyan; she exhales and reports.",
         "systems": "vision adapter · security monitor · evidence chain · authorization gate",
     },
     {
-        "num": "17", "title": "LOCAL / KAGGLE CONNECTION", "img": "storyboard_v2/f17_compute_link.jpg",
+        "num": "17", "title": "LOCAL / KAGGLE CONNECTION", "img": "storyboard_locked/sb_17_local_kaggle_compute.jpg",
+        "qc": "Audit: identity 9/10 · light 7/10 · verdict KEEP after one correction pass (white-clinic drift corrected).",
         "mode": "MODE 13 · CONNECTIONS & COMPUTE", "loc": "COMPUTE BRIDGE",
-        "action": "At the Bridge she seats a profile cartridge (a Kaggle profile) into the dock; a handshake light climbs; the panel shows honest download state.",
+        "action": "At the compute bay she checks the outbound link: above a near-black server rack a wireframe network diagram floats - the local PC cube at centre, light lines arcing to three GPU slots, one glowing connected, two dim - and her index finger rests on the connected slot marker.",
         "emotion": "Patient pragmatism; matter-of-fact about quotas and limits.",
-        "camera": "65 mm tight on the bridge and her hands, her calm face above them in frame.",
-        "lighting": "Bridge practical in cool tones; the status bar amber while synchronising, steady cyan when healthy.",
+        "camera": "65 mm medium-wide; the rack, the diagram and her checking hand share the plane, her calm face above them.",
+        "lighting": "The diagram is the main light source, casting cyan onto her face and the glossy floor; the rack's LED rows reflect below.",
         "environment": "Compute and Connections, west-mid.",
-        "visible": "Masked profile name (kaggle · masked), session and quota truth, model-load progress percent, worker heartbeat.",
+        "visible": "One floating label - OUTBOUND LINK: SECURED - the slot states, and the honest status of each compute path.",
         "owner": "Cancel, switch profiles, run a genuine authentication test, generate a worker package.",
         "transitions": "IN: cut. OUT: the worker is healthy - status settles cyan and she steps back toward the Hub.",
         "systems": "inference worker manager · Kaggle profile vault · honest status · heartbeat",
     },
     {
-        "num": "18", "title": "OWNER POWER AND PRIVACY CONTROLS", "img": "storyboard_v2/f18_owner_switches.jpg",
+        "num": "18", "title": "OWNER POWER AND PRIVETY CONTROLS", "img": "storyboard_locked/sb_18_owner_switches.jpg",
+        "qc": "Audit: identity 8/10 · light 7/10 · verdict KEEP.",
         "mode": "ALL MODES · OWNER AUTHORITY", "loc": "OWNER CONSOLE, HUB EDGE",
-        "action": "Seven physical latching switches sit on the owner console; the Master is mid-toggle in this frame. She stands one pace back, hands loose - the owner's authority is the subject of the shot, not her.",
-        "emotion": "Readiness without servility; neutral, supportive, unhurried.",
-        "camera": "40 mm over the owner's shoulder; switches large and legible; she holds the frame edge in soft focus.",
-        "lighting": "A warm key on the switch panel (the owner motif); visible zones of the room dim or settle per current states.",
+        "action": "Seven physical latching switches sit on the dark console - the large Master at centre, four lit cyan, two dark. Her right hand hovers just above the Master without touching it and she looks up at the owner: the toggle is the owner's, never hers.",
+        "emotion": "Readiness without servility; the asking glance is calm, supportive, unhurried.",
+        "camera": "40 mm medium from the owner's side of the console; switches legible, her asking glance holding the frame.",
+        "lighting": "The switch LEDs cast cyan up-light onto her wrist and jaw; the room behind stays deep.",
         "environment": "Owner console at the Hub edge.",
         "visible": "Each switch labeled with its real state and live effects: Master, Microphone, Camera, Autonomy, Remote Compute, Computer Control, Embodiment.",
         "owner": "This frame is the interaction. Toggles change real behaviour - Master OFF visibly powers zones down around them.",
@@ -586,12 +622,13 @@ FRAMES = [
         "systems": "owner switches service (seven) · live effects bus · privacy enforcement",
     },
     {
-        "num": "19", "title": "MOBILE COMPANION", "img": "storyboard_v2/f19_mobile.jpg",
+        "num": "19", "title": "MOBILE COMPANION", "img": "storyboard_locked/sb_19_mobile_companion.jpg",
+        "qc": "Audit: identity 9/10 · light 6/10 · verdict KEEP after three restructures (the phone-screen face is now a controlled edit of the anchor itself).",
         "mode": "MODE 14 · DIGITAL-HUMAN EMBODIMENT", "loc": "HUB · THROUGH MOBILE VIEW",
-        "action": "The same live scene framed for the phone: she stands at attentive idle at the Hub, addressing the mobile camera directly. Same instance, same state, lighter render.",
+        "action": "The owner's hand holds the phone and the companion feed fills its screen: her face in medium close-up mid-conversation - the same woman, the same instance - while the sanctuary glows softly out of focus behind the device.",
         "emotion": "Continuity of warmth - the same person, the same day, no reset, no costume change.",
-        "camera": "Phone viewport (vertical crop) roughly 10:14; the device bezel visible in a darkened surround.",
-        "lighting": "Identical key direction; reduced light count and simplified shadows for mobile cost.",
+        "camera": "First-person view down at the phone: bezel and owner's thumb framing the screen, her live feed the brightest element in frame.",
+        "lighting": "The screen's cyan glow spills onto the holding hand and wrist; the room beyond stays charcoal.",
         "environment": "The Hub, seen through the mobile view.",
         "visible": "A condensed status rail, voice-first input, camera and microphone state chips, and an emergency hail.",
         "owner": "Talk or hold-to-talk; camera toggle; hail. Everything in the desktop view exists here in mobile form.",
@@ -599,14 +636,15 @@ FRAMES = [
         "systems": "device adapter (mobile) · state sync (one instance) · reduced-cost renderer profile",
     },
     {
-        "num": "20", "title": "THE SAME LIVE CHARACTER, RENDERED FOR HOLOGRAPHIC PROJECTION", "img": "storyboard_v2/f20_hologram.jpg",
+        "num": "20", "title": "THE SAME LIVE CHARACTER, RENDERED FOR HOLOGRAPHIC PROJECTION", "img": "storyboard_locked/sb_20_holographic_projection.jpg",
+        "qc": "Audit: identity 9/10 · light 7/10 · verdict KEEP.",
         "mode": "MODE 15 · PHYSICAL HOLOGRAPHIC PRESENCE", "loc": "EMBAYMENT",
-        "action": "In the Embayment the Pepper's-Ghost volume shows her live - the same pose, the same scene, mirrored. Behind the glass: the raised platform and calibration rig.",
+        "action": "In the projection bay a four-faced glass pyramid on a black pedestal beams a small translucent volumetric figure of her - about thirty centimetres tall, cyan with a fine scanline shimmer - standing mid-gesture above the pyramid; the dark bay shows through her translucent body.",
         "emotion": "Composed presence - reporting for external view. No special performance for the hologram.",
-        "camera": "35 mm from the audience side through the glass; ghost image in front, platform behind.",
-        "lighting": "The embay stage is lit for projection contrast: dark surround, subject key, steady sync light.",
+        "camera": "35 mm medium on the pedestal: the pyramid, the projector beams rising through haze, and the small luminous figure above.",
+        "lighting": "Projector beams and the hologram itself light the pedestal and floor; one floating label - EMBODIMENT LINK: ACTIVE.",
         "environment": "Embodiment and Projection, east-south.",
-        "visible": "A sync chip - live · 60 fps · mirrored - the device name, and layout controls (mirror, rotate, multi-face).",
+        "visible": "The sync label - EMBODIMENT LINK: ACTIVE - the device name, and layout controls (mirror, rotate, multi-face).",
         "owner": "Rotate, mirror or arrange multi-face layouts; the volume follows speech, scenarios and video in real time.",
         "transitions": "IN: the volume fades up. OUT: the owner returns to desktop; the volume dims - the live instance continues regardless.",
         "systems": "device adapter (hologram) · live mirror output · Pepper's-Ghost composition · sync",
@@ -893,9 +931,10 @@ CH7_ARTIFACTS = {
     "widths": [0.42, 0.58],
     "rows": [
         ["JARVIS-NEXUS_PreProduction_Package_v2.pdf", "This package - revised inspection report, locked character direction, identity-locked storyboard, technical plan, approval gate"],
-        ["storyboard_v2/ (20 files)", "The identity-locked storyboard frames (1344 x 768), every frame a controlled edit of the approved anchor; numbered to match Chapter 4 and the mapping matrix"],
+        ["storyboard_locked/ (20 files)", "The final identity-locked storyboard (1344 x 768), every frame a controlled edit of the approved anchor and every frame passed by the independent vision-model audit; numbered to match Chapter 4 and the mapping matrix"],
         ["v2_proof/ (7 files)", "The owner-approved identity anchor, the locked full-length character sheet, the face study and the four proof frames that established the pipeline"],
-        ["frames/, concepts/ (v1, superseded)", "First-revision frames and concepts, retained for traceability of the direction change"],
+        ["concepts/ (v2 environment plates)", "Pure-environment plates for Chapter 3, edited from the owner's environment reference - no people, no text"],
+        ["frames/, concepts v1, storyboard_v2/ (superseded)", "First-revision and intermediate assets, retained for traceability of the direction change"],
         ["build/floorplan.png (+ HTML source)", "The Nexus operations floor plan at print resolution, with editable HTML source alongside"],
         ["build/cover.html, build/cover.pdf", "Editable HTML source and rendered cover, for future revision without a rebuild"],
     ],

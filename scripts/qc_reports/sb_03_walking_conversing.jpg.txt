@@ -1,0 +1,1 @@
+IDENTITY=9 LIGHT=7 HANDS=ok DEFECTS=none VERDICT=KEEP - consistent identity; floor glow casts some light, face underlit

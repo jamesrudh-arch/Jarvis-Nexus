@@ -1,0 +1,903 @@
+     1→#!/usr/bin/env python3
+     2→"""JARVIS NEXUS pre-production package - content module.
+     3→
+     4→All narrative content for the seven chapters. Kept separate from the
+     5→ReportLab build so text edits never touch layout code.
+     6→Frame captions carry the eight mandatory direction fields.
+     7→"""
+     8→
+     9→DOC_TITLE = "JARVIS NEXUS - Pre-Production Package"
+    10→DOC_SUBTITLE = "Phase Zero - Inspection, Character and Environment Direction, Visual Storyboard, Technical Plan - Revision 2, Owner-Locked Identity Baseline"
+    11→
+    12→# ----------------------------------------------------------------------------
+    13→# Chapter 1 - Repository Inspection Report
+    14→# ----------------------------------------------------------------------------
+    15→CH1_INTRO = (
+    16→    "This chapter reports the state of the connected repository (github.com/jamesrudh-arch/"
+    17→    "Jarvis) exactly as found at Phase Zero revision 2. The first inspection found an empty "
+    18→    "scaffold; a merged pull request has since delivered a substantial implementation claiming "
+    19→    "Milestones 1-4. This revision inspects that implementation by direct code reading. The "
+    20→    "inspection remained read-only: no files were deleted, overwritten or reinitialised, no "
+    21→    "commits or pushes were made, no application source was modified and no dependencies were "
+    22→    "installed. The only artifacts created during Phase Zero are the pre-production documents "
+    23→    "and storyboard assets delivered alongside this package."
+    24→)
+    25→
+    26→CH1_SECTIONS = [
+    27→    ("1.1  What the repository contains", [
+    28→        "Branch <b>main</b>, three commits: the initial scaffold, an implementation commit "
+    29→        "<b>d3a25f9</b> (\"Implement JARVIS NEXUS Milestones 1-4\") arriving via merged pull "
+    30→        "request #1 from branch <b>arena/3bdc7997-jarvis</b>, and the merge commit itself. "
+    31→        "62 tracked files across four modules: a Python FastAPI backend (about 3,800 lines - "
+    32→        "47 REST routes, 2 WebSocket endpoints, 16 SQLAlchemy models, services, an SQL "
+    33→        "migration, 7 automated tests), a Vite + Three.js frontend (about 5,200 lines - "
+    34→        "sanctuary scene, character controller, camera director, scenario director, "
+    35→        "procedural textures, MIT-licensed vendor modules for dynamic bones, lip-sync and "
+    36→        "retargeting), a private inference worker (290 lines), and a docs/preproduction "
+    37→        "folder with its own baseline document and 18 storyboard plates. Model assets: a "
+    38→        "13.8 MB rigged 66-bone GLB character with 72 ARKit/Oculus morph targets, plus "
+    39→        "Mixamo locomotion clips.",
+    40→    ]),
+    41→    ("1.2  What is already functional (verified by code reading)", [
+    42→        "Substantially more than the first inspection found, and the claims largely check out "
+    43→        "against the code: server-side enforcement of all seven owner switches (voice input "
+    44→        "returns 403 with the microphone switch off); a ten-category epistemic memory system "
+    45→        "with Fernet encryption of sensitive records and a hard HTTP 409 guardrail preventing "
+    46→        "silent promotion of hypothesis to verified fact; goal dependency scheduling with "
+    47→        "audit events; bounded specialist agents with dispatch and cancellation; allowlisted "
+    48→        "tools with audit logs; encrypted Kaggle profile management with genuine package "
+    49→        "export; an authenticated worker WebSocket; and - importantly - a <b>truthful offline "
+    50→        "executive</b>: when no GPU worker is connected, conversation falls back to "
+    51→        "deterministic replies that explicitly label themselves as coming from an offline "
+    52→        "source rather than fabricating model output. The frontend implements the twelve zones "
+    53→        "and fifteen modes, Mixamo retargeting with root-drift stripping, gaze-first turning, "
+    54→        "blinking, phoneme-to-viseme lip-sync, and a scenario director with voxel clouds, "
+    55→        "variables, timeline scrubbing and world restoration.",
+    56→    ]),
+    57→    ("1.3  What can be retained", [
+    58→        "Essentially the whole implementation skeleton. The architecture matches the product "
+    59→        "specification: FastAPI + SQLAlchemy with SQLite for development and PostgreSQL + "
+    60→        "pgvector for production behind DATABASE_URL, WebSocket-first live state on "
+    61→        "/ws/nexus and /ws/worker, server-side secret encryption, and a worker design using "
+    62→        "the default model huihui-ai/Qwen2.5-14B-Instruct-abliterated with hardware-aware "
+    63→        "4-bit NF4 quantisation, Kaggle Secrets authentication and zero public ports. The "
+    64→        "twelve-zone world layout matches Chapter 3 of this package zone for zone. The seven "
+    65→        "switches are enforced on both sides. Nothing needs to be thrown away; the work "
+    66→        "forward is verification, visual alignment and hardening rather than replacement.",
+    67→    ]),
+    68→    ("1.4  What is missing or must change", [
+    69→        "<b>Visual identity.</b> The repository's character baseline predates the owner's "
+    70→        "approved direction. Its storyboard plates and character reference were generated "
+    71→        "without identity locking - independent QC confirms re-rolled faces between plates, "
+    72→        "waxy skin and vacant eyes - and its baseline document self-describes as \"Approved "
+    73→        "by Owner\", which is not accurate: the owner's actual direction is the identity "
+    74→        "anchor locked in Chapter 2 of this package. The shipped 3D character's wardrobe and "
+    75→        "appearance must be aligned to that anchor (gate M0.5 in Chapter 6). The repo's own "
+    76→        "storyboard plates are superseded by the twenty identity-locked frames in Chapter 4.",
+    77→        "<b>Runtime verification.</b> The automated tests were authored by the implementing "
+    78→        "agent and have not been executed in the owner's environment; the verification "
+    79→        "protocol in Section 6.3 applies in full, including a real browser session, real "
+    80→        "locomotion inspection and a real GPU worker conversation before any capability is "
+    81→        "called verified. <b>Production hardening</b> (deployment configuration, CI, backup "
+    82→        "and restore drills) and <b>license hygiene</b> (retargeter.mjs carries no license "
+    83→        "header; Avaturn GLB provenance to be confirmed in writing; Mixamo clips fall under "
+    84→        "Adobe terms) complete the list.",
+    85→    ]),
+    86→    ("1.5  Existing architectural and design decisions", [
+    87→        "The implementation encodes decisions this package adopts as the baseline: a monorepo "
+    88→        "(backend / frontend / worker / docs); browser-first Three.js rendering with ACES "
+    89→        "filmic tone mapping and restrained bloom; the twelve-zone, fifteen-mode interaction "
+    90→        "model inside one continuous world; seven hardware-grade owner switches as the "
+    91→        "authority model; typed memory with epistemic statuses; goal dependency gates; and "
+    92→        "private-first inference (local PC or Kaggle GPU, no mandatory cloud API, Ollama and "
+    93→        "OpenAI-compatible endpoints as optional adapters only). The earlier hygiene defect "
+    94→        "from the first inspection is resolved: .env is no longer tracked and .env.example is "
+    95→        "committed in its place.",
+    96→    ]),
+    97→    ("1.6  Technical, licensing and asset constraints", [
+    98→        "Third-party code carries obligations that are accounted for: dynamicbones.mjs and "
+    99→        "lipsync-en.mjs are MIT-licensed (Mika Suominen, 2024) and retained; retargeter.mjs "
+   100→        "appears original but carries no license header and must gain one at M0.5; the "
+   101→        "character GLB is Avaturn-generated and its commercial-use terms must be confirmed in "
+   102→        "writing before ship; Mixamo animation clips fall under Adobe's terms for interactive "
+   103→        "use. Constraints inherited from the product brief remain binding on all milestones: "
+   104→        "no Ollama or commercial AI API may be required; MetaHuman is optional, never a "
+   105→        "prerequisite; holographic output must be a live view of the running application; "
+   106→        "inference, metrics, agent work and test results are never fabricated. No repository "
+   107→        "change was made during Phase Zero, per the inspection rules.",
+   108→    ]),
+   109→]
+   110→
+   111→CH1_TABLE = {
+   112→    "caption": "Table 1.1 - Repository modules and assessment (62 tracked files, 3 commits)",
+   113→    "header": ["Module", "Content", "Assessment"],
+   114→    "widths": [0.16, 0.40, 0.44],
+   115→    "rows": [
+   116→        ["backend/app", "FastAPI core: 47 REST routes, 2 WS endpoints, 16 models, inference hub, world hub, simulation and tools, seed data, Fernet crypto",
+   117→         "Retain. Claims verified by code reading; runtime verification pending (Section 6.3)"],
+   118→        ["backend/migrations, tests", "Initial pgvector-ready SQL schema; 7 test functions covering switches, memory guardrails, goals, scenarios, worker streaming",
+   119→         "Retain; extend with owner-environment runs before any capability is called verified"],
+   120→        ["frontend/src/world", "NexusSanctuaryScene (12 zones), JarvisCharacterController (66-bone rig, 72 morph targets, gaze, blink, lip-sync), CameraDirector, ScenarioDirector3D, ProceduralTextures",
+   121→         "Retain as the renderer base; visual identity of the character aligns to the approved anchor at M0.5"],
+   122→        ["frontend/src/vendor + models", "MIT dynamic bones and lip-sync modules; retargeter; jarvis_avaturn.glb (13.8 MB); Mixamo walking and locomotion sets",
+   123→         "Retain subject to license hygiene: header on retargeter, written Avaturn terms confirmation"],
+   124→        ["worker/jarvis_worker.py", "Private model engine: Qwen2.5-14B default, NF4 4-bit CUDA quantisation, Kaggle Secrets, outbound authenticated WS, streaming, cancellation",
+   125→         "Retain; verify with a real GPU session before calling inference verified"],
+   126→        ["docs/preproduction", "Repo's own baseline document + 18 storyboard plates + 2 asset references",
+   127→         "Superseded: plates are not identity-locked (QC-confirmed face re-rolls); replaced by this package upon approval"],
+   128→        ["scripts, .env.example, README", "Start scripts, worker runner, environment template, honest capability notes",
+   129→         "Retain; .env no longer tracked - first-inspection hygiene defect resolved"],
+   130→    ],
+   131→}
+   132→
+   133→CH1_CALLOUT = ("3 commits  ·  62 tracked files  ·  47 REST routes + 2 WebSocket endpoints  ·  approx. 9,300 LOC",
+   134→               "Repository state at Phase Zero revision 2 - an M1-M4 skeleton implemented, pending owner-environment verification and identity alignment")
+   135→
+   136→# ----------------------------------------------------------------------------
+   137→# Chapter 2 - Character Direction
+   138→# ----------------------------------------------------------------------------
+   139→CH2_INTRO = (
+   140→    "JARVIS is an adult female intelligence with a poised, perceptive, professional presence. "
+   141→    "Revision 2 locks her appearance to the owner-approved identity anchor (Plate 2.1): every "
+   142→    "concept plate and every storyboard frame in this package is generated as a controlled "
+   143→    "edit of that single reference image, so one woman - the same face, hair, wardrobe and "
+   144→    "watch - carries across all twenty frames; independent QC scored identity continuity at "
+   145→    "8-9/10 frame-to-frame. The direction remains buildable: every visual trait maps to the "
+   146→    "licensed asset pipeline in Section 2.9 and the animation systems in Chapter 5. The "
+   147→    "shipped 3D character comes from the existing repository rig aligned to this identity, "
+   148→    "not from these images."
+   149→)
+   150→
+   151→CH2_SECTIONS = [
+   152→    ("2.1  Age presentation and physical realism", [
+   153→        "JARVIS presents as a woman of about thirty-seven. Maturity is carried by structure, not "
+   154→        "decoration: a defined jaw line, mature brow-to-chin proportions, natural cheek planes, "
+   155→        "and skin that behaves like skin - three-layer subsurface scattering, visible pores, "
+   156→        "faint under-eye shading and subtle asymmetric imperfections. She is never neotenous, "
+   157→        "doll-like or plastic. Her body carries believable weight: mass transfers through the "
+   158→        "hips on turns, strides load the knees, and cloth and hair react to real velocity. "
+   159→        "Resting expression is calm attentiveness - emphatically not a smile.",
+   160→    ]),
+   161→    ("2.2  Face and hair", [
+   162→        "The face follows the approved anchor: a slim oval with high cheekbones and an angular, "
+   163→        "defined jaw; straight, slightly full dark brows; grey-brown eyes with true corneal "
+   164→        "specular; medium-full lips held closed and neutral at rest. Hair is dark brown, "
+   165→        "secured in a low bun that keeps the face fully visible, with a few loose strands for "
+   166→        "realism. Hair is shaded anisotropically and moves with physically plausible inertia - "
+   167→        "no billboard sheets, no helmet shine, and never coloured or flowing fantasy hair.",
+   168→    ]),
+   169→    ("2.3  Wardrobe", [
+   170→        "The baseline is the <b>Nexus duty suit</b>, locked to the anchor: a black fine-knit "
+   171→        "turtleneck under a tailored structured dark charcoal blazer, slim dark trousers, low "
+   172→        "practical boots, and a wristwatch worn on the left wrist. The silhouette is serious "
+   173→        "professional operations wear - precisely what the approved reference shows. There is "
+   174→        "no armour, no catsuit, no glowing costume lines, no lingerie styling, no science-"
+   175→        "fiction costume cliches: her wardrobe would not look out of place in a serious "
+   176→        "operations centre, which is exactly the point. A formal variant may add an "
+   177→        "unstructured drape coat for presentation moments (decision D3).",
+   178→    ]),
+   179→    ("2.4  Materials and colour treatment", [
+   180→        "Materials are separated by family and response: skin (subsurface, soft key response), "
+   181→        "hair (anisotropic sheen), wool-knit and technical twill (matte, weave-level micro "
+   182→        "normal), leather touchpoints, and worn metal hardware on clasps and the earpiece. "
+   183→        "Her wardrobe never emits light. Cyan exists on her only as reflection from consoles "
+   184→        "and displays; amber alert washes reach her the same way they reach the architecture. "
+   185→        "The world lights her - she is not a light source.",
+   186→    ]),
+   187→    ("2.5  Body proportions", [
+   188→        "Realistic adult female proportions at approximately 174 cm: natural "
+   189→        "shoulder-to-hip ratio, anatomical joint placement, and corrective blendshapes at "
+   190→        "shoulders, armpits and hips so deformations stay clean in lean, reach and console "
+   191→        "poses. No exaggerated anatomy of any kind. The rig is complete - full skeletal "
+   192→        "hierarchy, hand and finger articulation, foot roll bones, and an ARKit-52 facial "
+   193→        "blendshape set.",
+   194→    ]),
+   195→]
+   196→
+   197→CH2_EXPRESSIONS = {
+   198→    "caption": "Table 2.1 - Expression set (FACS-coded). Restraint is the rule; each state is a modulation, never a mask.",
+   199→    "header": ["Expression", "Facial action (FACS)", "Body and timing cues"],
+   200→    "widths": [0.16, 0.40, 0.44],
+   201→    "rows": [
+   202→        ["Neutral", "Baseline; lids relaxed, jaw unengaged",
+   203→         "Attentive rest; weight 60/40; breathing 4 s cycle; blink 2-5 s"],
+   204→        ["Listening", "AU1+2 trace (brow raise), head tilt 3-5 degrees",
+   205→         "Still posture; sustained gaze; slow blink cadence; micro AU12 on comprehension"],
+   206→        ["Focused", "AU4 (brow lower) + AU5 trace (lid tension), lips closed",
+   207→         "Lean toward task; blink interval 3-6 s; micro jaw set; gestures slow"],
+   208→        ["Concerned", "AU1+4 (worry combination) + AU15 trace (corner depress)",
+   209→         "Gaze shifts to evidence; breath shallower; hands quiet or one brace"],
+   210→        ["Urgent", "AU5+7 (wide, tighten) + AU23 (lip tighten), AU26 on speech",
+   211→         "Forward lean; weight-shift tempo up; stride length up; no panic, no flail"],
+   212→    ],
+   213→}
+   214→
+   215→CH2_POSES = {
+   216→    "caption": "Table 2.2 - Core poses and locomotion targets",
+   217→    "header": ["State", "Direction"],
+   218→    "widths": [0.24, 0.76],
+   219→    "rows": [
+   220→        ["Standing (attentive rest)", "Weight 60/40 on one leg, arms relaxed, clavicle level, gaze anchored on the primary stimulus; ready, not rigid"],
+   221→        ["Walking", "Purposeful 1.15-1.25 m/s; arm swing from the shoulder; tall spine; steady head; no model glide"],
+   222→        ["Running", "Measured urgency 3.2-3.8 m/s; forward lean 8-12 degrees; stride extension; jacket and hair respond"],
+   223→        ["Console interaction", "Hinged 15-20 degrees at the hips; one hand braced or hovering; the other tracks interface targets; feet planted"],
+   224→        ["Presentation", "Open stance 30-45 degrees to the display; free hand gestures toward the media; she stands beside content, never in front of it"],
+   225→    ],
+   226→}
+   227→
+   228→CH2_FACIAL = [
+   229→    ("2.8  Facial animation and lip-sync approach", [
+   230→        "The facial stack is layered, lowest to highest: visemes, expression, blink, gaze. "
+   231→        "Speech drives an ARKit-52 viseme set (9-12 visemes with co-articulation) from phoneme "
+   232→        "timings supplied by the TTS adapter - timing comes from the audio pipeline, never "
+   233→        "guessed from text. The expression layer composites above visemes at roughly 60/40 "
+   234→        "weight so speech stays legible while emotion stays live. The blink system runs a "
+   235→        "2-5 s Poisson cadence (120 ms close, 200 ms open) with occasional thought-blinks "
+   236→        "linked to turn-taking. Gaze uses saccades, smooth pursuit and micro-saccades; the "
+   237→        "head leads the eyes beyond 20 degrees of offset. Prosody stress points earn at most "
+   238→        "two or three emphasis beats per sentence - restraint is a hard budget, not a mood. "
+   239→        "In silence the face drifts back to neutral; it never freezes.",
+   240→    ]),
+   241→]
+   242→
+   243→CH2_ASSETS = {
+   244→    "caption": "Table 2.3 - Asset pipeline (repository-first; nothing unlicensed ships)",
+   245→    "header": ["Layer", "Source", "Licence basis", "Role"],
+   246→    "widths": [0.15, 0.30, 0.25, 0.30],
+   247→    "rows": [
+   248→        ["Character (primary)", "Existing repository rig: jarvis_avaturn.glb (Avaturn-generated, 66 bones, 72 ARKit + Oculus morph targets)",
+   249→         "Avaturn terms - commercial use to be confirmed in writing at M0.5", "Base rig; wardrobe and appearance aligned to the approved anchor via garment/material update or regeneration"],
+   250→        ["Character (M4 optional)", "Epic MetaHuman",
+   251→         "MetaHuman EULA (free)", "Optional higher-fidelity body for the existing NPC - never a prerequisite"],
+   252→        ["Locomotion", "Existing Mixamo clips (walking.fbx, xbot_locomotion.glb) + ActorCore extensions as needed",
+   253→         "Adobe terms (interactive use) + Reallusion content licence", "Blend-space clips with authored transitions; root-drift stripping already implemented"],
+   254→        ["Gestures and interaction", "Mixamo library + bespoke keyframe",
+   255→         "Adobe Terms + project-owned IP", "Gestures, console and presentation sets"],
+   256→        ["Lip-sync and hair dynamics", "Existing MIT vendor modules (lipsync-en, dynamicbones)",
+   257→         "MIT (Mika Suominen)", "Phoneme-to-viseme scheduling and secondary hair motion, already integrated"],
+   258→        ["Viseme pre-pass (optional)", "NVIDIA Audio2Face or equivalent adapter",
+   259→         "NVIDIA terms (free for use)", "Replaceable adapter feeding the ARKit viseme set"],
+   260→    ],
+   261→}
+   262→
+   263→CH2_ASSETS_NOTE = (
+   264→    "Selection is gated on a Milestone 1 asset spike: a one-week evaluation in which the "
+   265→    "candidate character is imported, retargeted and driven through the full locomotion and "
+   266→    "facial stack before any licence is purchased in bulk. If no licensed asset meets the "
+   267→    "quality bar, the limitation will be stated precisely and a custom commission scoped - "
+   268→    "never concealed with a cheap substitute."
+   269→)
+   270→
+   271→# ----------------------------------------------------------------------------
+   272→# Chapter 3 - Environment Direction
+   273→# ----------------------------------------------------------------------------
+   274→CH3_INTRO = (
+   275→    "The world is one continuous interior - <b>The Nexus</b> - a subterranean operations "
+   276→    "floor of roughly 30 by 18 metres with 4.2 metres clear height and a mezzanine over the "
+   277→    "east wing. The architectural language is monolithic and quiet: honed near-black basalt "
+   278→    "volumes, dark brushed steel, machined reveals carrying hairline cyan light, an acoustic "
+   279→    "ceiling with linear apertures, and a raised floor with inset guide lighting. It is not a "
+   280→    "neon cave, not a spaceship corridor, not a showroom: it is a working facility that "
+   281→    "happens to be beautiful the way serious infrastructure is beautiful."
+   282→)
+   283→
+   284→CH3_AREAS = {
+   285→    "caption": "Table 3.1 - The twelve areas (numbers match the floor plan)",
+   286→    "header": ["No.", "Area", "Spatial identity and equipment", "Key interaction points"],
+   287→    "widths": [0.05, 0.17, 0.44, 0.34],
+   288→    "rows": [
+   289→        ["01", "Central Operations (Hub)", "Circular dais with a low direct-view holotable, three curved consoles, overhead ring light; the compositional anchor of the floor", "Task summoning, world overview, status glance, owner console at the hub edge"],
+   290→        ["02", "Research (Library)", "Study carrels with dual curved displays and a physical source wall; warm 3000 K task pools against the cool ambient - a humanist study inside the facility", "Source pinning, citation tracing, evidence extraction, thread steering"],
+   291→        ["03", "Memory Archive (Vault)", "Glass-fronted indexed vitrines with warm amber cell light; deeper column rhythm, slower pacing - memory reads as warm and kept", "Recall, pin, correct, forget; provenance chips separate fact, preference and inference"],
+   292→        ["04", "Goals and Projects (Plan Wall)", "Longitudinal wall of persistent project plates with light timelines and dependency lines; standing bench", "Approve, reweight, pause, resume; auditable next-action proposals"],
+   293→        ["05", "Agent Collaboration (The Round)", "Semicircular table with five recessed presence plates - abstract light presence, deliberately not humanoid robots; JARVIS stands at the open arc", "Listen-in, promote or veto agent actions, request transcripts"],
+   294→        ["06", "Media and Screening", "Four-metre direct-view wall, two-step tiered platform, fully dimmable zone", "Play, pause, seek, frame-step, A-B compare, frame extraction, 2D-to-3D handoff"],
+   295→        ["07", "Simulation Stage", "Eight-metre clear volume with overhead grid, reconfigurable floor projection and boundary markers; may borrow adjacent floor for scale scenarios", "Scenario construction, playback, variables, branching, actor direction"],
+   296→        ["08", "Diagnostics", "Open-chassis bench, oscilloscope culture, honest cabling, live telemetry displays", "Health inspection, trace capture, fault isolation"],
+   297→        ["09", "Defensive Security", "Quieter inward-facing arc of monitors; red is reserved for confirmed-critical states only", "Anomaly review, evidence chain, confirmation-gated containment"],
+   298→        ["10", "Vision (Overlook)", "Dark glass wall; live external views render only when the camera switch is genuinely on", "Explicit-activation viewing, capture-state truth, scene understanding"],
+   299→        ["11", "Compute and Connections (Bridge)", "Restrained compute wall with honest utilisation lighting - no infinite server racks; the bridge desk where inference profiles physically dock", "Local/Kaggle profile management, genuine auth tests, worker packages"],
+   300→        ["12", "Embodiment and Projection (Embayment)", "Raised platform with calibration rig and capture volume; the projection surface draws from the same live instance as every other view", "Hologram layout control (mirror, rotate, multi-face), live sync"],
+   301→    ],
+   302→}
+   303→
+   304→CH3_LIGHT = [
+   305→    ("3.2  Lighting, materials and navigation", [
+   306→        "Lighting is motivated: fixtures are visible, pools are purposeful, and colour is "
+   307→        "information. Warm 2700-3000 K pools mark human zones (Library, Vault, Plan Wall); "
+   308→        "cool 4000-5000 K marks machine zones (Hub consoles, Bridge, Diagnostics). Cyan is "
+   309→        "reserved for information - displays, guide lines, status - and never washes whole "
+   310→        "surfaces; amber marks attention; red appears only on confirmed-critical states. "
+   311→        "JARVIS is lit with discipline: a soft 3/4 key that keeps her face readable "
+   312→        "everywhere she works, a cyan rim borrowed from nearby consoles, and warm bounce "
+   313→        "when she stands in humanist zones. Volumetric depth comes faintly from ceiling "
+   314→        "apertures only - no fog banks hiding weak assets. Contact shadows are always on; "
+   315→        "bloom is restrained.",
+   316→        "Material families stay distinct: honed basalt, brushed dark steel, smoked low-iron "
+   317→        "glass, muted blue-grey acoustic felt, leather at touchpoints, worn metal hardware, "
+   318→        "and emissive displays. Architecture does not glow; information does. Navigation "
+   319→        "runs along <b>The Spine</b>, the east-west axis every zone opens onto, with breathing "
+   320→        "guide lines and a secondary ring behind the Hub. Wayfinding is task-linked: when "
+   321→        "JARVIS works, she goes to where the work lives, and the floor plan below is the "
+   322→        "contract every mode, camera and scene obeys.",
+   323→    ]),
+   324→]
+   325→
+   326→CH3_PALETTE = {
+   327→    "caption": "Table 3.2 - In-world palette (the world's own brand, used by renderer, UI and scenario systems)",
+   328→    "header": ["Swatch", "Colour", "Role in the world"],
+   329→    "widths": [0.12, 0.20, 0.68],
+   330→    "rows": [
+   331→        ["#02070B", "Near-black blue", "Base darkness of architecture and shadow; the floor's resting tone"],
+   332→        ["#06121A", "Architectural surfaces", "Basalt and steel panel bodies; large-area structure"],
+   333→        ["#62E6F2", "Primary cyan", "Information only - displays, guide lines, status, annotations; never ambient wash"],
+   334→        ["#DDFBFF", "Ice white", "Text on dark surfaces, timeline light, highest-emphasis highlights"],
+   335→        ["#7799A5", "Muted text", "Secondary labels, inactive states, captions inside the world"],
+   336→        ["#E7AE5B", "Warning amber", "Attention states, alerts-in-progress, sync progress, blocked dependencies"],
+   337→        ["#FF6B67", "Critical red", "Confirmed-critical only - used sparingly, never decoratively"],
+   338→    ],
+   339→}
+   340→
+   341→# ----------------------------------------------------------------------------
+   342→# Chapter 4 - Storyboard frames
+   343→# ----------------------------------------------------------------------------
+   344→CH4_INTRO = (
+   345→    "Twenty frames, one per page. Each frame is an individually composed concept study that "
+   346→    "fixes action, emotion, camera, lighting, environment, visible information, owner "
+   347→    "interaction and transitions. The images define composition and intent; the shipped "
+   348→    "character and world come from the licensed pipelines in Chapter 2 and the architecture "
+   349→    "in Chapter 3. Frames are numbered to match the mapping matrix in Chapter 5, and each "
+   350→    "carries the operational mode it serves."
+   351→)
+   352→
+   353→FRAMES = [
+   354→    {
+   355→        "num": "01", "title": "FIRST WAKE", "img": "storyboard_v2/f01_first_wake.jpg",
+   356→        "mode": "MODE 1 · WAKE & AUTHENTICATION", "loc": "THE SPINE → HUB",
+   357→        "action": "Cold-start sequence completes; consoles cascade online along the Spine. JARVIS walks in from the west; her first anchor is the hub holotable, then the owner console.",
+   358→        "emotion": "Composed emergence - neutral baseline, gaze settling. No theatrical entrance, no speech yet.",
+   359→        "camera": "Wide establishing, 24 mm, low angle from the Spine floor. JARVIS at the right third, small-to-medium in frame; 1.5 s exposure ramp from black.",
+   360→        "lighting": "Cold-start state: consoles cascading, single hub ring overhead, her figure rim-lit cyan at low intensity against deep ambient shadow.",
+   361→        "environment": "The Spine and Hub; floor guide lines breathing; Memory Archive dark to the west.",
+   362→        "visible": "Boot truth only: CORE online · memory intact · inference: none. The owner console glows, awaiting authentication.",
+   363→        "owner": "None yet - authentication prompt on the owner console; free camera observation is available.",
+   364→        "transitions": "IN: from black, slow exposure ramp. OUT: she turns toward the owner console; camera begins a slow push, cutting on turn completion.",
+   365→        "systems": "renderer cold-start pass · CORE boot truth · owner console auth · camera exposure ramp",
+   366→    },
+   367→    {
+   368→        "num": "02", "title": "NORMAL LIVING PRESENCE", "img": "storyboard_v2/f02_living_presence.jpg",
+   369→        "mode": "MODE 2 · LIVING PRESENCE", "loc": "CENTRAL HOLO-RING",
+   370→        "action": "Unaddressed background work at the holo-ring: she assembles a turbine structure element by element above the pedestal table, one part half-attached and trailing voxel particles. She glances up as the owner's presence engages.",
+   371→        "emotion": "Quiet focus breaking into attentiveness; mild recognition (brow-raise trace). No broad smile, no greeting performance.",
+   372→        "camera": "50 mm medium-long from the hub axis; body three-quarters to the table; the head turn completes as the camera settles.",
+   373→        "lighting": "The hologram is the practical key - cyan on her face and hands; ring glow from the pedestal; deep ambient shadow around.",
+   374→        "environment": "Central holo-ring, pedestal table; one glass data column glowing faintly in the background.",
+   375→        "visible": "Three or four project plates with statuses (in progress / scheduled / blocked), a next-action line, one amber dependency.",
+   376→        "owner": "Passive. She acknowledges with a brief glance and a single line; the owner may open conversation.",
+   377→        "transitions": "IN: cut. OUT: dolly-with as she steps away toward the Hub on a queued task.",
+   378→        "systems": "ambient task scheduler · plan-wall surface · presence glance system",
+   379→    },
+   380→    {
+   381→        "num": "03", "title": "WALKING TOWARD CENTRAL OPERATIONS", "img": "storyboard_v2/f03_walking_conversing.jpg",
+   382→        "mode": "MODE 2 · LIVING PRESENCE", "loc": "THE SPINE",
+   383→        "action": "Purposeful walk at 1.2 m/s along the Spine toward the Hub; earpiece dot amber (task queued); arm swing natural, stride matched to distance.",
+   384→        "emotion": "Neutral purpose; baseline face. Moving because there is a reason, never pacing for effect.",
+   385→        "camera": "Tracking dolly, 50 mm, trailing three-quarter rear at 2.5 m with a slight low bias; stabilised, no drift.",
+   386→        "lighting": "Guide lines beneath, intermittent ceiling apertures casting soft pools; passing consoles as cool rim sources.",
+   387→        "environment": "The Spine, west to east.",
+   388→        "visible": "Floor guide line to the Hub; one task chip (compiling morning digest). Nothing else competes for attention.",
+   389→        "owner": "The owner may hail at any time; she transitions into a stop-and-plant-turn.",
+   390→        "transitions": "IN: from Frame 02 follow-on or cut. OUT: match-move into Hub arrival as the camera re-frames on deceleration.",
+   391→        "systems": "locomotion blend space · navmesh spine route · follow-camera dolly",
+   392→    },
+   393→    {
+   394→        "num": "04", "title": "TURNING TO ACKNOWLEDGE ME", "img": "storyboard_v2/f04_turn_acknowledge.jpg",
+   395→        "mode": "MODE 3 · CONVERSATIONAL FOCUS", "loc": "HUB EDGE",
+   396→        "action": "Addressed mid-stride: deceleration, plant-turn of roughly 120 degrees in place. Head leads, eyes lock the owner camera, weight settles.",
+   397→        "emotion": "Attentive recognition; a micro brow-raise; mouth neutral and ready to speak.",
+   398→        "camera": "Owner point of view, 40 mm at eye height, medium-close. Her turn ends exactly on the camera axis.",
+   399→        "lighting": "Hub ring key overhead, soft; cyan rim from the console behind her; face fully readable.",
+   400→        "environment": "Hub edge; consoles idle-cool around her.",
+   401→        "visible": "Deliberately minimal - one status chip dissolves; her attention is the information.",
+   402→        "owner": "Full. She is listening; voice and text input are live; she remains interruptible throughout.",
+   403→        "transitions": "IN: cut on the hail. OUT: settles into the conversational two-shot (Frame 05).",
+   404→        "systems": "plant-turn state · gaze lock · conversation intake · interruption manager",
+   405→    },
+   406→    {
+   407→        "num": "05", "title": "CONVERSATIONAL FOCUS", "img": "storyboard_v2/f05_conversational_focus.jpg",
+   408→        "mode": "MODE 3 · CONVERSATIONAL FOCUS", "loc": "HUB · CONVERSATION ZONE",
+   409→        "action": "Two-way exchange. She holds still; measured hand gestures on key phrases only; no pacing, no nod-per-sentence, no frozen smile.",
+   410→        "emotion": "Engaged listening: a four-degree head tilt, sustained gaze, slow blink cadence.",
+   411→        "camera": "Static two-shot profile, 65 mm over the owner's shoulder; her face in full light, the owner's presence implied foreground-left.",
+   412→        "lighting": "Soft key from displays; warm practical behind the owner's shoulder; balanced contrast on her face.",
+   413→        "environment": "Hub conversational zone, standing.",
+   414→        "visible": "One contextual card at the frame edge (current project); the conversation stream stays minimal.",
+   415→        "owner": "Text, voice or image input; interruption is always honoured mid-word or mid-step.",
+   416→        "transitions": "IN: from Frame 04. OUT: on \"let me show you\", she turns toward the relevant zone and the camera pans with her.",
+   417→        "systems": "gesture budget · listening pose set · conversation CORE · context cards",
+   418→    },
+   419→    {
+   420→        "num": "06", "title": "WORKING AT A CONSOLE", "img": "storyboard_v2/f06_console_work.jpg",
+   421→        "mode": "MODES 7/12 · TOOLS & TELEMETRY", "loc": "HUB CONSOLE CLUSTER",
+   422→        "action": "A diagnostic task at a curved console: hands on holo-panels, hinged-lean stance, periodic glance up to camera and back to work.",
+   423→        "emotion": "Focused: brow lowered, extended blink interval, jaw set. Working because work exists.",
+   424→        "camera": "65 mm over-shoulder, high three-quarter; hands and profile face both readable.",
+   425→        "lighting": "Console glow as practical key from below-front; hair light from above; cool bias that keeps the face legible.",
+   426→        "environment": "Hub console cluster.",
+   427→        "visible": "Diagnostic tree, telemetry traces, one amber-flagged node under investigation.",
+   428→        "owner": "Optional orbit and inspect camera unlock; she stays in flow unless addressed.",
+   429→        "transitions": "IN: cut from task dispatch. OUT: alert intrusion (Frame 07) or a task-complete acknowledgment.",
+   430→        "systems": "console interactable IK · task animator · diagnostics service · telemetry stream",
+   431→    },
+   432→    {
+   433→        "num": "07", "title": "URGENT MOVEMENT DURING AN ALERT", "img": "storyboard_v2/f07_urgent_alert.jpg",
+   434→        "mode": "MODE 11 · DEFENSIVE SECURITY", "loc": "SPINE MID-ROUTE",
+   435→        "action": "A priority alert interrupts console work. She pushes off into a run at 3.5 m/s toward Security; stride extension, jacket edge lifting.",
+   436→        "emotion": "Measured urgency: lids wide and tight, jaw set - controlled, never panicked.",
+   437→        "camera": "Low wide 28 mm from ahead of her path; steady, no shake; slight lens breathing only.",
+   438→        "lighting": "The zone relights amber; cyan suppressed to forty percent; red reserved for confirmed-critical.",
+   439→        "environment": "Spine mid-route, Hub to Security; the floor route line pulses amber.",
+   440→        "visible": "Alert chip - perimeter anomaly · sector 3 · two sources - plus the route line and a cancellation control.",
+   441→        "owner": "One-gesture cancel or redirect available; otherwise hands-off.",
+   442→        "transitions": "IN: hard cut on the alert (motivated). OUT: deceleration into the security arc (Frame 16 state).",
+   443→        "systems": "alert bus · locomotion run state · zone light director · route line · cancel control",
+   444→    },
+   445→    {
+   446→        "num": "08", "title": "MEMORY EXPLORATION", "img": "storyboard_v2/f08_memory_archive.jpg",
+   447→        "mode": "MODE 4 · MEMORY", "loc": "MEMORY ARCHIVE",
+   448→        "action": "In the Vault her hand hovers over a vitrine; a memory plate surfaces in amber light. She reads provenance before using anything.",
+   449→        "emotion": "Reflective concentration; a slower tempo than anywhere else on the floor.",
+   450→        "camera": "85 mm medium-close; a foreground column creates a frame-within-frame; shallow but readable.",
+   451→        "lighting": "Warm amber vitrine glow as key; cool Spine spill from behind.",
+   452→        "environment": "Memory Archive, west wing.",
+   453→        "visible": "Vitrine tag (owner-provided · Nov 2025); provenance chips separating fact, preference and inference.",
+   454→        "owner": "Pin, correct or request forgetting; she asks before recategorising anything.",
+   455→        "transitions": "IN: slow push. OUT: she turns to camera with the finding; cut.",
+   456→        "systems": "memory service (recall/pin/forget) · vault surface · provenance chips",
+   457→    },
+   458→    {
+   459→        "num": "09", "title": "GOALS AND ONGOING WORK", "img": "storyboard_v2/f09_goals_wall.jpg",
+   460→        "mode": "MODE 5 · GOALS & PROJECTS", "loc": "PLAN WALL",
+   461→        "action": "She touches a project plate; its timeline extends; dependency lines light. She proposes the next action and waits.",
+   462→        "emotion": "Confident clarity; a trace of conviction on the proposal - comfortable being disagreed with.",
+   463→        "camera": "40 mm profile medium; the wall's leading lines converge behind her.",
+   464→        "lighting": "The wall itself is the practical: soft ice-white line light; her key from wall bounce.",
+   465→        "environment": "Plan Wall, centre-north.",
+   466→        "visible": "Goals with priority, status and progress; a blocked dependency in amber; the proposed next action awaiting approval.",
+   467→        "owner": "Approve, reweight, pause or cancel with a word; the audit trail is one glance away.",
+   468→        "transitions": "IN: cut. OUT: pull-back to the full wall in owner survey mode.",
+   469→        "systems": "goals service (priority/status/audit) · plan-wall timeline · approval gate",
+   470→    },
+   471→    {
+   472→        "num": "10", "title": "MULTI-AGENT COLLABORATION", "img": "storyboard_v2/f10_multi_agent.jpg",
+   473→        "mode": "MODE 6 · AGENTS", "loc": "THE ROUND",
+   474→        "action": "Geometric specialist-agent workspaces - glowing wireframe polyhedra - hover above the radial holo-table; one polyhedron burns brighter: its agent is speaking. She conducts: a glance to the speaker, an open-hand assignment to another.",
+   475→        "emotion": "Command calm; mild scrutiny on the conflicting finding.",
+   476→        "camera": "35 mm high three-quarter wide; she stands at the open end of the arc, plates arranged before her.",
+   477→        "lighting": "Cool plate pools on the table; her rim from the Spine behind.",
+   478→        "environment": "Agent Collaboration, centre-north.",
+   479→        "visible": "Agent role chips (RESEARCH / EXEC / WATCH / VERIFY / REPORT), task assignments, one conflicting finding flagged for adjudication.",
+   480→        "owner": "Listen in; promote or veto agent actions; request full transcripts.",
+   481→        "transitions": "IN: cut. OUT: she delegates, then turns to the owner with a synthesis line.",
+   482→        "systems": "agent coordinator (roles/permissions) · round presence plates · synthesis report",
+   483→    },
+   484→    {
+   485→        "num": "11", "title": "LIVE RESEARCH", "img": "storyboard_v2/f11_live_research.jpg",
+   486→        "mode": "MODE 8 · RESEARCH", "loc": "RESEARCH LIBRARY",
+   487→        "action": "At a carrel she traces a citation link between two documents on the curved display and pins the stronger source.",
+   488→        "emotion": "Curiosity sharpening into interest; a slight forward lean.",
+   489→        "camera": "65 mm over-shoulder, tight; her finger, profile and both documents share the plane.",
+   490→        "lighting": "Warm 3000 K task pool key against cool screen fill - the classic warm/cool cross of the Library.",
+   491→        "environment": "Research, west wing.",
+   492→        "visible": "Source cards with provenance (origin, date, confidence); extraction highlights; a weak source visibly greyed and rejected.",
+   493→        "owner": "Ask for any source; reject evidence; steer the thread.",
+   494→        "transitions": "IN: cut. OUT: she lifts a source toward the Stage - a drag gesture into scenario construction.",
+   495→        "systems": "research service · source provenance · citation trace · evidence pinning",
+   496→    },
+   497→    {
+   498→        "num": "12", "title": "SIMULATION", "img": "storyboard_v2/f12_simulation.jpg",
+   499→        "mode": "MODE 9 · SIMULATION", "loc": "SIMULATION STAGE",
+   500→        "action": "On the Stage, two volumetric turbine simulations run side by side: Variant A in clean cyan laminar flow, Variant B in amber-turbulent stress with hub-corner shear vectors. She stands exactly between them, lit by both, comparing behaviour.",
+   501→        "emotion": "Analytic engagement; steady narration.",
+   502→        "camera": "35 mm wide and low; the model dominates, her silhouette is the scale reference.",
+   503→        "lighting": "Stage dim; the model self-illuminated cool; her rim only; minimal volumetrics.",
+   504→        "environment": "Simulation Stage, east wing.",
+   505→        "visible": "A truth label (data-driven reconstruction · two live inputs), measurement ticks, a branch-point indicator.",
+   506→        "owner": "Variables panel live; the owner may nudge one; pause, scrub and replay at will.",
+   507→        "transitions": "IN: from the drag-in. OUT: at a branch point she pauses the simulation and offers alternatives.",
+   508→        "systems": "simulation service · scenario director (playback) · variable panel · truth labels",
+   509→    },
+   510→    {
+   511→        "num": "13", "title": "CONSTRUCTING A SCENARIO", "img": "storyboard_v2/f13_scenario_build.jpg",
+   512→        "mode": "MODE 9 · SIMULATION", "loc": "SIMULATION STAGE",
+   513→        "action": "She builds a scenario on the empty stage: pulls a wireframe element from a floating palette; the scene assembles around her; a timeline strip builds at the floor edge.",
+   514→        "emotion": "Creative focus; one flick of quiet satisfaction as a piece snaps into place.",
+   515→        "camera": "40 mm three-quarter medium; assembly light-trails run between her hands and the growing scene.",
+   516→        "lighting": "Drafting state: dim blue working light; elements transition wireframe-to-solid as they are committed.",
+   517→        "environment": "Simulation Stage, pre-performance.",
+   518→        "visible": "Scenario outline chips appearing in sequence (system, flow, failure point); a truth label marking the piece as illustration; the timeline strip.",
+   519→        "owner": "Suggest elements live; insertion is immediate and reversible.",
+   520→        "transitions": "IN: cut. OUT: the scenario is set - the stage shifts to performance lighting (Frame 14).",
+   521→        "systems": "scenario director (authoring) · prop palette · timeline strip · world snapshot",
+   522→    },
+   523→    {
+   524→        "num": "14", "title": "DIRECTING A SCENARIO", "img": "storyboard_v2/f14_scenario_direct.jpg",
+   525→        "mode": "MODE 9 · SIMULATION", "loc": "SIMULATION STAGE",
+   526→        "action": "Inside a paused room-scale incident reconstruction - a voxel-cloud pipe scene with one wireframe worker frozen mid-action - she points at the glowing orange Point of Origin; a timeline ring and phase labels encircle the scene; the scrub marker waits.",
+   527→        "emotion": "A director's decisiveness; one beat of light humour when a prop misplaces itself.",
+   528→        "camera": "28 mm wide from a stage corner; the overhead grid is visible and the full stage reads.",
+   529→        "lighting": "Performance state; actors render as soft cyan translucent figures - clearly temporary, clearly not JARVIS.",
+   530→        "environment": "Simulation Stage, performance.",
+   531→        "visible": "Camera markers with shot numbers; actor cue lines; prop labels; an available director-view seat.",
+   532→        "owner": "Take the director's seat or watch; branch variables remain live.",
+   533→        "transitions": "IN: from Frame 13. OUT: \"from the top\" - playback begins, or the run is recorded.",
+   534→        "systems": "scenario director (blocking) · scenario actors · camera markers · annotations",
+   535→    },
+   536→    {
+   537→        "num": "15", "title": "PRESENTING AND PAUSING A VIDEO", "img": "storyboard_v2/f15_video_present.jpg",
+   538→        "mode": "MODES 3/9 · MEDIA", "loc": "MEDIA & SCREENING",
+   539→        "action": "In the screening room a clip runs on the four-metre wall, now paused at a significant frame; her hand holds the pause; she stands beside the screen, never in front of it.",
+   540→        "emotion": "Pointed emphasis; her glance moves between the owner and the frame.",
+   541→        "camera": "40 mm from the owner's position; the screen and her profile both stay sharp.",
+   542→        "lighting": "The screen is the key source; the room dims to twenty percent; her face is edge-lit by screen spill.",
+   543→        "environment": "Media and Screening, east-north.",
+   544→        "visible": "Timeline scrubber, frame stamp, an annotation pinned to the frame region, and a \"show this in 3D\" link.",
+   545→        "owner": "Scrub, step frames, A-B compare two clips, approve frame extraction into a scenario.",
+   546→        "transitions": "IN: cut. OUT: she lifts the frame content toward the Stage - a 2D-to-3D handoff with a match dissolve.",
+   547→        "systems": "media service (spatial player) · frame extraction · timestamp commentary · 2D-to-3D handoff",
+   548→    },
+   549→    {
+   550→        "num": "16", "title": "VISION AND DEFENSIVE SECURITY", "img": "storyboard_v2/f16_vision_security.jpg",
+   551→        "mode": "MODES 10/11 · VISION & SECURITY", "loc": "SECURITY ARC",
+   552→        "action": "An anomaly trace crosses the monitors. She leans in, one hand on the console edge, and calls for the evidence chain before recommending anything.",
+   553→        "emotion": "Concerned vigilance; controlled breathing. Red appears only if the state is confirmed-critical.",
+   554→        "camera": "65 mm low profile across the console; the monitors' cool wash carries the frame.",
+   555→        "lighting": "Cool base with a single restrained red accent; her face lit by monitor spill.",
+   556→        "environment": "Defensive Security, centre-south.",
+   557→        "visible": "The anomaly trace, a two-source evidence chain, and a containment action queue awaiting owner authorization.",
+   558→        "owner": "Authorization gate for irreversible actions; request clarification; stand down.",
+   559→        "transitions": "IN: from Frame 07 arrival. OUT: resolution - the room cools back to cyan; she exhales and reports.",
+   560→        "systems": "vision adapter · security monitor · evidence chain · authorization gate",
+   561→    },
+   562→    {
+   563→        "num": "17", "title": "LOCAL / KAGGLE CONNECTION", "img": "storyboard_v2/f17_compute_link.jpg",
+   564→        "mode": "MODE 13 · CONNECTIONS & COMPUTE", "loc": "COMPUTE BRIDGE",
+   565→        "action": "At the Bridge she seats a profile cartridge (a Kaggle profile) into the dock; a handshake light climbs; the panel shows honest download state.",
+   566→        "emotion": "Patient pragmatism; matter-of-fact about quotas and limits.",
+   567→        "camera": "65 mm tight on the bridge and her hands, her calm face above them in frame.",
+   568→        "lighting": "Bridge practical in cool tones; the status bar amber while synchronising, steady cyan when healthy.",
+   569→        "environment": "Compute and Connections, west-mid.",
+   570→        "visible": "Masked profile name (kaggle · masked), session and quota truth, model-load progress percent, worker heartbeat.",
+   571→        "owner": "Cancel, switch profiles, run a genuine authentication test, generate a worker package.",
+   572→        "transitions": "IN: cut. OUT: the worker is healthy - status settles cyan and she steps back toward the Hub.",
+   573→        "systems": "inference worker manager · Kaggle profile vault · honest status · heartbeat",
+   574→    },
+   575→    {
+   576→        "num": "18", "title": "OWNER POWER AND PRIVACY CONTROLS", "img": "storyboard_v2/f18_owner_switches.jpg",
+   577→        "mode": "ALL MODES · OWNER AUTHORITY", "loc": "OWNER CONSOLE, HUB EDGE",
+   578→        "action": "Seven physical latching switches sit on the owner console; the Master is mid-toggle in this frame. She stands one pace back, hands loose - the owner's authority is the subject of the shot, not her.",
+   579→        "emotion": "Readiness without servility; neutral, supportive, unhurried.",
+   580→        "camera": "40 mm over the owner's shoulder; switches large and legible; she holds the frame edge in soft focus.",
+   581→        "lighting": "A warm key on the switch panel (the owner motif); visible zones of the room dim or settle per current states.",
+   582→        "environment": "Owner console at the Hub edge.",
+   583→        "visible": "Each switch labeled with its real state and live effects: Master, Microphone, Camera, Autonomy, Remote Compute, Computer Control, Embodiment.",
+   584→        "owner": "This frame is the interaction. Toggles change real behaviour - Master OFF visibly powers zones down around them.",
+   585→        "transitions": "IN: cut. OUT: the state settles; she acknowledges the new envelope with one line.",
+   586→        "systems": "owner switches service (seven) · live effects bus · privacy enforcement",
+   587→    },
+   588→    {
+   589→        "num": "19", "title": "MOBILE COMPANION", "img": "storyboard_v2/f19_mobile.jpg",
+   590→        "mode": "MODE 14 · DIGITAL-HUMAN EMBODIMENT", "loc": "HUB · THROUGH MOBILE VIEW",
+   591→        "action": "The same live scene framed for the phone: she stands at attentive idle at the Hub, addressing the mobile camera directly. Same instance, same state, lighter render.",
+   592→        "emotion": "Continuity of warmth - the same person, the same day, no reset, no costume change.",
+   593→        "camera": "Phone viewport (vertical crop) roughly 10:14; the device bezel visible in a darkened surround.",
+   594→        "lighting": "Identical key direction; reduced light count and simplified shadows for mobile cost.",
+   595→        "environment": "The Hub, seen through the mobile view.",
+   596→        "visible": "A condensed status rail, voice-first input, camera and microphone state chips, and an emergency hail.",
+   597→        "owner": "Talk or hold-to-talk; camera toggle; hail. Everything in the desktop view exists here in mobile form.",
+   598→        "transitions": "IN: cut. OUT: the desktop view resumes - state unchanged, because it is one instance.",
+   599→        "systems": "device adapter (mobile) · state sync (one instance) · reduced-cost renderer profile",
+   600→    },
+   601→    {
+   602→        "num": "20", "title": "THE SAME LIVE CHARACTER, RENDERED FOR HOLOGRAPHIC PROJECTION", "img": "storyboard_v2/f20_hologram.jpg",
+   603→        "mode": "MODE 15 · PHYSICAL HOLOGRAPHIC PRESENCE", "loc": "EMBAYMENT",
+   604→        "action": "In the Embayment the Pepper's-Ghost volume shows her live - the same pose, the same scene, mirrored. Behind the glass: the raised platform and calibration rig.",
+   605→        "emotion": "Composed presence - reporting for external view. No special performance for the hologram.",
+   606→        "camera": "35 mm from the audience side through the glass; ghost image in front, platform behind.",
+   607→        "lighting": "The embay stage is lit for projection contrast: dark surround, subject key, steady sync light.",
+   608→        "environment": "Embodiment and Projection, east-south.",
+   609→        "visible": "A sync chip - live · 60 fps · mirrored - the device name, and layout controls (mirror, rotate, multi-face).",
+   610→        "owner": "Rotate, mirror or arrange multi-face layouts; the volume follows speech, scenarios and video in real time.",
+   611→        "transitions": "IN: the volume fades up. OUT: the owner returns to desktop; the volume dims - the live instance continues regardless.",
+   612→        "systems": "device adapter (hologram) · live mirror output · Pepper's-Ghost composition · sync",
+   613→    },
+   614→]
+   615→
+   616→# ----------------------------------------------------------------------------
+   617→# Chapter 5 - Motion and Technical Plan
+   618→# ----------------------------------------------------------------------------
+   619→CH5_INTRO = (
+   620→    "This chapter defines how the storyboard becomes motion: the animation architecture, the "
+   621→    "controller and camera systems, and the mapping from every frame to the systems that "
+   622→    "realise it. Two principles govern everything: motion is task-linked (she moves because "
+   623→    "there is a reason) and motion is honest (no working animation without work, no ambient "
+   624→    "wander without purpose)."
+   625→)
+   626→
+   627→CH5_SECTIONS = [
+   628→    ("5.1  Idle behaviour", [
+   629→        "Idle is layered micro-motion, not a loop: a four-second breathing cycle, weight "
+   630→        "shifts every eight to fifteen seconds, and glances tied to real stimuli - alerts, "
+   631→        "agent messages, owner movement. Waiting with quiet awareness is an authored state "
+   632→        "with entry and exit transitions, never a frozen A-pose and never a fidget reel.",
+   633→    ]),
+   634→    ("5.2  Walk and run cycles", [
+   635→        "In-place clips with procedural root motion drive a blend space over speed (0-4 m/s) "
+   636→        "and heading (-180 to 180 degrees). Walk targets 1.3 m/s and run 3.25 m/s - the "
+   637→        "values already implemented in the repository controller, adopted here as the "
+   638→        "contractual targets. Cycles are distance-matched - cycle length scales with speed - "
+   639→        "so the feet never skate, and foot IK with ground snap keeps contact honest on the "
+   640→        "raised floor and dais steps.",
+   641→    ]),
+   642→    ("5.3  Start, stop and turn transitions", [
+   643→        "Three-step acceleration (about 0.35 s), plant-stop with weight settle (about 0.4 s), "
+   644→        "and turn-in-place above thirty degrees of heading error with the head leading the "
+   645→        "body. Directional starts (forward, side, back steps) come from the locomotion set; "
+   646→        "blend times sit in the 0.2-0.3 s band so state changes read as intention, not as "
+   647→        "morphing.",
+   648→    ]),
+   649→    ("5.4  Gaze and gesture layering", [
+   650→        "A priority stack governs attention: task, then owner address, then speech beat, then "
+   651→        "ambient. Eyes lead; the head follows beyond twenty degrees; the chest beyond "
+   652→        "forty-five; the body reorients only when locomotion or a real conversational "
+   653→        "opening demands it. Gestures are an additive upper-body layer over locomotion with "
+   654→        "a hard budget - at most one emphasis gesture per clause and rest between - and "
+   655→        "pointing or presenting is authored with IK targets at world objects, never waved "
+   656→        "vaguely at the air.",
+   657→    ]),
+   658→    ("5.5  Console interaction", [
+   659→        "Every console, vitrine and wall is an interactable with authored hand and eye "
+   660→        "targets. The controller moves through approach, alignment, lean and engage states "
+   661→        "using two-bone IK and a hand-pose library. The binding is strict: engagement "
+   662→        "animations play only while a genuine task holds the character there, and the "
+   663→        "interface state she touches is the real state of the system behind it.",
+   664→    ]),
+   665→    ("5.6  Interruption and task resumption", [
+   666→        "An activity stack with a blackboard holds (location, phase, interface state) for "
+   667→        "every interruptible action. Owner address preempts speech and motion; an interrupt "
+   668→        "token saves the task; resume returns her to the nearest valid state - the same "
+   669→        "console, the same panel, the same sentence clause where possible. Nothing is lost "
+   670→        "and nothing is faked on restart.",
+   671→    ]),
+   672→    ("5.7  Camera follow and reframing", [
+   673→        "Each mode carries a camera contract: conversation holds a 35 mm two-shot; follow "
+   674→        "uses a 50 mm trailing dolly; console work takes a 65 mm over-shoulder; presentation "
+   675→        "a 40 mm from the owner's seat; alerts a 28 mm low wide. Movement runs on damped "
+   676→        "springs, a spherecast pulls the camera in front of walls, headroom is enforced, and "
+   677→        "framing re-targets automatically when JARVIS relocates. The owner can unlock any "
+   678→        "camera for inspection. No orbiting, no drift, no shake, no sexualising angles.",
+   679→    ]),
+   680→    ("5.8  Scenario playback", [
+   681→        "The scenario director executes a structured scenario format: timeline, assets and "
+   682→        "actors, animation, camera and narration cues, labels and annotations, variables and "
+   683→        "branches. Playback supports play, pause, scrub, replay and speed, with save and "
+   684→        "load for every scenario. Construction takes a world snapshot through a spawn "
+   685→        "registry and dirty-state diff, so restoration after a scenario is exact. Scenarios "
+   686→        "are labelled truthfully as illustration, data-driven simulation, source-backed "
+   687→        "reconstruction or speculative visualisation.",
+   688→    ]),
+   689→    ("5.9  Video controls", [
+   690→        "The media service runs a spatial player on the screening wall: play, pause, seek, "
+   691→        "frame-step and stop; captions when present; frame extraction into memory; "
+   692→        "timestamp-linked commentary; A-B clip comparison; and the 2D-to-3D handoff that "
+   693→        "carries a paused frame into a live scenario. Scenario recording and optional FFmpeg "
+   694→        "export run where the backend is genuinely configured, and a replaceable "
+   695→        "video-generation adapter exists only for real configured services - never a "
+   696→        "placeholder pretending to be one.",
+   697→    ]),
+   698→    ("5.10  Conversation DNA - how she actually talks", [
+   699→        "Her speech follows rules extracted from a scene-by-scene study of the Tony Stark / "
+   700→        "JARVIS and FRIDAY exchanges in the films - the behaviour the owner asked to be "
+   701→        "recreated, not a chatbot register. The rules are behavioural contracts, each "
+   702→        "implemented in the conversation directive layer: <b>(1) Execute first, then add the "
+   703→        "unrequested insight</b> - \"Pull up exploded view\" is executed before JARVIS adds "
+   704→        "\"The compression in cylinder 3 appears to be low\"; she never asks which object or "
+   705→        "which view when context decides. <b>(2) Probabilistic honesty</b> - \"appears to be\", "
+   706→        "\"no record of\"; she never converts uncertainty into confident-sounding answers, "
+   707→        "matching the epistemic memory statuses (hypothesis vs verified fact) already "
+   708→        "enforced by CORE. <b>(3) Push back while executing</b> - \"Sir, there are still "
+   709→        "terabytes of calculations needed before an actual flight\" is delivered while the "
+   710→        "command is already running; she warns with reasons, the owner always decides. "
+   711→        "<b>(4) Interrupt only when it matters</b> - the fatal-ice rule: she initiates speech "
+   712→        "on high-risk or high-value triggers only, never for decoration. <b>(5) Dry wit "
+   713→        "earned from long memory</b> - \"What was I thinking? You're usually so discreet\" "
+   714→        "works only because shared history exists; humour draws on remembered facts, never "
+   715→        "on generic jokes. <b>(6) Persistent-but-respectful alerts</b> - when told \"stop "
+   716→        "telling me\", JARVIS goes quiet but keeps the number on screen; she downgrades the "
+   717→        "channel, not the vigilance. <b>(7) Information instead of fake estimates</b> - asked "
+   718→        "a judgement question, JARVIS answers with the status that matters (\"The suit's at "
+   719→        "48% power and falling\") rather than inventing a prediction. <b>(8) Register</b> - "
+   720→        "warm, precise, unhurried; the optional familiar address (FRIDAY's \"Boss\") is "
+   721→        "decision D6.",
+   722→    ]),
+   723→    ("5.11  Reduced-motion behaviour", [
+   724→        "A global reduced-motion profile replaces moves with cuts, freezes ambient drift, "
+   725→        "stills the guide lines and slows their pulse, reduces gesture scale, and offers "
+   726→        "storyboard-step playback for scenarios. Every camera contract has a static "
+   727→        "equivalent, and nothing in the experience requires motion to be understood.",
+   728→    ]),
+   729→]
+   730→
+   731→CH5_MAPPING = {
+   732→    "caption": "Table 5.1 - Storyboard-to-systems mapping matrix (abbreviated; full matrix maintained with the build)",
+   733→    "header": ["Frame", "Renderer and animation", "Navigation and controller", "Scenario / media", "CORE services"],
+   734→    "widths": [0.09, 0.235, 0.235, 0.22, 0.22],
+   735→    "rows": [
+   736→        ["01", "Cold-start pass; silhouette walk-in", "Spine route; navmesh online", "-", "Boot truth; owner auth; event bus"],
+   737→        ["02", "Idle layers; glance system", "Ambient positioning", "Plan-wall surface", "Task scheduler; goals read"],
+   738→        ["03", "Walk blend space; follow dolly", "Spine route; obstacle avoid", "-", "Queued task context"],
+   739→        ["04", "Plant-turn; gaze lock", "Stop-and-turn state machine", "-", "Conversation intake; interruption"],
+   740→        ["05", "Listening pose; gesture budget", "Conversational anchor", "Context cards", "Conversation CORE; memory write"],
+   741→        ["06", "Console lean; hand IK", "Interactable alignment", "Console surface", "Tools; diagnostics; telemetry"],
+   742→        ["07", "Run state; zone relight", "Alert route; priority pathing", "-", "Alert bus; security service"],
+   743→        ["08", "Hover reach; slow tempo set", "Vault interactable", "Vitrine surface", "Memory (recall, pin, forget)"],
+   744→        ["09", "Touch pose; wall gesture", "Plan-wall interactable", "Timeline plates", "Goals; approval; audit"],
+   745→        ["10", "Conducting gestures; plate glances", "Round positioning", "Presence plates", "Agent coordinator; synthesis"],
+   746→        ["11", "Trace gesture; lean-in", "Carrel interactable", "Source wall", "Research; provenance; evidence"],
+   747→        ["12", "Walk-along model; narration sync", "Stage route at model edge", "Scenario playback", "Simulation; truth labels"],
+   748→        ["13", "Pull-from-palette; satisfaction beat", "Stage free-move", "Scenario authoring; snapshot", "Scenario director"],
+   749→        ["14", "Blocking gestures; actor direction", "Stage free-move", "Actors; camera markers", "Scenario director; annotations"],
+   750→        ["15", "Pause gesture; beside-screen stance", "Screening platform", "Spatial player; extraction", "Media service; memory link"],
+   751→        ["16", "Lean-in; monitor gaze", "Security arc position", "Monitor wall", "Vision; security; authorization"],
+   752→        ["17", "Cartridge seat; status glance", "Bridge interactable", "-", "Inference workers; profile vault"],
+   753→        ["18", "Stand-back ready pose", "Owner console zone", "-", "Seven owner switches; effects bus"],
+   754→        ["19", "Mobile idle; direct address", "Same state, mobile frame", "Condensed status rail", "Device adapter; state sync"],
+   755→        ["20", "Live mirror output; sync", "Embayment platform", "Projection surface", "Device adapter; hologram sync"],
+   756→    ],
+   757→}
+   758→
+   759→# ----------------------------------------------------------------------------
+   760→# Chapter 6 - Architecture and Implementation Sequence
+   761→# ----------------------------------------------------------------------------
+   762→CH6_INTRO = (
+   763→    "Revision 2 changes the shape of this chapter: the architecture described below is no "
+   764→    "longer only planned - it exists in the repository (Chapter 1), implemented end to end "
+   765→    "by FastAPI CORE, a Three.js world, and a private inference worker. The architecture "
+   766→    "principles stand unchanged: what should survive - identity, memory, goals, "
+   767→    "orchestration - stays independent from what will improve - renderer, animation "
+   768→    "fidelity, inference hardware. PostgreSQL (pgvector where available) in production, "
+   769→    "SQLite only for development and tests; WebSockets carry live state; secrets are "
+   770→    "encrypted server-side and tokens never appear in Git, JavaScript, localStorage or "
+   771→    "sessionStorage. The renderer is browser-first Three.js over WebGL2 driving the rigged "
+   772→    "GLTF character; Unreal/MetaHuman remains an optional higher-fidelity adapter from "
+   773→    "Milestone 4, and the hologram is simply another device surface rendering the same live "
+   774→    "instance. What changes is the sequence: milestones become verification and completion "
+   775→    "gates over the existing implementation, preceded by one new gate - M0.5, aligning the "
+   776→    "shipped character's appearance to the owner-approved identity baseline in Chapter 2."
+   777→)
+   778→
+   779→CH6_MODULES = {
+   780→    "caption": "Table 6.1 - CORE module register",
+   781→    "header": ["Module", "Responsibility"],
+   782→    "widths": [0.30, 0.70],
+   783→    "rows": [
+   784→        ["Orchestration", "Central coordination, activity stack, mode transitions, event bus"],
+   785→        ["Identity and personality", "Persistent persona parameters; the model is an interchangeable reasoning engine, never the identity"],
+   786→        ["Conversation", "Streaming dialogue state, interruption handling, context assembly"],
+   787→        ["Memory", "Owner facts, preferences, context, commitments, projects, tool history, agent findings, research, media, sensitive - with retrieval, inspection, correction and forgetting"],
+   788→        ["Goals and scheduling", "Priorities, dependencies, schedules, progress, pause/resume/cancel, auditable actions"],
+   789→        ["Agent coordination", "Roles, explicit tools, permission boundaries, observable state, traceable outputs, cancellation"],
+   790→        ["Tools and permissions", "Scopes, validation, allowlists, timeouts, audit, confirmation for destructive actions"],
+   791→        ["Voice and vision", "Real transcription and speech adapters; explicit-activation vision; honest capture state"],
+   792→        ["Research and simulation", "Source-backed research with provenance; labelled simulation and comparison"],
+   793→        ["Scenario direction", "Scenario format, timeline, actors, annotations, variables, branches, snapshot and restore"],
+   794→        ["Media services", "Spatial playback, frame extraction, timestamp commentary, recording and export adapters"],
+   795→        ["Security and telemetry", "Defensive monitoring, evidence chains, health and utilisation truth"],
+   796→        ["Inference", "Local and Kaggle workers, capability reporting, streaming, cancellation, honest errors"],
+   797→        ["Connections", "Authenticated worker links, encrypted profiles, heartbeats, disconnect handling"],
+   798→        ["Character and world state", "Single authoritative character and scene state shared by every surface"],
+   799→        ["Device adapters", "Desktop, mobile, optional MetaHuman, holographic projection - all views of one instance"],
+   800→    ],
+   801→}
+   802→
+   803→CH6_INFERENCE = [
+   804→    ("6.2  Inference workers", [
+   805→        "One shared private worker design serves both required backends: the local PC and a "
+   806→        "private Kaggle GPU session. The default model is "
+   807→        "huihui-ai/Qwen2.5-14B-Instruct-abliterated, replaceable by configuration, loaded "
+   808→        "hardware-aware with 4-bit CUDA quantisation where supported. The worker reports "
+   809→        "capabilities, streams, cancels cleanly, and shows real download and loading states - "
+   810→        "or honest errors. The Kaggle worker connects out over an authenticated WebSocket "
+   811→        "using JARVIS_WORKER_TOKEN from Kaggle Secrets, opens no public inference port, "
+   812→        "ships as a guided notebook package, and reports its true quota and session limits. "
+   813→        "CORE prefers a healthy local worker. Profile management lives in the spatial Kaggle "
+   814→        "modal: six or more named profiles, masked identifiers, server-side encrypted "
+   815→        "credentials, genuine authentication tests, real status.",
+   816→    ]),
+   817→]
+   818→
+   819→CH6_MILESTONES = {
+   820→    "caption": "Table 6.2 - Gates over the existing implementation (M1-M4 already coded; each gate is verification and completion, not greenfield)",
+   821→    "header": ["Gate", "Scope", "Not complete until"],
+   822→    "widths": [0.16, 0.44, 0.40],
+   823→    "rows": [
+   824→        ["M0.5 - Identity alignment (new)", "Align the shipped 3D character's wardrobe and appearance to the owner-approved anchor (Chapter 2): garment/material update or Avaturn regeneration of the existing 66-bone rig; license hygiene (retargeter header, written Avaturn terms); replace the repo's superseded pre-production plates",
+   825→         "The rendered character reads as the same woman as the approved anchor and every storyboard frame, and license confirmations are on file"],
+   826→        ["M1 - Living character and world (coded; verify)", "Twelve-zone world, rigged character, locomotion, navigation, console interaction, cameras, lighting, CORE APIs, memory and goal foundations, seven owner switches",
+   827→         "Owner-environment run: she visibly walks, runs, turns, stops, faces the owner and performs coherent interactions, captured as evidence"],
+   828→        ["M2 - Intelligence and performance (coded; verify)", "Local and Kaggle inference, encrypted profiles, streaming and cancellation, voice, facial animation and lip-sync, task-linked movement, persistent conversations",
+   829→         "A streamed, interruptible conversation with synchronised facial animation over a real GPU worker"],
+   830→        ["M3 - Autonomy and demonstration (coded; verify)", "Autonomous goals, agents, guarded tools, research, simulations, scenario direction, video playback and export where supported, security, telemetry",
+   831→         "She constructs, directs, branches and restores a full scenario, and presents a paused video with a 2D-to-3D handoff"],
+   832→        ["M4 - Shared embodiment (coded; verify and harden)", "Mobile companion, backup and restore, device adapters, optional MetaHuman, holographic projection, production hardening and deployment",
+   833→         "Phone and hologram render the same live instance in sync with speech, motion and scenarios, and a production deployment runbook passes a restore drill"],
+   834→    ],
+   835→}
+   836→
+   837→CH6_PROTOCOL = [
+   838→    ("6.3  Verification protocol (every milestone)", [
+   839→        "Backend and rendered experience are implemented together; automated tests and syntax "
+   840→        "and regression checks run before anything else; the application is started and its "
+   841→        "actual rendered output is inspected; locomotion, cameras, interactions and controls "
+   842→        "are exercised by hand; meaningful visual evidence is captured; defects are "
+   843→        "corrected rather than documented; verified capabilities and external limitations "
+   844→        "are recorded in an honest capabilities register; and commits happen only after "
+   845→        "verification. Nothing is claimed tested that was not tested - Kaggle, GPU "
+   846→        "inference, model downloads, Supabase, local hardware, Unreal and MetaHuman, "
+   847→        "holograms, video generation and iOS signing are all unverified until a milestone "
+   848→        "says otherwise in writing.",
+   849→    ]),
+   850→]
+   851→
+   852→# ----------------------------------------------------------------------------
+   853→# Chapter 7 - Approval Gate
+   854→# ----------------------------------------------------------------------------
+   855→CH7_INTRO = (
+   856→    "Phase Zero stops here. Nothing below is placeholder; every item above is proposed in "
+   857→    "good faith and buildable as specified. Please approve or correct each item - approval "
+   858→    "locks this package as the visual and behavioural baseline, and any material deviation "
+   859→    "from it during implementation will be shown to you before it is adopted."
+   860→)
+   861→
+   862→CH7_APPROVALS = [
+   863→    ("A1 - Character appearance", "Chapter 2 with the concept plates: adult presentation, face, hair, wardrobe, materials, proportions."),
+   864→    ("A2 - Environment", "Chapter 3 with the floor plan and environment plates: the Nexus, its twelve areas, lighting, materials, navigation."),
+   865→    ("A3 - Storyboard", "Chapter 4: all twenty frames as composed, or with the amendments you list."),
+   866→    ("A4 - Character behaviour", "Chapters 2 and 5: expressions, poses, restraint rules, interruption and resumption behaviour."),
+   867→    ("A5 - Camera and lighting", "Per-frame camera and lighting direction plus the camera contracts in Section 5.7."),
+   868→    ("A6 - Scenario and video presentation", "Frames 12-15 with Sections 5.8 and 5.9: construction, direction, playback, truth labels, video controls, 2D-to-3D handoff."),
+   869→    ("A7 - Implementation sequence", "Chapter 6: architecture, inference plan, milestones M1-M4 and the verification protocol."),
+   870→]
+   871→
+   872→CH7_DECISIONS = [
+   873→    ("D1 - Renderer foundation", "Option A: browser-first Three.js with the licensed GLTF character (recommended - cross-platform, hologram-ready, fastest to a living M1). Option B: Unreal-first with MetaHuman (maximum fidelity, PC-bound, slower). Option C: hybrid - browser now, Unreal as an optional M4 adapter (recommended path; A is how it starts)."),
+   874→    ("D2 - Character asset source", "Option A (recommended): keep the existing repository rig (66 bones, 72 morph targets, working Mixamo retargeting and lip-sync) and align its wardrobe and appearance to the approved anchor via garment/material update or Avaturn regeneration - fastest path to the locked identity on a proven skeleton. Option B: replace with a Reallusion CC4/ActorCore digital human. Option C: MetaHuman as primary (higher face fidelity, heavier pipeline, M4)."),
+   875→    ("D3 - Wardrobe variants", "Charcoal duty suit as drawn (baseline), with or without the formal drape-coat variant for presentation moments. Recommendation: both states, duty suit default."),
+   876→    ("D4 - Voice direction (M2)", "A warm, measured alto is proposed as the default speaking profile; shortlist samples will be presented at Milestone 2 selection, and the adapter stays replaceable."),
+   877→    ("D5 - Storyboard amendments", "Any frame you want re-composed - list frame numbers and the change; amended frames return for review before the baseline locks."),
+   878→    ("D6 - Address register (new)", "How she addresses the owner: formal courtesy (JARVIS register, recommended default), the familiar FRIDAY-style \"Boss\", or the owner's chosen name. The register is a personality parameter, changeable at any time without touching identity."),
+   879→]
+   880→
+   881→CH7_CLOSE = (
+   882→    "On approval, gate M0.5 begins against this baseline: the shipped character aligned to "
+   883→    "the approved identity, license hygiene closed, then owner-environment verification of "
+   884→    "the existing M1-M4 implementation gate by gate. Until then, no application code is "
+   885→    "written and the repository is left untouched. The Phase Zero artifacts - this document, "
+   886→    "the twenty identity-locked frames, the anchor and proof set, and the floor plan - live "
+   887→    "in download/jarvis-nexus-preproduction/ for your review at full resolution."
+   888→)
+   889→
+   890→CH7_ARTIFACTS = {
+   891→    "caption": "Table 7.1 - Phase Zero artifact manifest, revision 2 (all under download/jarvis-nexus-preproduction/)",
+   892→    "header": ["Artifact", "Contents"],
+   893→    "widths": [0.42, 0.58],
+   894→    "rows": [
+   895→        ["JARVIS-NEXUS_PreProduction_Package_v2.pdf", "This package - revised inspection report, locked character direction, identity-locked storyboard, technical plan, approval gate"],
+   896→        ["storyboard_v2/ (20 files)", "The identity-locked storyboard frames (1344 x 768), every frame a controlled edit of the approved anchor; numbered to match Chapter 4 and the mapping matrix"],
+   897→        ["v2_proof/ (7 files)", "The owner-approved identity anchor, the locked full-length character sheet, the face study and the four proof frames that established the pipeline"],
+   898→        ["frames/, concepts/ (v1, superseded)", "First-revision frames and concepts, retained for traceability of the direction change"],
+   899→        ["build/floorplan.png (+ HTML source)", "The Nexus operations floor plan at print resolution, with editable HTML source alongside"],
+   900→        ["build/cover.html, build/cover.pdf", "Editable HTML source and rendered cover, for future revision without a rebuild"],
+   901→    ],
+   902→}
+   903→

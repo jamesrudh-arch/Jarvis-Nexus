@@ -1,0 +1,1 @@
+IDENTITY=9 LIGHT=6 HANDS=ok DEFECTS=garbled holographic UI text, faint neon rim on face/edges under-motivated VERDICT=KEEP - same woman, plausible lighting; minor neon spill acceptable.

@@ -1,0 +1,29 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "IDENTITY=8 LIGHT=7 HANDS=ok DEFECTS=minor garbled HUD glyph text VERDICT=KEEP - matches reference; hologram spill on face/hands convincing",
+        "reasoning_content": "Identity: slim face, dark hair bun, blazer/turtleneck — matches well, ~8. Light: face lit slightly by warm hologram; hands show orange glow; reasonably good, 7. Hands ok. Defects: garbled HUD text minor.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1794354712,
+  "id": "20261111075149d0ce40313f374db5",
+  "model": "glm-5.3-flash",
+  "object": "chat.completion",
+  "request_id": "20261111075149d0ce40313f374db5",
+  "usage": {
+    "completion_tokens": 95,
+    "completion_tokens_details": {
+      "reasoning_tokens": 55
+    },
+    "prompt_tokens": 2233,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 2328
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "IDENTITY=9 LIGHT=7 HANDS=ok DEFECTS=none VERDICT=KEEP - consistent identity; floor glow casts some light, face underlit",
+        "reasoning_content": "Face matches, bun, blazer. Lighting ok. Hands ok. Light slightly weak on face.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1794355328,
+  "id": "20261111080205f6f0aef13de04c95",
+  "model": "glm-5.3-flash",
+  "object": "chat.completion",
+  "request_id": "20261111080205f6f0aef13de04c95",
+  "usage": {
+    "completion_tokens": 56,
+    "completion_tokens_details": {
+      "reasoning_tokens": 20
+    },
+    "prompt_tokens": 2233,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 2289
+  }
+}

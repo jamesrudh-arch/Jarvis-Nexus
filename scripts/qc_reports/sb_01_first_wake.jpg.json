@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "IDENTITY=n/a LIGHT=8 HANDS=n/a DEFECTS=face not visible; no cast shadow from figure on glowing path VERDICT=KEEP - consistent silhouette, bun, blazer; ambient glow plausible",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1794354380,
+  "id": "20261111074618d9142d6487ac4319",
+  "model": "glm-5.3-flash",
+  "object": "chat.completion",
+  "request_id": "20261111074618d9142d6487ac4319",
+  "usage": {
+    "completion_tokens": 46,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2233,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 2279
+  }
+}

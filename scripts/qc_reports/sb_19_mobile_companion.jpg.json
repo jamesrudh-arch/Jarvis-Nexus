@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "IDENTITY=9 LIGHT=6 HANDS=ok DEFECTS=garbled holographic UI text, faint neon rim on face/edges under-motivated VERDICT=KEEP - same woman, plausible lighting; minor neon spill acceptable.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1794355416,
+  "id": "20261111080334d10e16c62582428f",
+  "model": "glm-5.3-flash",
+  "object": "chat.completion",
+  "request_id": "20261111080334d10e16c62582428f",
+  "usage": {
+    "completion_tokens": 52,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2233,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 2285
+  }
+}

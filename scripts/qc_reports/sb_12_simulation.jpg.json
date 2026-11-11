@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "IDENTITY=9 LIGHT=6 HANDS=ok DEFECTS=white-clinic drift VERDICT=KEEP - same woman, good glow falloff, minor environment mismatch only",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1794354646,
+  "id": "20261111075045a9d1c1497fd44d8f",
+  "model": "glm-5.3-flash",
+  "object": "chat.completion",
+  "request_id": "20261111075045a9d1c1497fd44d8f",
+  "usage": {
+    "completion_tokens": 39,
+    "completion_tokens_details": {
+      "reasoning_tokens": 38
+    },
+    "prompt_tokens": 2233,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 2272
+  }
+}

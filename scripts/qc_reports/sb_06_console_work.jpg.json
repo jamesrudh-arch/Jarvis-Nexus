@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "IDENTITY=8 LIGHT=7 HANDS=ok DEFECTS=none VERDICT=KEEP - consistent identity; hologram glow reasonably motivates cyan cast on hand.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1794354459,
+  "id": "20261111074713c07167df8170454c",
+  "model": "glm-5.3-flash",
+  "object": "chat.completion",
+  "request_id": "20261111074713c07167df8170454c",
+  "usage": {
+    "completion_tokens": 38,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2233,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 2271
+  }
+}
