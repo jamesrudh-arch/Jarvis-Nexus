@@ -44,6 +44,7 @@ export class CameraDirector {
 
   setPreset(presetName, reducedMotion = false) {
     this.activePreset = presetName;
+    this.scenarioFocus = null;
     this.manualUserHoldSec = 0;
     if (reducedMotion) {
       this._snapImmediately();
@@ -52,10 +53,40 @@ export class CameraDirector {
 
   setManualSelect(value, reducedMotion = false) {
     this.mode = value;
+    this.scenarioFocus = null;
     this.manualUserHoldSec = 0;
     if (value !== 'auto') {
       this.activePreset = value;
       if (reducedMotion) this._snapImmediately();
+    }
+  }
+
+  /**
+   * Documentary camera choreography driven by scenario timeline cues.
+   * kind: scenario_wide | scenario_origin_closeup | scenario_actor_track
+   */
+  setScenarioCue(kind, originPoint, actorObject) {
+    this.scenarioFocus = { kind, origin: originPoint || new THREE.Vector3(0.15, 1.4, 1.85), actor: actorObject || null };
+    this.activePreset = 'scenario_dynamic';
+    this.manualUserHoldSec = 0;
+  }
+
+  _computeScenarioComposition() {
+    const f = this.scenarioFocus;
+    if (f.kind === 'scenario_origin_closeup') {
+      this.desiredFov = focalLengthToVerticalFov(50);
+      this.desiredPos.set(f.origin.x + 1.0, f.origin.y + 0.34, f.origin.z + 1.3);
+      this.desiredTarget.copy(f.origin);
+    } else if (f.kind === 'scenario_actor_track' && f.actor) {
+      this.desiredFov = focalLengthToVerticalFov(40);
+      const a = f.actor.position;
+      this.desiredPos.set(a.x + 1.3, 1.62, a.z + 1.85);
+      this.desiredTarget.set(a.x, 1.18, a.z);
+    } else {
+      // scenario_wide (default)
+      this.desiredFov = focalLengthToVerticalFov(28);
+      this.desiredPos.set(0.25, 1.78, 5.65);
+      this.desiredTarget.set(0.0, 1.42, 1.65);
     }
   }
 
@@ -65,6 +96,19 @@ export class CameraDirector {
     const fwd = new THREE.Vector3(Math.sin(jYaw), 0, Math.cos(jYaw));
     const right = new THREE.Vector3(Math.cos(jYaw), 0, -Math.sin(jYaw));
     const preset = this.mode === 'auto' ? this.activePreset : this.mode;
+
+    // Scenario documentary focus overrides everything (until user grabs the camera)
+    if (this.scenarioFocus && this.mode === 'auto') {
+      this._computeScenarioComposition();
+      const radialSF = Math.hypot(this.desiredPos.x, this.desiredPos.z);
+      if (radialSF > 10.4) {
+        const s = 10.4 / radialSF;
+        this.desiredPos.x *= s;
+        this.desiredPos.z *= s;
+      }
+      this.desiredPos.y = THREE.MathUtils.clamp(this.desiredPos.y, 0.95, 5.5);
+      return;
+    }
 
     // If JARVIS is actively walking/running across the hall in auto mode, smoothly track her!
     if (this.mode === 'auto' && jarvis.waypoints.length > 0 && preset !== 'wide_sanctuary') {

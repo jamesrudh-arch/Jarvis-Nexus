@@ -77,8 +77,8 @@ body.holo-mirror-active #nexus-canvas {
 .spatial-tag {
   position: absolute;
   transform: translate(-50%, -100%);
-  padding: 4px 8px;
-  background: rgba(2, 7, 11, 0.78);
+  padding: 4px 9px;
+  background: rgba(2, 7, 11, 0.93);
   border-left: 2px solid var(--cyan);
   color: var(--ice);
   font-size: 11px;
@@ -89,9 +89,42 @@ body.holo-mirror-active #nexus-canvas {
   transition: opacity 0.2s ease;
 }
 
+/* Leader line anchoring each callout to its 3D evidence point */
+.spatial-tag::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 1px;
+  height: 14px;
+  background: linear-gradient(180deg, rgba(98, 230, 242, 0.75), rgba(98, 230, 242, 0.08));
+}
+
+.spatial-tag::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 14px);
+  width: 7px;
+  height: 7px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 8px rgba(98, 230, 242, 0.9);
+}
+
 .spatial-tag.amber {
   border-left-color: var(--amber);
   color: #ffe7c2;
+}
+
+.spatial-tag.amber::after {
+  background: linear-gradient(180deg, rgba(231, 174, 91, 0.75), rgba(231, 174, 91, 0.08));
+}
+
+.spatial-tag.amber::before {
+  background: var(--amber);
+  box-shadow: 0 0 8px rgba(231, 174, 91, 0.9);
 }
 
 .spatial-tag .tag-sub {
@@ -261,39 +294,56 @@ body.holo-mirror-active #nexus-canvas {
   color: var(--cyan);
 }
 
-/* First Launch Wake Banner */
+/* First Launch Wake Banner — compact collapsible toast, never covers the stage */
 .wake-banner {
   position: fixed;
   top: 62px;
   left: 16px;
   z-index: 22;
-  max-width: 460px;
+  max-width: 336px;
   background: rgba(6, 18, 26, 0.92);
   border: 1px solid var(--border-subtle);
   border-left: 3px solid var(--cyan);
-  padding: 14px 16px;
+  padding: 9px 12px;
   border-radius: 4px;
 }
 
 .wake-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 0;
   font-family: var(--font-mono);
   font-size: 10.5px;
   letter-spacing: 0.08em;
   color: var(--cyan);
-  margin-bottom: 6px;
+  cursor: pointer;
+}
+
+.wake-caret {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.wake-banner.collapsed {
+  border-left-color: rgba(98, 230, 242, 0.35);
 }
 
 .wake-banner p {
   color: var(--ice);
-  line-height: 1.48;
-  font-size: 12.5px;
-  margin-bottom: 10px;
+  line-height: 1.45;
+  font-size: 12px;
+  margin: 8px 0 9px;
 }
 
 .wake-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 7px;
 }
 
 /* Drawers */
@@ -498,6 +548,11 @@ body.holo-mirror-active #nexus-canvas {
   gap: 8px;
 }
 
+.scenario-transport .btn-chip {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .scenario-top-row, .scenario-timeline-row, .scenario-vars-row {
   display: flex;
   align-items: center;
@@ -515,9 +570,46 @@ body.holo-mirror-active #nexus-canvas {
   margin-right: 8px;
 }
 
-.scenario-timeline-row input[type="range"] {
+/* Timeline scrubber — playhead triangle on a thin filmstrip track (distinct from parameter knobs) */
+#sc-timeline-slider {
   flex: 1;
-  accent-color: var(--cyan);
+  appearance: none;
+  -webkit-appearance: none;
+  height: 18px;
+  background: transparent;
+  cursor: ew-resize;
+}
+
+#sc-timeline-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: repeating-linear-gradient(90deg, rgba(98, 230, 242, 0.35) 0 2px, transparent 2px 9px),
+    rgba(98, 230, 242, 0.18);
+  border: 1px solid rgba(98, 230, 242, 0.35);
+}
+
+#sc-timeline-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -7px;
+  background: #ddfbff;
+  clip-path: polygon(50% 0%, 100% 62%, 82% 100%, 18% 100%, 0% 62%);
+  filter: drop-shadow(0 0 5px rgba(221, 251, 255, 0.85));
+}
+
+#sc-timeline-slider::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(98, 230, 242, 0.2);
+}
+
+#sc-timeline-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 0;
+  background: #ddfbff;
 }
 
 .sc-phase {
@@ -531,6 +623,47 @@ body.holo-mirror-active #nexus-canvas {
   gap: 8px;
   font-size: 11.5px;
   color: var(--ice);
+}
+
+/* Parameter sliders read as physical console knobs (round, cyan) */
+.var-control input[type="range"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 132px;
+  height: 16px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.var-control input[type="range"]::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(143, 182, 194, 0.4);
+}
+
+.var-control input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 13px;
+  height: 13px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #bff2f8, var(--cyan) 65%);
+  border: 1px solid rgba(221, 251, 255, 0.65);
+  box-shadow: 0 0 6px rgba(98, 230, 242, 0.55);
+}
+
+.var-control input[type="range"]::-moz-range-track {
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(143, 182, 194, 0.4);
+}
+
+.var-control input[type="range"]::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--cyan);
+  border: 1px solid rgba(221, 251, 255, 0.65);
 }
 
 .scenario-branch-banner {

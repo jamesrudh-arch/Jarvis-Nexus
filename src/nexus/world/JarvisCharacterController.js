@@ -15,7 +15,11 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { retarget } from '../vendor/retargeter.mjs';
 import { LipsyncEn } from '../vendor/lipsync-en.mjs';
-import { tailorSuitAlbedoTexture } from './ProceduralTextures.js';
+import {
+  tailorSuitAlbedoTexture,
+  createMicroNormalTexture,
+  createSoftContactShadowTexture,
+} from './ProceduralTextures.js';
 
 const AVATURN_RETARGET = {
   Hips: { y: 0.03 },
@@ -51,36 +55,35 @@ export class JarvisCharacterController {
     this.bones = {};
     this.morphMeshes = [];
 
-    // Dedicated character 3-point motivated lighting rig (ensures face is ALWAYS readable!)
+    // Dedicated character 3-point motivated lighting rig — repositioned every frame
+    // RELATIVE TO THE CAMERA so the cyan rim always separates her from the scene
+    // and the warm key always flatters the face toward the viewer. (Rig lives in
+    // world space, not under root, so it never rotates with her body.)
     this.lightRig = new THREE.Group();
-    const keyLight = new THREE.SpotLight(0xfff1e0, 3.6, 7.5, Math.PI * 0.28, 0.65, 1.3);
-    keyLight.position.set(0.85, 2.55, 1.65);
-    keyLight.castShadow = false;
+    this.keyLight = new THREE.SpotLight(0xffe4c8, 2.7, 8.5, Math.PI * 0.3, 0.7, 1.4);
+    this.keyLight.castShadow = false;
     this.keyTarget = new THREE.Object3D();
-    this.keyTarget.position.set(0, 1.55, 0);
     this.lightRig.add(this.keyTarget);
-    keyLight.target = this.keyTarget;
+    this.keyLight.target = this.keyTarget;
 
-    const fillLight = new THREE.PointLight(0x7799a5, 1.05, 5.0, 1.5);
-    fillLight.position.set(-1.1, 1.65, 1.25);
+    this.fillLight = new THREE.PointLight(0xf5cbb0, 0.55, 5.5, 1.6); // warm low "bounce board" lift
+    this.rimLight = new THREE.PointLight(0x62e6f2, 2.3, 5.5, 1.5);
+    // Cyan bounce from the holo-table side — the room's light kissing her front
+    this.bounceLight = new THREE.PointLight(0x62e6f2, 0.65, 2.8, 1.8);
+    this.lightRig.add(this.keyLight, this.fillLight, this.rimLight, this.bounceLight);
+    this.scene.add(this.lightRig);
 
-    this.rimLight = new THREE.PointLight(0x62e6f2, 1.45, 4.5, 1.6);
-    this.rimLight.position.set(-0.4, 1.85, -1.15);
-
-    this.lightRig.add(keyLight, fillLight, this.rimLight);
-    this.root.add(this.lightRig);
-
-    // Subtle ground contact shadow disc beneath feet
-    const contactGeo = new THREE.CircleGeometry(0.36, 32);
+    // Subtle ground contact shadow disc beneath feet (soft radial falloff)
+    const contactGeo = new THREE.CircleGeometry(0.4, 40);
     const contactMat = new THREE.MeshBasicMaterial({
-      color: 0x000000,
+      map: createSoftContactShadowTexture(),
       transparent: true,
-      opacity: 0.46,
+      opacity: 0.55,
       depthWrite: false,
     });
     const contactDisc = new THREE.Mesh(contactGeo, contactMat);
     contactDisc.rotation.x = -Math.PI / 2;
-    contactDisc.position.y = 0.004;
+    contactDisc.position.y = 0.006;
     this.root.add(contactDisc);
 
     // Locomotion & Navigation state
@@ -146,6 +149,25 @@ export class JarvisCharacterController {
     this._retargetTables = { targetRest, xbotRest, walkRest };
 
     // Tailor PBR materials to match approved Storyboard Character Direction
+    const microNormalSkin = createMicroNormalTexture({ size: 256, scale: 42, strength: 1.15, seed: 811 });
+    microNormalSkin.repeat.set(6, 6);
+    const weaveNormal = createMicroNormalTexture({ size: 256, scale: 30, strength: 1.0, weave: true, seed: 313 });
+    weaveNormal.repeat.set(4, 4);
+
+    const injectFresnelRim = (mat, rimColor, strength, power = 2.8) => {
+      mat.onBeforeCompile = (shader) => {
+        shader.fragmentShader = shader.fragmentShader.replace(
+          '#include <emissivemap_fragment>',
+          `#include <emissivemap_fragment>
+          {
+            float rimFres = pow(1.0 - clamp(dot(normalize(vNormal), normalize(vViewPosition)), 0.0, 1.0), ${power.toFixed(2)});
+            totalEmissiveRadiance += vec3(${rimColor[0]}, ${rimColor[1]}, ${rimColor[2]}) * rimFres * ${strength.toFixed(3)};
+          }`
+        );
+      };
+      mat.needsUpdate = true;
+    };
+
     this.armature.traverse((obj) => {
       if (obj.isBone) {
         this.bones[obj.name] = obj;
@@ -163,14 +185,21 @@ export class JarvisCharacterController {
         if (mat) {
           const mName = (mat.name || obj.name || '').toLowerCase();
           if (mName.includes('look')) {
+            // Tailored suit: woven micro normal + cool fresnel rim so cloth separates from the dark room
             mat.map = tailorSuitAlbedoTexture(mat.map);
-            mat.roughness = 0.78;
+            mat.normalMap = weaveNormal;
+            mat.normalScale = new THREE.Vector2(0.32, 0.32);
+            mat.roughness = 0.8;
             mat.metalness = 0.06;
+            injectFresnelRim(mat, [0.16, 0.38, 0.44], 0.24);
             mat.needsUpdate = true;
           } else if (mName.includes('hair')) {
-            mat.color = new THREE.Color(0x2a1d17);
-            mat.roughness = 0.64;
+            mat.color = new THREE.Color(0x241812);
+            mat.roughness = 0.5;
             mat.metalness = 0.04;
+            mat.envMapIntensity = 0.85;
+            // Cyan environment kiss on the hair silhouette (kills the black-helmet read)
+            injectFresnelRim(mat, [0.26, 0.62, 0.7], 0.6, 2.4);
             mat.needsUpdate = true;
           } else if (mName.includes('shoe')) {
             mat.color = new THREE.Color(0x12161c);
@@ -182,14 +211,19 @@ export class JarvisCharacterController {
               map: mat.map,
               normalMap: mat.normalMap,
               roughnessMap: mat.roughnessMap,
-              roughness: 0.54,
+              roughness: 0.52,
               metalness: 0.0,
-              sheen: 0.28,
-              sheenRoughness: 0.68,
+              sheen: 0.34,
+              sheenRoughness: 0.62,
               sheenColor: new THREE.Color(0xd99a82),
-              clearcoat: 0.04,
-              clearcoatRoughness: 0.55,
+              clearcoat: 0.05,
+              clearcoatRoughness: 0.5,
+              ior: 1.38,
+              specularIntensity: 0.52,
             });
+            // Pore-level specular breakup so skin never reads as airbrushed wax
+            phys.normalMap = microNormalSkin;
+            phys.normalScale = new THREE.Vector2(0.3, 0.3);
             obj.material = phys;
           }
         }
@@ -197,6 +231,11 @@ export class JarvisCharacterController {
     });
 
     this.root.add(this.armature);
+
+    // Living eyes: camera-facing catchlight sprites parented to the head bone
+    this._buildEyeCatchlights();
+    // Sanctuary tech accents: emissive wrist cuffs + collar light
+    this._buildSuitAccents();
 
     // Initialize AnimationMixer & retarget locomotion clips cleanly (removing X/Z root drift)
     this.mixer = new THREE.AnimationMixer(this.armature);
@@ -206,9 +245,16 @@ export class JarvisCharacterController {
 
     // Natural arm carry for the xbot ready-stance clips (idle/agree/headshake hold
     // arms out from the T-pose bind; walk & run are authored with natural arms).
+    // The legacy Euler carry alone left arms splayed ~60-80° from vertical (A-pose
+    // remnant), so an additional X-axis swing drops the hands to a relaxed
+    // hip-level stance (calibrated live against the rig's world-space arm angles).
     const ARM_CARRY = {
-      left: new THREE.Quaternion().setFromEuler(new THREE.Euler(0.2, 0, -0.62)),
-      right: new THREE.Quaternion().setFromEuler(new THREE.Euler(0.2, 0, -0.34)),
+      left: new THREE.Quaternion()
+        .setFromEuler(new THREE.Euler(0.2, 0, -0.62))
+        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), 1.1)),
+      right: new THREE.Quaternion()
+        .setFromEuler(new THREE.Euler(0.2, 0, -0.34))
+        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), 1.25)),
     };
 
     for (const rawClip of xbotGltf.animations) {
@@ -222,6 +268,101 @@ export class JarvisCharacterController {
 
     this._fadeToAction('idle', 0.01);
     this.loaded = true;
+  }
+
+  /**
+   * Camera-facing catchlight sprites on both eyes — the single cheapest trick that
+   * turns "painted dead eyes" into a living gaze. Parented to the head bone with
+   * offsets calibrated against the Avaturn rig; modulated during blinks.
+   */
+  _buildEyeCatchlights() {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const ctx = c.getContext('2d');
+    const g = ctx.createRadialGradient(32, 32, 2, 32, 32, 30);
+    g.addColorStop(0, 'rgba(255,255,255,0.98)');
+    g.addColorStop(0.25, 'rgba(235,250,255,0.85)');
+    g.addColorStop(0.6, 'rgba(190,235,248,0.22)');
+    g.addColorStop(1, 'rgba(160,225,240,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 64, 64);
+    const tex = new THREE.CanvasTexture(c);
+
+    const head = this.bones.Head;
+    if (!head) return;
+    this.catchlights = [];
+    for (const sideSign of [-1, 1]) {
+      const mat = new THREE.SpriteMaterial({
+        map: tex,
+        transparent: true,
+        opacity: sideSign < 0 ? 0.92 : 0.72, // asymmetric — the far eye catches less key
+        depthWrite: false,
+      });
+      const sp = new THREE.Sprite(mat);
+      sp.scale.setScalar(sideSign < 0 ? 0.018 : 0.014);
+      sp.position.set(sideSign * 0.031, 0.047, 0.093);
+      head.add(sp);
+      this.catchlights.push(sp);
+      this._catchlightBase = this._catchlightBase || [];
+      this._catchlightBase.push(sp.scale.x);
+    }
+  }
+
+  /** Emissive sanctuary tech accents: wrist cuffs + collar filament. */
+  _buildSuitAccents() {
+    const accentMat = new THREE.MeshBasicMaterial({
+      color: 0x62e6f2,
+      transparent: true,
+      opacity: 0.85,
+    });
+    const attachments = [
+      { bone: 'LeftHand', geo: new THREE.TorusGeometry(0.045, 0.0075, 8, 24) },
+      { bone: 'RightHand', geo: new THREE.TorusGeometry(0.045, 0.0075, 8, 24) },
+      { bone: 'Neck', geo: new THREE.TorusGeometry(0.056, 0.006, 8, 26) },
+    ];
+    for (const a of attachments) {
+      const bone = this.bones[a.bone];
+      if (!bone) continue;
+      const ring = new THREE.Mesh(a.geo, accentMat);
+      ring.rotation.x = Math.PI / 2;
+      if (a.bone === 'Neck') ring.position.y = 0.075;
+      bone.add(ring);
+    }
+  }
+
+  /**
+   * Reposition the 3-point rig around her head relative to the ACTIVE camera:
+   * warm key from the viewer's side, cool fill opposite, cyan rim from the room
+   * behind her — so she is always separated from the background and never looks
+   * composited with a private frontal light.
+   */
+  _updateCameraRelativeLighting(cameraWorldPos) {
+    if (!this.keyLight) return;
+    const head = this.getHeadWorldPosition(this._tmpHead || (this._tmpHead = new THREE.Vector3()));
+    const toCam = this._tmpDir || (this._tmpDir = new THREE.Vector3());
+    toCam.copy(cameraWorldPos).sub(head);
+    toCam.y = Math.max(toCam.y, 0.15); // keep the geometry stable when camera dips
+    toCam.normalize();
+    const side = this._tmpSide || (this._tmpSide = new THREE.Vector3());
+    side.crossVectors(toCam, THREE.Object3D.DEFAULT_UP);
+    if (side.lengthSq() < 1e-4) side.set(1, 0, 0);
+    side.normalize();
+
+    this.keyLight.position.copy(head).addScaledVector(toCam, 1.45).addScaledVector(side, 0.6);
+    this.keyLight.position.y += 0.85;
+    this.keyTarget.position.copy(head);
+
+    this.rimLight.position.copy(head).addScaledVector(toCam, -1.3);
+    this.rimLight.position.y += 0.55;
+
+    this.fillLight.position.copy(head).addScaledVector(toCam, 1.1).addScaledVector(side, -0.6);
+    this.fillLight.position.y -= 0.55;
+
+    // Cyan bounce: from the central holo-table toward her (fixed world motivation)
+    const tableDir = this._tmpTable || (this._tmpTable = new THREE.Vector3());
+    tableDir.set(0, 1.48, 0).sub(head).normalize();
+    this.bounceLight.position.copy(head).addScaledVector(tableDir, 1.15);
+    this.bounceLight.position.y -= 0.25;
   }
 
   _prepareMixamoClip(clip, newName, posScale = 0.01, stripXZRoot = true, srcRest = null, tgtRest = null, armCarry = null) {
@@ -541,6 +682,9 @@ export class JarvisCharacterController {
     // 2. Advance skeletal mixer
     this.mixer.update(clampedDt);
 
+    // 2b. Camera-relative cinematic relight (key/fill/rim around her head)
+    this._updateCameraRelativeLighting(cameraWorldPos);
+
     // 3. Subtle additive posture & hand interaction layering (only when standing still)
     if (this.waypoints.length === 0 && !reducedMotion) {
       this._applyPostureLayer();
@@ -564,6 +708,21 @@ export class JarvisCharacterController {
     const t = this.breathClock;
     if (this.bones.Spine1) {
       this.bones.Spine1.rotation.x += Math.sin(t * 1.45) * 0.012;
+    }
+
+    // Living weight-shift: slow hips sway with counter-rotating spine + head
+    // micro-drift, so the idle never reads as a frozen mannequin.
+    const sway = Math.sin(t * 0.31);
+    if (this.bones.Hips) {
+      this.bones.Hips.rotation.z += sway * 0.022;
+      this.bones.Hips.position.x += sway * 0.011;
+    }
+    if (this.bones.Spine) {
+      this.bones.Spine.rotation.z -= sway * 0.013;
+    }
+    if (this.bones.Head) {
+      this.bones.Head.rotation.y += Math.sin(t * 0.47 + 1.3) * 0.013;
+      this.bones.Head.rotation.z += Math.sin(t * 0.23) * 0.006;
     }
 
     const rArm = this.bones.RightArm;
@@ -634,10 +793,20 @@ export class JarvisCharacterController {
       const w = this.blinkPhase < 0.5 ? this.blinkPhase * 2 : Math.max(0, (1 - this.blinkPhase) * 2);
       this._setMorph('eyeBlinkLeft', w, 0.85);
       this._setMorph('eyeBlinkRight', w * 0.96, 0.85);
+      // Catchlights fade with the lids
+      if (this.catchlights) {
+        const cl = Math.max(0, 1 - w * 1.4);
+        this.catchlights.forEach((sp, i) => {
+          sp.scale.setScalar((this._catchlightBase?.[i] ?? 0.017) * cl);
+        });
+      }
       if (this.blinkPhase >= 1) {
         this.blinkPhase = -1;
         this._setMorph('eyeBlinkLeft', 0, 0.85);
         this._setMorph('eyeBlinkRight', 0, 0.85);
+        if (this.catchlights) {
+          this.catchlights.forEach((sp, i) => sp.scale.setScalar(this._catchlightBase?.[i] ?? 0.017));
+        }
       }
     }
   }
