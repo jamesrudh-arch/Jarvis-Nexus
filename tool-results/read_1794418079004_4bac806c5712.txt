@@ -1,0 +1,874 @@
+     1→/**
+     2→ * JARVIS NEXUS — Embodied Adult Female Character Controller.
+     3→ *
+     4→ * Implements:
+     5→ * - Licensed 66-bone humanoid rig (jarvis_avaturn.glb) + 72 ARKit/Oculus morph targets.
+     6→ * - Runtime PBR wardrobe & skin tailoring matching approved pre-production baseline.
+     7→ * - Collision-aware navigation around central holo-table, smooth turn-in-place,
+     8→ *   walk (1.32 m/s), urgent run (3.25 m/s), damped acceleration/deceleration, zero foot-skating.
+     9→ * - Gaze-first head/eye tracking, natural Poisson asymmetric blinking, subtle breathing,
+    10→ *   contextual console/scenario/presentation poses, and synchronized viseme lip-sync
+    11→ *   with instant mid-speech interruption.
+    12→ */
+    13→import * as THREE from 'three';
+    14→import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    15→import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+    16→import { retarget } from '../vendor/retargeter.mjs';
+    17→import { LipsyncEn } from '../vendor/lipsync-en.mjs';
+    18→import {
+    19→  tailorSuitAlbedoTexture,
+    20→  createMicroNormalTexture,
+    21→  createSoftContactShadowTexture,
+    22→} from './ProceduralTextures.js';
+    23→
+    24→const AVATURN_RETARGET = {
+    25→  Hips: { y: 0.03 },
+    26→  Spine: { y: 0.02 },
+    27→  Spine1: { y: 0.02, z: 0.01 },
+    28→  Spine2: { y: 0.02, z: 0.01 },
+    29→  Neck: { z: 0.02, y: 0.01 },
+    30→  Head: { z: 0.02 },
+    31→  LeftShoulder: { rx: -0.45 },
+    32→  RightShoulder: { rx: -0.45 },
+    33→  scaleToHipsLevel: 1.0,
+    34→};
+    35→
+    36→const VISEME_NAMES = [
+    37→  'viseme_sil', 'viseme_PP', 'viseme_FF', 'viseme_TH', 'viseme_DD',
+    38→  'viseme_kk', 'viseme_CH', 'viseme_SS', 'viseme_nn', 'viseme_RR',
+    39→  'viseme_aa', 'viseme_E', 'viseme_I', 'viseme_O', 'viseme_U',
+    40→];
+    41→
+    42→export class JarvisCharacterController {
+    43→  constructor(scene) {
+    44→    this.scene = scene;
+    45→    this.root = new THREE.Group();
+    46→    this.root.name = 'JARVIS_Embodiment_Root';
+    47→    this.root.position.set(1.45, 0, 0.95);
+    48→    this.root.rotation.y = -0.42;
+    49→    this.scene.add(this.root);
+    50→
+    51→    this.armature = null;
+    52→    this.mixer = null;
+    53→    this.actions = {};
+    54→    this.activeActionName = null;
+    55→    this.bones = {};
+    56→    this.morphMeshes = [];
+    57→
+    58→    // Dedicated character 3-point motivated lighting rig — repositioned every frame
+    59→    // RELATIVE TO THE CAMERA so the cyan rim always separates her from the scene
+    60→    // and the warm key always flatters the face toward the viewer. (Rig lives in
+    61→    // world space, not under root, so it never rotates with her body.)
+    62→    this.lightRig = new THREE.Group();
+    63→    this.keyLight = new THREE.SpotLight(0xffe4c8, 2.7, 8.5, Math.PI * 0.3, 0.7, 1.4);
+    64→    this.keyLight.castShadow = false;
+    65→    this.keyTarget = new THREE.Object3D();
+    66→    this.lightRig.add(this.keyTarget);
+    67→    this.keyLight.target = this.keyTarget;
+    68→
+    69→    this.fillLight = new THREE.PointLight(0xf5cbb0, 0.55, 5.5, 1.6); // warm low "bounce board" lift
+    70→    this.rimLight = new THREE.PointLight(0x62e6f2, 2.3, 5.5, 1.5);
+    71→    // Cyan bounce from the holo-table side — the room's light kissing her front
+    72→    this.bounceLight = new THREE.PointLight(0x62e6f2, 0.65, 2.8, 1.8);
+    73→    this.lightRig.add(this.keyLight, this.fillLight, this.rimLight, this.bounceLight);
+    74→    this.scene.add(this.lightRig);
+    75→
+    76→    // Subtle ground contact shadow disc beneath feet (soft radial falloff)
+    77→    const contactGeo = new THREE.CircleGeometry(0.4, 40);
+    78→    const contactMat = new THREE.MeshBasicMaterial({
+    79→      map: createSoftContactShadowTexture(),
+    80→      transparent: true,
+    81→      opacity: 0.55,
+    82→      depthWrite: false,
+    83→    });
+    84→    const contactDisc = new THREE.Mesh(contactGeo, contactMat);
+    85→    contactDisc.rotation.x = -Math.PI / 2;
+    86→    contactDisc.position.y = 0.006;
+    87→    this.root.add(contactDisc);
+    88→
+    89→    // Locomotion & Navigation state
+    90→    this.waypoints = [];
+    91→    this.targetYaw = -0.42;
+    92→    this.currentSpeed = 0;
+    93→    this.urgentRun = false;
+    94→    this.postureMode = 'console_interaction'; // console_interaction | conversational_focus | scenario_construct | scenario_direct | video_present | standby
+    95→    this.emotionalState = 'attentive'; // neutral | listening | focused | concerned | urgent
+    96→    this.lookWorldTarget = new THREE.Vector3(0, 1.4, 3.5);
+    97→    this.focusCamera = true;
+    98→
+    99→    // Blinking & Breathing timers
+   100→    this.blinkTimer = 2.4;
+   101→    this.blinkPhase = -1;
+   102→    this.breathClock = 0;
+   103→
+   104→    // Lip-sync & Speech Engine
+   105→    this.lipsync = new LipsyncEn();
+   106→    this.isSpeaking = false;
+   107→    this.speechTimeline = []; // [{ viseme, startMs, endMs }]
+   108→    this.speechStartPerf = 0;
+   109→    this.activeUtterance = null;
+   110→    this.onSpeechEndCallback = null;
+   111→
+   112→    this.loaded = false;
+   113→  }
+   114→
+   115→  async load(onProgress) {
+   116→    const gltfLoader = new GLTFLoader();
+   117→    const fbxLoader = new FBXLoader();
+   118→
+   119→    const [avatarGltf, xbotGltf, walkFbx] = await Promise.all([
+   120→      gltfLoader.loadAsync('/models/jarvis_avaturn.glb', onProgress),
+   121→      gltfLoader.loadAsync('/models/xbot_locomotion.glb'),
+   122→      fbxLoader.loadAsync('/models/walking.fbx'),
+   123→    ]);
+   124→
+   125→    this.armature = avatarGltf.scene.getObjectByName('Armature') || avatarGltf.scene;
+   126→    this.armature.scale.setScalar(1);
+   127→
+   128→    // Calibrate skeleton to standard Mixamo coordinate rolls & scale
+   129→    retarget(this.armature, AVATURN_RETARGET);
+   130→
+   131→    // --- Cross-rig quaternion retargeting tables -------------------------------
+   132→    // The Avaturn rig's leg bones rest ~180deg (Z) away from the Mixamo
+   133→    // convention, so raw Mixamo clip quaternions would flip the legs upward.
+   134→    // Every clip quaternion is therefore converted delta-from-rest:
+   135→    //   q_target = q_targetRest * inverse(q_sourceRest) * q_sourceAnim
+   136→    const captureRest = (root) => {
+   137→      const rest = {};
+   138→      root.traverse((o) => {
+   139→        if (o.isBone) {
+   140→          const clean = o.name.replace(/^mixamorig:/, '').replace(/^mixamorig/, '');
+   141→          if (!rest[clean]) rest[clean] = o.quaternion.clone();
+   142→        }
+   143→      });
+   144→      return rest;
+   145→    };
+   146→    const targetRest = captureRest(this.armature); // post-retarget bind pose
+   147→    const xbotRest = captureRest(xbotGltf.scene);
+   148→    const walkRest = captureRest(walkFbx);
+   149→    this._retargetTables = { targetRest, xbotRest, walkRest };
+   150→
+   151→    // Tailor PBR materials to match approved Storyboard Character Direction
+   152→    const microNormalSkin = createMicroNormalTexture({ size: 256, scale: 42, strength: 1.15, seed: 811 });
+   153→    microNormalSkin.repeat.set(6, 6);
+   154→    const weaveNormal = createMicroNormalTexture({ size: 256, scale: 30, strength: 1.0, weave: true, seed: 313 });
+   155→    weaveNormal.repeat.set(4, 4);
+   156→
+   157→    const injectFresnelRim = (mat, rimColor, strength, power = 2.8) => {
+   158→      mat.onBeforeCompile = (shader) => {
+   159→        shader.fragmentShader = shader.fragmentShader.replace(
+   160→          '#include <emissivemap_fragment>',
+   161→          `#include <emissivemap_fragment>
+   162→          {
+   163→            float rimFres = pow(1.0 - clamp(dot(normalize(vNormal), normalize(vViewPosition)), 0.0, 1.0), ${power.toFixed(2)});
+   164→            totalEmissiveRadiance += vec3(${rimColor[0]}, ${rimColor[1]}, ${rimColor[2]}) * rimFres * ${strength.toFixed(3)};
+   165→          }`
+   166→        );
+   167→      };
+   168→      mat.needsUpdate = true;
+   169→    };
+   170→
+   171→    this.armature.traverse((obj) => {
+   172→      if (obj.isBone) {
+   173→        this.bones[obj.name] = obj;
+   174→      }
+   175→      if (obj.isMesh) {
+   176→        obj.castShadow = true;
+   177→        obj.receiveShadow = true;
+   178→        obj.frustumCulled = false;
+   179→
+   180→        if (obj.morphTargetDictionary && obj.morphTargetInfluences) {
+   181→          this.morphMeshes.push(obj);
+   182→        }
+   183→
+   184→        const mat = obj.material;
+   185→        if (mat) {
+   186→          const mName = (mat.name || obj.name || '').toLowerCase();
+   187→          if (mName.includes('look')) {
+   188→            // Tailored suit: woven micro normal + cool fresnel rim so cloth separates from the dark room
+   189→            mat.map = tailorSuitAlbedoTexture(mat.map);
+   190→            mat.normalMap = weaveNormal;
+   191→            mat.normalScale = new THREE.Vector2(0.32, 0.32);
+   192→            mat.roughness = 0.8;
+   193→            mat.metalness = 0.06;
+   194→            injectFresnelRim(mat, [0.16, 0.38, 0.44], 0.24);
+   195→            mat.needsUpdate = true;
+   196→          } else if (mName.includes('hair')) {
+   197→            mat.color = new THREE.Color(0x241812);
+   198→            mat.roughness = 0.5;
+   199→            mat.metalness = 0.04;
+   200→            mat.envMapIntensity = 0.85;
+   201→            // Cyan environment kiss on the hair silhouette (kills the black-helmet read)
+   202→            injectFresnelRim(mat, [0.26, 0.62, 0.7], 0.6, 2.4);
+   203→            mat.needsUpdate = true;
+   204→          } else if (mName.includes('shoe')) {
+   205→            mat.color = new THREE.Color(0x12161c);
+   206→            mat.roughness = 0.42;
+   207→            mat.metalness = 0.12;
+   208→            mat.needsUpdate = true;
+   209→          } else if (mName === 'head' || mName === 'body') {
+   210→            const phys = new THREE.MeshPhysicalMaterial({
+   211→              map: mat.map,
+   212→              normalMap: mat.normalMap,
+   213→              roughnessMap: mat.roughnessMap,
+   214→              roughness: 0.52,
+   215→              metalness: 0.0,
+   216→              sheen: 0.34,
+   217→              sheenRoughness: 0.62,
+   218→              sheenColor: new THREE.Color(0xd99a82),
+   219→              clearcoat: 0.05,
+   220→              clearcoatRoughness: 0.5,
+   221→              ior: 1.38,
+   222→              specularIntensity: 0.52,
+   223→            });
+   224→            // Pore-level specular breakup so skin never reads as airbrushed wax
+   225→            phys.normalMap = microNormalSkin;
+   226→            phys.normalScale = new THREE.Vector2(0.3, 0.3);
+   227→            obj.material = phys;
+   228→          }
+   229→        }
+   230→      }
+   231→    });
+   232→
+   233→    this.root.add(this.armature);
+   234→
+   235→    // Living eyes: camera-facing catchlight sprites parented to the head bone
+   236→    this._buildEyeCatchlights();
+   237→    // Sanctuary tech accents: emissive wrist cuffs + collar light
+   238→    this._buildSuitAccents();
+   239→
+   240→    // Initialize AnimationMixer & retarget locomotion clips cleanly (removing X/Z root drift)
+   241→    this.mixer = new THREE.AnimationMixer(this.armature);
+   242→
+   243→    const walkClip = this._prepareMixamoClip(walkFbx.animations[0], 'female_walk', 0.01, true, walkRest, targetRest);
+   244→    this.actions.walk = this.mixer.clipAction(walkClip);
+   245→
+   246→    // Natural arm carry for the xbot ready-stance clips (idle/agree/headshake hold
+   247→    // arms out from the T-pose bind; walk & run are authored with natural arms).
+   248→    // The legacy Euler carry alone left arms splayed ~60-80° from vertical (A-pose
+   249→    // remnant), so an additional X-axis swing drops the hands to a relaxed
+   250→    // hip-level stance (calibrated live against the rig's world-space arm angles).
+   251→    const ARM_CARRY = {
+   252→      left: new THREE.Quaternion()
+   253→        .setFromEuler(new THREE.Euler(0.2, 0, -0.62))
+   254→        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), 1.1)),
+   255→      right: new THREE.Quaternion()
+   256→        .setFromEuler(new THREE.Euler(0.2, 0, -0.34))
+   257→        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), 1.25)),
+   258→    };
+   259→
+   260→    for (const rawClip of xbotGltf.animations) {
+   261→      const cname = rawClip.name.toLowerCase();
+   262→      if (['idle', 'run', 'agree', 'headshake'].includes(cname)) {
+   263→        const carry = ['idle', 'agree', 'headshake'].includes(cname) ? ARM_CARRY : null;
+   264→        const prepped = this._prepareMixamoClip(rawClip.clone(), cname, 0.01, true, xbotRest, targetRest, carry);
+   265→        this.actions[cname] = this.mixer.clipAction(prepped);
+   266→      }
+   267→    }
+   268→
+   269→    this._fadeToAction('idle', 0.01);
+   270→    this.loaded = true;
+   271→  }
+   272→
+   273→  /**
+   274→   * Camera-facing catchlight sprites on both eyes — the single cheapest trick that
+   275→   * turns "painted dead eyes" into a living gaze. Parented to the head bone with
+   276→   * offsets calibrated against the Avaturn rig; modulated during blinks.
+   277→   */
+   278→  _buildEyeCatchlights() {
+   279→    const c = document.createElement('canvas');
+   280→    c.width = c.height = 64;
+   281→    const ctx = c.getContext('2d');
+   282→    const g = ctx.createRadialGradient(32, 32, 2, 32, 32, 30);
+   283→    g.addColorStop(0, 'rgba(255,255,255,0.98)');
+   284→    g.addColorStop(0.25, 'rgba(235,250,255,0.85)');
+   285→    g.addColorStop(0.6, 'rgba(190,235,248,0.22)');
+   286→    g.addColorStop(1, 'rgba(160,225,240,0)');
+   287→    ctx.fillStyle = g;
+   288→    ctx.fillRect(0, 0, 64, 64);
+   289→    const tex = new THREE.CanvasTexture(c);
+   290→
+   291→    const head = this.bones.Head;
+   292→    if (!head) return;
+   293→    this.catchlights = [];
+   294→    for (const sideSign of [-1, 1]) {
+   295→      const mat = new THREE.SpriteMaterial({
+   296→        map: tex,
+   297→        transparent: true,
+   298→        opacity: sideSign < 0 ? 0.92 : 0.72, // asymmetric — the far eye catches less key
+   299→        depthWrite: false,
+   300→      });
+   301→      const sp = new THREE.Sprite(mat);
+   302→      sp.scale.setScalar(sideSign < 0 ? 0.018 : 0.014);
+   303→      sp.position.set(sideSign * 0.031, 0.047, 0.093);
+   304→      head.add(sp);
+   305→      this.catchlights.push(sp);
+   306→      this._catchlightBase = this._catchlightBase || [];
+   307→      this._catchlightBase.push(sp.scale.x);
+   308→    }
+   309→  }
+   310→
+   311→  /** Emissive sanctuary tech accents: wrist cuffs + collar filament. */
+   312→  _buildSuitAccents() {
+   313→    const accentMat = new THREE.MeshBasicMaterial({
+   314→      color: 0x62e6f2,
+   315→      transparent: true,
+   316→      opacity: 0.85,
+   317→    });
+   318→    const attachments = [
+   319→      { bone: 'LeftHand', geo: new THREE.TorusGeometry(0.045, 0.0075, 8, 24) },
+   320→      { bone: 'RightHand', geo: new THREE.TorusGeometry(0.045, 0.0075, 8, 24) },
+   321→      { bone: 'Neck', geo: new THREE.TorusGeometry(0.056, 0.006, 8, 26) },
+   322→    ];
+   323→    for (const a of attachments) {
+   324→      const bone = this.bones[a.bone];
+   325→      if (!bone) continue;
+   326→      const ring = new THREE.Mesh(a.geo, accentMat);
+   327→      ring.rotation.x = Math.PI / 2;
+   328→      if (a.bone === 'Neck') ring.position.y = 0.075;
+   329→      bone.add(ring);
+   330→    }
+   331→  }
+   332→
+   333→  /**
+   334→   * Reposition the 3-point rig around her head relative to the ACTIVE camera:
+   335→   * warm key from the viewer's side, cool fill opposite, cyan rim from the room
+   336→   * behind her — so she is always separated from the background and never looks
+   337→   * composited with a private frontal light.
+   338→   */
+   339→  _updateCameraRelativeLighting(cameraWorldPos) {
+   340→    if (!this.keyLight) return;
+   341→    const head = this.getHeadWorldPosition(this._tmpHead || (this._tmpHead = new THREE.Vector3()));
+   342→    const toCam = this._tmpDir || (this._tmpDir = new THREE.Vector3());
+   343→    toCam.copy(cameraWorldPos).sub(head);
+   344→    toCam.y = Math.max(toCam.y, 0.15); // keep the geometry stable when camera dips
+   345→    toCam.normalize();
+   346→    const side = this._tmpSide || (this._tmpSide = new THREE.Vector3());
+   347→    side.crossVectors(toCam, THREE.Object3D.DEFAULT_UP);
+   348→    if (side.lengthSq() < 1e-4) side.set(1, 0, 0);
+   349→    side.normalize();
+   350→
+   351→    this.keyLight.position.copy(head).addScaledVector(toCam, 1.45).addScaledVector(side, 0.6);
+   352→    this.keyLight.position.y += 0.85;
+   353→    this.keyTarget.position.copy(head);
+   354→
+   355→    this.rimLight.position.copy(head).addScaledVector(toCam, -1.3);
+   356→    this.rimLight.position.y += 0.55;
+   357→
+   358→    this.fillLight.position.copy(head).addScaledVector(toCam, 1.1).addScaledVector(side, -0.6);
+   359→    this.fillLight.position.y -= 0.55;
+   360→
+   361→    // Cyan bounce: from the central holo-table toward her (fixed world motivation)
+   362→    const tableDir = this._tmpTable || (this._tmpTable = new THREE.Vector3());
+   363→    tableDir.set(0, 1.48, 0).sub(head).normalize();
+   364→    this.bounceLight.position.copy(head).addScaledVector(tableDir, 1.15);
+   365→    this.bounceLight.position.y -= 0.25;
+   366→  }
+   367→
+   368→  _prepareMixamoClip(clip, newName, posScale = 0.01, stripXZRoot = true, srcRest = null, tgtRest = null, armCarry = null) {
+   369→    clip.name = newName;
+   370→    const keptTracks = [];
+   371→    const tmpQ = new THREE.Quaternion();
+   372→    for (const t of clip.tracks) {
+   373→      t.name = t.name.replaceAll('mixamorig:', '').replaceAll('mixamorig', '');
+   374→      const [boneName, prop] = t.name.split('.');
+   375→      if (!this.bones[boneName]) continue;
+   376→
+   377→      if (prop === 'quaternion') {
+   378→        // Delta-from-rest conversion between source rig and Avaturn bind pose
+   379→        const qa = srcRest ? srcRest[boneName] : null;
+   380→        const qb = tgtRest ? tgtRest[boneName] : null;
+   381→        if (qa && qb) {
+   382→          const qaInv = qa.clone().invert();
+   383→          for (let i = 0; i < t.values.length; i += 4) {
+   384→            tmpQ.set(t.values[i], t.values[i + 1], t.values[i + 2], t.values[i + 3]);
+   385→            tmpQ.premultiply(qaInv).premultiply(qb);
+   386→            t.values[i] = tmpQ.x;
+   387→            t.values[i + 1] = tmpQ.y;
+   388→            t.values[i + 2] = tmpQ.z;
+   389→            t.values[i + 3] = tmpQ.w;
+   390→          }
+   391→        }
+   392→        // Optional natural arm carry (post-multiplied local rotation)
+   393→        if (armCarry) {
+   394→          const carry = boneName === 'LeftArm' ? armCarry.left : (boneName === 'RightArm' ? armCarry.right : null);
+   395→          if (carry) {
+   396→            for (let i = 0; i < t.values.length; i += 4) {
+   397→              tmpQ.set(t.values[i], t.values[i + 1], t.values[i + 2], t.values[i + 3]);
+   398→              tmpQ.multiply(carry);
+   399→              t.values[i] = tmpQ.x;
+   400→              t.values[i + 1] = tmpQ.y;
+   401→              t.values[i + 2] = tmpQ.z;
+   402→              t.values[i + 3] = tmpQ.w;
+   403→            }
+   404→          }
+   405→        }
+   406→        keptTracks.push(t);
+   407→        continue;
+   408→      }
+   409→
+   410→      if (prop === 'position') {
+   411→        if (boneName !== 'Hips') continue;
+   412→        const baseY = t.values[1] * (t.values[1] > 3 ? posScale : 1.0);
+   413→        const factor = t.values[1] > 3 ? posScale : 1.0;
+   414→        for (let i = 0; i < t.values.length; i += 3) {
+   415→          t.values[i] = stripXZRoot ? 0 : t.values[i] * factor;
+   416→          t.values[i + 1] = Math.max(0.92, t.values[i + 1] * factor || baseY);
+   417→          t.values[i + 2] = stripXZRoot ? 0 : t.values[i + 2] * factor;
+   418→        }
+   419→      }
+   420→      keptTracks.push(t);
+   421→    }
+   422→    clip.tracks = keptTracks;
+   423→    return clip;
+   424→  }
+   425→
+   426→  _fadeToAction(name, duration = 0.32) {
+   427→    if (!this.actions[name] || this.activeActionName === name) return;
+   428→    const next = this.actions[name];
+   429→    next.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).fadeIn(duration).play();
+   430→    if (this.activeActionName && this.actions[this.activeActionName]) {
+   431→      this.actions[this.activeActionName].fadeOut(duration);
+   432→    }
+   433→    this.activeActionName = name;
+   434→  }
+   435→
+   436→  /**
+   437→   * Navigate smoothly around the central holo-table obstacle (radius 2.15m at origin)
+   438→   * so JARVIS never clips through consoles or slides sideways.
+   439→   */
+   440→  navigateTo(targetX, targetZ, targetYaw, { urgent = false, posture = 'console_interaction', emotion = 'focused' } = {}) {
+   441→    this.urgentRun = Boolean(urgent);
+   442→    this.postureMode = posture;
+   443→    this.emotionalState = emotion;
+   444→    this.targetYaw = targetYaw;
+   445→
+   446→    const start = new THREE.Vector2(this.root.position.x, this.root.position.z);
+   447→    const goal = new THREE.Vector2(targetX, targetZ);
+   448→    const dist = start.distanceTo(goal);
+   449→    if (dist < 0.14) {
+   450→      this.waypoints = [];
+   451→      return;
+   452→    }
+   453→
+   454→    // Check if straight segment intersects central circular holo-table (r = 1.95m)
+   455→    const seg = goal.clone().sub(start);
+   456→    const segLenSq = seg.lengthSq();
+   457→    const tProj = Math.max(0, Math.min(1, (-start.x * seg.x - start.z * seg.y) / segLenSq));
+   458→    const closest = start.clone().addScaledVector(seg, tProj);
+   459→    const clearanceRadius = 2.15;
+   460→
+   461→    this.waypoints = [];
+   462→    if (closest.length() < clearanceRadius && start.length() > 1.2 && goal.length() > 1.2) {
+   463→      // Compute tangent arc waypoint around the central ring
+   464→      const a1 = Math.atan2(start.y, start.x);
+   465→      const a2 = Math.atan2(goal.y, goal.x);
+   466→      let delta = a2 - a1;
+   467→      while (delta > Math.PI) delta -= Math.PI * 2;
+   468→      while (delta < -Math.PI) delta += Math.PI * 2;
+   469→      const midAng = a1 + delta * 0.5;
+   470→      this.waypoints.push(new THREE.Vector2(Math.cos(midAng) * 2.55, Math.sin(midAng) * 2.55));
+   471→    }
+   472→    this.waypoints.push(goal);
+   473→  }
+   474→
+   475→  acknowledgeInterruption(cameraWorldPos) {
+   476→    this.waypoints = [];
+   477→    this.currentSpeed = 0;
+   478→    this.urgentRun = false;
+   479→    this.postureMode = 'conversational_focus';
+   480→    this.emotionalState = 'listening';
+   481→    this.focusCamera = true;
+   482→    this.interruptSpeech();
+   483→
+   484→    const dx = cameraWorldPos.x - this.root.position.x;
+   485→    const dz = cameraWorldPos.z - this.root.position.z;
+   486→    this.targetYaw = Math.atan2(dx, dz);
+   487→  }
+   488→
+   489→  /**
+   490→   * Speak with real-time phoneme-to-Oculus-viseme facial synchronization.
+   491→   * Primary voice: server-synthesized audio (base64) with the viseme timeline
+   492→   * elastically scaled to the real audio duration. Fallback: browser SpeechSynthesis.
+   493→   */
+   494→  speak(text, { onStart, onEnd, audio } = {}) {
+   495→    this.interruptSpeech();
+   496→    if (!text) return;
+   497→
+   498→    const clean = text.replace(/\[.*?\]/g, '').trim();
+   499→    if (!clean) return;
+   500→
+   501→    // Build phoneme/viseme schedule using LipsyncEn
+   502→    const words = clean.split(/\s+/);
+   503→    const timeline = [];
+   504→    let cursorMs = 60;
+   505→
+   506→    for (const rawWord of words) {
+   507→      const upper = this.lipsync.preProcessText(rawWord);
+   508→      const oculusSeq = this.lipsync.wordsToVisemes(upper);
+   509→      const wordDurMs = Math.max(150, Math.min(540, rawWord.length * 58));
+   510→
+   511→      if (oculusSeq && oculusSeq.visemes && oculusSeq.visemes.length > 0) {
+   512→        const totalRel = oculusSeq.durations.reduce((a, b) => a + b, 0) || 1;
+   513→        for (let i = 0; i < oculusSeq.visemes.length; i++) {
+   514→          const vCode = oculusSeq.visemes[i];
+   515→          const segMs = (oculusSeq.durations[i] / totalRel) * wordDurMs;
+   516→          timeline.push({
+   517→            viseme: `viseme_${vCode}`,
+   518→            startMs: cursorMs,
+   519→            endMs: cursorMs + segMs,
+   520→          });
+   521→          cursorMs += segMs;
+   522→        }
+   523→      } else {
+   524→        timeline.push({ viseme: 'viseme_aa', startMs: cursorMs, endMs: cursorMs + wordDurMs * 0.7 });
+   525→        cursorMs += wordDurMs;
+   526→      }
+   527→      cursorMs += 42;
+   528→    }
+   529→
+   530→    this.speechTimeline = timeline;
+   531→    this.speechStartPerf = performance.now();
+   532→    this.isSpeaking = true;
+   533→    this.onSpeechEndCallback = onEnd || null;
+   534→    if (onStart) onStart();
+   535→
+   536→    // Primary: server-synthesized NEXUS voice (base64 WAV) with elastic viseme scaling
+   537→    if (audio && audio.data) {
+   538→      try {
+   539→        const snd = new Audio(`data:${audio.mime || 'audio/wav'};base64,${audio.data}`);
+   540→        this.activeAudioEl = snd;
+   541→        const lastEndMs = timeline.length ? timeline[timeline.length - 1].endMs : 1;
+   542→        snd.onloadedmetadata = () => {
+   543→          const durMs = (snd.duration || 0) * 1000;
+   544→          if (durMs > 400 && lastEndMs > 0) {
+   545→            const factor = durMs / lastEndMs;
+   546→            for (const seg of this.speechTimeline) {
+   547→              seg.startMs *= factor;
+   548→              seg.endMs *= factor;
+   549→            }
+   550→          }
+   551→        };
+   552→        snd.onended = () => {
+   553→          this.activeAudioEl = null;
+   554→          this.isSpeaking = false;
+   555→          this._clearVisemes();
+   556→          if (this.onSpeechEndCallback) {
+   557→            const cb = this.onSpeechEndCallback;
+   558→            this.onSpeechEndCallback = null;
+   559→            cb();
+   560→          }
+   561→        };
+   562→        snd.play().catch(() => this._browserTtsFallback(clean));
+   563→        return;
+   564→      } catch {
+   565→        this.activeAudioEl = null;
+   566→      }
+   567→    }
+   568→
+   569→    this._browserTtsFallback(clean);
+   570→  }
+   571→
+   572→  _browserTtsFallback(clean) {
+   573→    // Synthesize audible voice via browser SpeechSynthesis when server audio is unavailable
+   574→    if ('speechSynthesis' in window) {
+   575→      try {
+   576→        window.speechSynthesis.cancel();
+   577→        const utt = new SpeechSynthesisUtterance(clean);
+   578→        const voices = window.speechSynthesis.getVoices();
+   579→        const femaleVoice = voices.find((v) =>
+   580→          /en/i.test(v.lang) && /samantha|victoria|kate|serena|sonia|aria|jenny|female|uk/i.test(v.name)
+   581→        ) || voices.find((v) => /en-GB|en-US/i.test(v.lang));
+   582→        if (femaleVoice) utt.voice = femaleVoice;
+   583→        utt.rate = 1.02;
+   584→        utt.pitch = 0.96;
+   585→        utt.onend = () => {
+   586→          this.isSpeaking = false;
+   587→          this._clearVisemes();
+   588→          if (this.onSpeechEndCallback) this.onSpeechEndCallback();
+   589→        };
+   590→        this.activeUtterance = utt;
+   591→        window.speechSynthesis.speak(utt);
+   592→      } catch {
+   593→        // Fallback purely to timed viseme timeline
+   594→      }
+   595→    }
+   596→  }
+   597→
+   598→  interruptSpeech() {
+   599→    if (this.activeAudioEl) {
+   600→      try { this.activeAudioEl.pause(); } catch { /* noop */ }
+   601→      this.activeAudioEl = null;
+   602→    }
+   603→    if ('speechSynthesis' in window) {
+   604→      try { window.speechSynthesis.cancel(); } catch { /* noop */ }
+   605→    }
+   606→    this.isSpeaking = false;
+   607→    this.speechTimeline = [];
+   608→    this.activeUtterance = null;
+   609→    this._clearVisemes();
+   610→    if (this.onSpeechEndCallback) {
+   611→      const cb = this.onSpeechEndCallback;
+   612→      this.onSpeechEndCallback = null;
+   613→      cb();
+   614→    }
+   615→  }
+   616→
+   617→  _setMorph(name, value, lerpAlpha = 0.25) {
+   618→    for (const mesh of this.morphMeshes) {
+   619→      const idx = mesh.morphTargetDictionary[name];
+   620→      if (idx !== undefined) {
+   621→        const cur = mesh.morphTargetInfluences[idx] || 0;
+   622→        mesh.morphTargetInfluences[idx] = cur + (value - cur) * lerpAlpha;
+   623→      }
+   624→    }
+   625→  }
+   626→
+   627→  _clearVisemes() {
+   628→    for (const v of VISEME_NAMES) {
+   629→      this._setMorph(v, 0, 1.0);
+   630→    }
+   631→    this._setMorph('jawOpen', 0, 1.0);
+   632→  }
+   633→
+   634→  getHeadWorldPosition(target = new THREE.Vector3()) {
+   635→    if (this.bones.Head) {
+   636→      this.bones.Head.getWorldPosition(target);
+   637→      return target;
+   638→    }
+   639→    return target.set(this.root.position.x, 1.62, this.root.position.z);
+   640→  }
+   641→
+   642→  update(dt, cameraWorldPos, reducedMotion = false) {
+   643→    if (!this.loaded) return;
+   644→    const clampedDt = Math.min(dt, 0.05);
+   645→    this.breathClock += clampedDt;
+   646→
+   647→    // 1. Grounded Waypoint Locomotion (zero foot-skating!)
+   648→    if (this.waypoints.length > 0) {
+   649→      const wp = this.waypoints[0];
+   650→      const dx = wp.x - this.root.position.x;
+   651→      const dz = wp.y - this.root.position.z;
+   652→      const dist = Math.hypot(dx, dz);
+   653→
+   654→      if (dist < 0.12) {
+   655→        this.waypoints.shift();
+   656→      } else {
+   657→        const desiredYaw = Math.atan2(dx, dz);
+   658→        this.root.rotation.y = this._lerpAngle(this.root.rotation.y, desiredYaw, clampedDt * 7.5);
+   659→
+   660→        const maxSpeed = this.urgentRun ? 3.25 : 1.32;
+   661→        const decelFactor = this.waypoints.length === 1 ? Math.min(1, dist / 0.75) : 1;
+   662→        const targetSpeed = maxSpeed * Math.max(0.32, decelFactor);
+   663→        this.currentSpeed += (targetSpeed - this.currentSpeed) * Math.min(1, clampedDt * 8.0);
+   664→
+   665→        const step = Math.min(dist, this.currentSpeed * clampedDt);
+   666→        this.root.position.x += (dx / dist) * step;
+   667→        this.root.position.z += (dz / dist) * step;
+   668→
+   669→        const clipName = this.urgentRun && this.actions.run ? 'run' : 'walk';
+   670→        this._fadeToAction(clipName, 0.22);
+   671→        if (this.actions[clipName]) {
+   672→          const refSpeed = clipName === 'run' ? 3.25 : 1.32;
+   673→          this.actions[clipName].setEffectiveTimeScale(Math.max(0.55, this.currentSpeed / refSpeed));
+   674→        }
+   675→      }
+   676→    } else {
+   677→      this.currentSpeed *= Math.max(0, 1 - clampedDt * 10);
+   678→      this._fadeToAction('idle', 0.35);
+   679→      this.root.rotation.y = this._lerpAngle(this.root.rotation.y, this.targetYaw, clampedDt * 5.0);
+   680→    }
+   681→
+   682→    // 2. Advance skeletal mixer
+   683→    this.mixer.update(clampedDt);
+   684→
+   685→    // 2b. Camera-relative cinematic relight (key/fill/rim around her head)
+   686→    this._updateCameraRelativeLighting(cameraWorldPos);
+   687→
+   688→    // 3. Subtle additive posture & hand interaction layering (only when standing still)
+   689→    if (this.waypoints.length === 0 && !reducedMotion) {
+   690→      this._applyPostureLayer();
+   691→    }
+   692→
+   693→    // 4. Head & Eye Gaze Tracking (rotates eyes/head naturally rather than spinning whole body!)
+   694→    const gazeTarget = this.focusCamera ? cameraWorldPos : this.lookWorldTarget;
+   695→    this._applyGazeTracking(gazeTarget);
+   696→
+   697→    // 5. Asymmetric Natural Blinking
+   698→    this._updateBlinking(clampedDt);
+   699→
+   700→    // 6. Emotional Facial Expression Morphs
+   701→    this._updateExpressions();
+   702→
+   703→    // 7. Synchronized Phoneme/Viseme Lip-Sync
+   704→    this._updateLipSync();
+   705→  }
+   706→
+   707→  _applyPostureLayer() {
+   708→    const t = this.breathClock;
+   709→    if (this.bones.Spine1) {
+   710→      this.bones.Spine1.rotation.x += Math.sin(t * 1.45) * 0.012;
+   711→    }
+   712→
+   713→    // Living weight-shift: slow hips sway with counter-rotating spine + head
+   714→    // micro-drift, so the idle never reads as a frozen mannequin.
+   715→    const sway = Math.sin(t * 0.31);
+   716→    if (this.bones.Hips) {
+   717→      this.bones.Hips.rotation.z += sway * 0.022;
+   718→      this.bones.Hips.position.x += sway * 0.011;
+   719→    }
+   720→    if (this.bones.Spine) {
+   721→      this.bones.Spine.rotation.z -= sway * 0.013;
+   722→    }
+   723→    if (this.bones.Head) {
+   724→      this.bones.Head.rotation.y += Math.sin(t * 0.47 + 1.3) * 0.013;
+   725→      this.bones.Head.rotation.z += Math.sin(t * 0.23) * 0.006;
+   726→    }
+   727→
+   728→    const rArm = this.bones.RightArm;
+   729→    const rFore = this.bones.RightForeArm;
+   730→    const lArm = this.bones.LeftArm;
+   731→    const lFore = this.bones.LeftForeArm;
+   732→    if (!rArm || !rFore || !lArm || !lFore) return;
+   733→
+   734→    if (this.postureMode === 'console_interaction') {
+   735→      // Right hand raised gently manipulating volumetric assembly above holo-table
+   736→      rArm.rotation.x -= 0.42 + Math.sin(t * 1.1) * 0.04;
+   737→      rArm.rotation.z -= 0.12;
+   738→      rFore.rotation.x -= 0.55 + Math.cos(t * 1.3) * 0.05;
+   739→    } else if (this.postureMode === 'scenario_construct') {
+   740→      // Symmetrical restrained two-hand volumetric expansion gesture
+   741→      rArm.rotation.x -= 0.48;
+   742→      rFore.rotation.x -= 0.52;
+   743→      lArm.rotation.x -= 0.48;
+   744→      lFore.rotation.x -= 0.52;
+   745→    } else if (this.postureMode === 'scenario_direct' || this.postureMode === 'video_present') {
+   746→      //Measured explanatory presentation gesture toward 3D evidence
+   747→      rArm.rotation.x -= 0.54;
+   748→      rArm.rotation.y += 0.22;
+   749→      rFore.rotation.x -= 0.38;
+   750→    } else if (this.isSpeaking) {
+   751→      // Restrained conversational gesture (not on every word!)
+   752→      const env = Math.max(0, Math.sin(t * 0.85));
+   753→      rArm.rotation.x -= 0.22 * env;
+   754→      rFore.rotation.x -= 0.38 * env;
+   755→    }
+   756→  }
+   757→
+   758→  _applyGazeTracking(worldTarget) {
+   759→    if (!this.bones.Head || !this.bones.Neck) return;
+   760→    const headPos = this.getHeadWorldPosition(new THREE.Vector3());
+   761→    const localDir = worldTarget.clone().sub(headPos);
+   762→    localDir.applyAxisAngle(new THREE.Vector3(0, 1, 0), -this.root.rotation.y).normalize();
+   763→
+   764→    const yaw = THREE.MathUtils.clamp(Math.atan2(localDir.x, localDir.z), -0.58, 0.58);
+   765→    const pitch = THREE.MathUtils.clamp(-Math.asin(THREE.MathUtils.clamp(localDir.y, -0.8, 0.8)), -0.32, 0.32);
+   766→
+   767→    this.bones.Neck.rotation.y += yaw * 0.32;
+   768→    this.bones.Neck.rotation.x += pitch * 0.28;
+   769→    this.bones.Head.rotation.y += yaw * 0.45;
+   770→    this.bones.Head.rotation.x += pitch * 0.42;
+   771→
+   772→    // Subtle ocular look morphs
+   773→    const eyeX = THREE.MathUtils.clamp(yaw * 0.85, -0.5, 0.5);
+   774→    const eyeY = THREE.MathUtils.clamp(-pitch * 0.85, -0.4, 0.4);
+   775→    this._setMorph('eyeLookOutLeft', Math.max(0, eyeX), 0.3);
+   776→    this._setMorph('eyeLookInRight', Math.max(0, eyeX), 0.3);
+   777→    this._setMorph('eyeLookInLeft', Math.max(0, -eyeX), 0.3);
+   778→    this._setMorph('eyeLookOutRight', Math.max(0, -eyeX), 0.3);
+   779→    this._setMorph('eyeLookUpLeft', Math.max(0, eyeY), 0.3);
+   780→    this._setMorph('eyeLookUpRight', Math.max(0, eyeY), 0.3);
+   781→    this._setMorph('eyeLookDownLeft', Math.max(0, -eyeY), 0.3);
+   782→    this._setMorph('eyeLookDownRight', Math.max(0, -eyeY), 0.3);
+   783→  }
+   784→
+   785→  _updateBlinking(dt) {
+   786→    this.blinkTimer -= dt;
+   787→    if (this.blinkTimer <= 0 && this.blinkPhase < 0) {
+   788→      this.blinkPhase = 0;
+   789→      this.blinkTimer = 3.1 + Math.random() * 2.8;
+   790→    }
+   791→    if (this.blinkPhase >= 0) {
+   792→      this.blinkPhase += dt / 0.15;
+   793→      const w = this.blinkPhase < 0.5 ? this.blinkPhase * 2 : Math.max(0, (1 - this.blinkPhase) * 2);
+   794→      this._setMorph('eyeBlinkLeft', w, 0.85);
+   795→      this._setMorph('eyeBlinkRight', w * 0.96, 0.85);
+   796→      // Catchlights fade with the lids
+   797→      if (this.catchlights) {
+   798→        const cl = Math.max(0, 1 - w * 1.4);
+   799→        this.catchlights.forEach((sp, i) => {
+   800→          sp.scale.setScalar((this._catchlightBase?.[i] ?? 0.017) * cl);
+   801→        });
+   802→      }
+   803→      if (this.blinkPhase >= 1) {
+   804→        this.blinkPhase = -1;
+   805→        this._setMorph('eyeBlinkLeft', 0, 0.85);
+   806→        this._setMorph('eyeBlinkRight', 0, 0.85);
+   807→        if (this.catchlights) {
+   808→          this.catchlights.forEach((sp, i) => sp.scale.setScalar(this._catchlightBase?.[i] ?? 0.017));
+   809→        }
+   810→      }
+   811→    }
+   812→  }
+   813→
+   814→  _updateExpressions() {
+   815→    const e = this.emotionalState;
+   816→    this._setMorph('browInnerUp', e === 'listening' ? 0.18 : (e === 'concerned' ? 0.36 : (e === 'urgent' ? 0.24 : 0.04)), 0.14);
+   817→    this._setMorph('browDownLeft', e === 'focused' ? 0.24 : (e === 'concerned' ? 0.22 : (e === 'urgent' ? 0.3 : 0.0)), 0.14);
+   818→    this._setMorph('browDownRight', e === 'focused' ? 0.24 : (e === 'concerned' ? 0.22 : (e === 'urgent' ? 0.3 : 0.0)), 0.14);
+   819→    this._setMorph('eyeSquintLeft', e === 'focused' ? 0.18 : 0.04, 0.14);
+   820→    this._setMorph('eyeSquintRight', e === 'focused' ? 0.18 : 0.04, 0.14);
+   821→    this._setMorph('eyeWideLeft', e === 'urgent' ? 0.22 : 0.0, 0.18);
+   822→    this._setMorph('eyeWideRight', e === 'urgent' ? 0.22 : 0.0, 0.18);
+   823→    // Composed poise — never a frozen customer-support grin
+   824→    this._setMorph('mouthSmileLeft', e === 'listening' ? 0.06 : 0.02, 0.12);
+   825→    this._setMorph('mouthSmileRight', e === 'listening' ? 0.06 : 0.02, 0.12);
+   826→  }
+   827→
+   828→  _updateLipSync() {
+   829→    if (!this.isSpeaking || this.speechTimeline.length === 0) {
+   830→      for (const v of VISEME_NAMES) this._setMorph(v, 0, 0.25);
+   831→      this._setMorph('jawOpen', 0, 0.25);
+   832→      return;
+   833→    }
+   834→
+   835→    const elapsed = performance.now() - this.speechStartPerf;
+   836→    const lastEnd = this.speechTimeline[this.speechTimeline.length - 1].endMs;
+   837→
+   838→    if (elapsed > lastEnd + 180) {
+   839→      const audioStillPlaying = this.activeAudioEl && !this.activeAudioEl.paused;
+   840→      if (!audioStillPlaying && (!('speechSynthesis' in window) || !window.speechSynthesis.speaking)) {
+   841→        this.isSpeaking = false;
+   842→        this._clearVisemes();
+   843→        if (this.onSpeechEndCallback) {
+   844→          const cb = this.onSpeechEndCallback;
+   845→          this.onSpeechEndCallback = null;
+   846→          cb();
+   847→        }
+   848→      }
+   849→      return;
+   850→    }
+   851→
+   852→    let activeV = 'viseme_sil';
+   853→    for (const seg of this.speechTimeline) {
+   854→      if (elapsed >= seg.startMs && elapsed <= seg.endMs) {
+   855→        activeV = seg.viseme;
+   856→        break;
+   857→      }
+   858→    }
+   859→
+   860→    for (const v of VISEME_NAMES) {
+   861→      this._setMorph(v, v === activeV ? 0.68 : 0.0, 0.42);
+   862→    }
+   863→    const openWeight = ['viseme_aa', 'viseme_O', 'viseme_E'].includes(activeV) ? 0.26 : 0.08;
+   864→    this._setMorph('jawOpen', activeV === 'viseme_sil' ? 0.0 : openWeight, 0.38);
+   865→  }
+   866→
+   867→  _lerpAngle(a, b, t) {
+   868→    let diff = b - a;
+   869→    while (diff > Math.PI) diff -= Math.PI * 2;
+   870→    while (diff < -Math.PI) diff += Math.PI * 2;
+   871→    return a + diff * Math.min(1, t);
+   872→  }
+   873→}
+   874→

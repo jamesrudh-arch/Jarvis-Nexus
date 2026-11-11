@@ -42,6 +42,7 @@ import {
 import { JarvisCharacterController } from './JarvisCharacterController.js';
 import { ScenarioDirector3D, HoloScanMaterial } from './ScenarioDirector3D.js';
 import { CameraDirector } from './CameraDirector.js';
+import { BehaviorDirector } from './BehaviorDirector.js';
 
 const CYAN_HEX = 0x62e6f2;
 
@@ -77,19 +78,23 @@ export class NexusSanctuaryScene {
       preserveDrawingBuffer: true, // Supports WebM recording & frame extraction
     });
     const isMobile = window.innerWidth <= 860;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? 1.35 : 2.0));
+    // Crisp on every device: full retina DPR (pinch-zoom of the page is locked in
+    // layout.tsx, so zooming is a real camera dolly on native-resolution pixels).
+    this._qualityDpr = Math.min(window.devicePixelRatio || 1, 2.0);
+    this.renderer.setPixelRatio(this._qualityDpr);
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.08;
+    this.renderer.toneMappingExposure = 1.0;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    this._frameTimeAvg = 20;
 
     // Crisp grazing-angle texture filtering (the "blurry when zooming" fix)
     setGlobalAnisotropy(this.renderer.capabilities.getMaxAnisotropy());
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x02070b);
-    this.scene.fog = new THREE.FogExp2(0x02070b, 0.028); // Subtle depth, never obscuring JARVIS
+    this.scene.fog = new THREE.FogExp2(0x02070b, 0.018); // Subtle depth — never eats her legs
 
     // Subtle PBR environment reflection map (low intensity so surfaces don't look glossy plastic)
     const pmrem = new THREE.PMREMGenerator(this.renderer);
@@ -100,7 +105,7 @@ export class NexusSanctuaryScene {
     this.cameraDirector = new CameraDirector(this.camera, this.canvas);
 
     // Post pipeline: MSAA render target + restrained bloom + cinematic vignette
-    const rtSamples = isMobile ? 0 : 4;
+    const rtSamples = isMobile ? 2 : 4;
     const composerRT = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, {
       samples: rtSamples,
       type: THREE.HalfFloatType,
@@ -109,9 +114,9 @@ export class NexusSanctuaryScene {
     this.renderPass = new RenderPass(this.scene, this.camera);
     this.bloomPass = new UnrealBloomPass(
       new THREE.Vector2(window.innerWidth, window.innerHeight),
-      0.26, // strength (restrained — bloom must never halate the signage)
+      0.26, // strength — restrained: bloom accents, never washes the frame
       0.36, // radius
-      0.86  // high threshold so skin, signage & dark stone stay crisp
+      0.85  // threshold — media wall & skin stay crisp, only emitters glow
     );
     this.vignettePass = new ShaderPass(VignetteShader);
     this.vignettePass.uniforms.offset.value = 1.14;
@@ -149,6 +154,8 @@ export class NexusSanctuaryScene {
 
     // Living Character & Scenario Director
     this.jarvis = new JarvisCharacterController(this.scene);
+    this.behaviorDirector = new BehaviorDirector(this.jarvis);
+    this.behaviorDirector.enabled = true;
     this.scenarioDirector = new ScenarioDirector3D(this.scene);
     this.scenarioDirector.attachCameraDirector(this.cameraDirector);
 
@@ -184,20 +191,21 @@ export class NexusSanctuaryScene {
       metalness: 0.22,
     });
 
-    if (!isMobile) {
-      // Real planar reflection beneath the semi-transparent honed slate
-      // (512px is sufficient — it reads as a subtle sheen through the slate)
+    // Real planar reflection beneath the semi-transparent honed slate — on
+    // EVERY device now (mobile gets a smaller buffer). Reads as polished stone.
+    {
+      const reflSize = isMobile ? 384 : 1024;
       this.floorReflector = new Reflector(new THREE.CircleGeometry(14.4, 72), {
         clipBias: 0.003,
-        textureWidth: 512,
-        textureHeight: 512,
+        textureWidth: reflSize,
+        textureHeight: reflSize,
         color: 0x50606a,
       });
       this.floorReflector.rotation.x = -Math.PI / 2;
       this.floorReflector.position.y = 0.0;
       this.architectureGroup.add(this.floorReflector);
       floorMat.transparent = true;
-      floorMat.opacity = 0.86;
+      floorMat.opacity = isMobile ? 0.9 : 0.86;
     }
 
     const floor = new THREE.Mesh(new THREE.CircleGeometry(14.5, 72), floorMat);
@@ -207,7 +215,7 @@ export class NexusSanctuaryScene {
     this.architectureGroup.add(floor);
 
     // Restrained recessed floor calibration rings
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0x3b9aa6, transparent: true, opacity: 0.5 });
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0x3b9aa6, transparent: true, opacity: 0.34 });
     for (const [rIn, rOut] of [[1.95, 1.98], [4.35, 4.38], [8.85, 8.88]]) {
       const ring = new THREE.Mesh(new THREE.RingGeometry(rIn, rOut, 96), ringMat);
       ring.rotation.x = -Math.PI / 2;
@@ -307,7 +315,7 @@ export class NexusSanctuaryScene {
     // Glowing oculus ring
     const oculus = new THREE.Mesh(
       new THREE.TorusGeometry(3.9, 0.045, 10, 72),
-      new THREE.MeshBasicMaterial({ color: 0xbfe9f2 })
+      new THREE.MeshBasicMaterial({ color: 0x8fd3e0 })
     );
     oculus.rotation.x = Math.PI / 2;
     oculus.position.y = 6.5;
@@ -340,7 +348,7 @@ export class NexusSanctuaryScene {
         map: coneTex,
         color: 0xcfe6ee,
         transparent: true,
-        opacity: 0.13,
+        opacity: 0.085,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         side: THREE.DoubleSide,
@@ -348,6 +356,29 @@ export class NexusSanctuaryScene {
     );
     lightCone.position.set(0, 2.72, 0.5);
     this.architectureGroup.add(lightCone);
+
+    // Secondary volumetric shafts over key perimeter stations — very subtle
+    // atmosphere so the room reads as lit from above everywhere.
+    const shaftMatBase = {
+      map: coneTex,
+      color: 0xbfe0ea,
+      transparent: true,
+      opacity: 0.05,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    };
+    for (const [sx, sz, r, h] of [
+      [-6.9, -1.5, 1.1, 4.6], // memory colonnade
+      [6.9, -5.6, 1.3, 4.8],  // media wall
+      [3.1, 7.6, 1.0, 4.4],   // compute bay
+      [-3.1, 7.6, 1.0, 4.4],  // owner switches
+      [-5.4, -6.6, 1.0, 4.4], // research alcove
+    ]) {
+      const shaft = new THREE.Mesh(new THREE.ConeGeometry(r, h, 32, 1, true), new THREE.MeshBasicMaterial(shaftMatBase));
+      shaft.position.set(sx, h / 2 + 0.7, sz);
+      this.architectureGroup.add(shaft);
+    }
 
     const dustCount = isMobile ? 220 : 620;
     const dustPos = new Float32Array(dustCount * 3);
@@ -375,10 +406,10 @@ export class NexusSanctuaryScene {
     // ------------------------------------------------------------------
     // 5. Motivated Architectural Lighting
     // ------------------------------------------------------------------
-    const ambient = new THREE.HemisphereLight(0x9ec5d6, 0x061017, 0.52);
+    const ambient = new THREE.HemisphereLight(0x9ec5d6, 0x061017, 0.48);
     this.architectureGroup.add(ambient);
 
-    const centralDownlight = new THREE.SpotLight(0xfff0dd, 8.5, 16, Math.PI * 0.34, 0.65, 1.2);
+    const centralDownlight = new THREE.SpotLight(0xfff0dd, 9.5, 16, Math.PI * 0.34, 0.65, 1.2);
     centralDownlight.position.set(0, 5.8, 0.5);
     centralDownlight.castShadow = true;
     centralDownlight.shadow.mapSize.set(2048, 2048);
@@ -386,6 +417,9 @@ export class NexusSanctuaryScene {
     this.architectureGroup.add(centralDownlight);
 
     // Cove accents over perimeter stations
+    // NOTE: each row is [x, z, color, intensity]. A previous 5-element row
+    // mis-assigned the color hex (10,405,334) as INTENSITY — a ten-million-candela
+    // white blaster that washed out the entire right half of the default framing.
     for (const [lx, lz, col, intensity] of [
       [-6.8, -1.5, 0x62e6f2, 2.4], // Memory Colonnade
       [-5.8, -6.2, 0xd8eef5, 2.6], // Research Alcove
@@ -394,11 +428,20 @@ export class NexusSanctuaryScene {
       [7.2, 0.5, 0x9ec5d6, 2.4],   // Security Vault
       [0.0, 6.8, 0xd8eef5, 2.4],   // Compute & Switches
       [-6.6, 4.6, 0xe7c98f, 1.6],  // warm wash, Diagnostics side
-      [8.9, 3.8, -2.8, 0x9ec5d6, 2.1], // fill the +X dead zone
+      [8.9, -2.8, 0x9ec5d6, 2.1],  // soft fill, +X dead zone (FIXED row)
     ]) {
       const pl = new THREE.PointLight(col, intensity, 8.5, 1.5);
       pl.position.set(lx, 3.8, lz);
       this.architectureGroup.add(pl);
+    }
+
+    // High wall-wash accents: three dim sources near the ceiling ring close the
+    // black voids at the top of wide compositions (readable architecture, not a
+    // character floating in nothing).
+    for (const [wx, wz] of [[7.6, -7.4], [-9.2, -4.4], [9.2, 4.6]]) {
+      const wash = new THREE.PointLight(0x7fb6c4, 1.15, 13, 1.4);
+      wash.position.set(wx, 5.3, wz);
+      this.architectureGroup.add(wash);
     }
   }
 
@@ -478,6 +521,45 @@ export class NexusSanctuaryScene {
     });
 
     // ZONE 1 & 2: Central Operations Holo-Table + Recessed Stage Ring
+    // Raised obsidian dais under the holo-table — the sanctuary's focal altar.
+    // Two shallow steps + glowing rim inlay + radial spoke engraving.
+    {
+      const daisMat = new THREE.MeshStandardMaterial({
+        color: 0x0a141c,
+        roughness: 0.38,
+        metalness: 0.55,
+      });
+      const step1 = new THREE.Mesh(new THREE.CylinderGeometry(2.06, 2.12, 0.045, 64), daisMat);
+      step1.position.y = 0.0225;
+      step1.receiveShadow = true;
+      this.architectureGroup.add(step1);
+      const step2 = new THREE.Mesh(new THREE.CylinderGeometry(1.78, 1.84, 0.05, 64), daisMat);
+      step2.position.y = 0.068;
+      step2.receiveShadow = true;
+      this.architectureGroup.add(step2);
+
+      // Glowing rim inlay on each step
+      const rimMat = new THREE.MeshBasicMaterial({ color: 0x4fc3d3 });
+      const rim1 = new THREE.Mesh(new THREE.TorusGeometry(2.08, 0.012, 8, 96), rimMat);
+      rim1.rotation.x = Math.PI / 2;
+      rim1.position.y = 0.046;
+      this.architectureGroup.add(rim1);
+      const rim2 = new THREE.Mesh(new THREE.TorusGeometry(1.8, 0.012, 8, 96), rimMat);
+      rim2.rotation.x = Math.PI / 2;
+      rim2.position.y = 0.094;
+      this.architectureGroup.add(rim2);
+
+      // Radial engraved spokes on the lower step (24 fine lines)
+      const spokeMat = new THREE.MeshBasicMaterial({ color: 0x2b7f8d, transparent: true, opacity: 0.6 });
+      for (let i = 0; i < 24; i++) {
+        const ang = (i / 24) * Math.PI * 2;
+        const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.006, 0.5), spokeMat);
+        spoke.position.set(Math.cos(ang) * 1.95, 0.047, Math.sin(ang) * 1.95);
+        spoke.rotation.y = -ang;
+        this.architectureGroup.add(spoke);
+      }
+    }
+
     const pitRing = new THREE.Mesh(new THREE.TorusGeometry(1.55, 0.06, 16, 64), darkMetalMat);
     pitRing.rotation.x = Math.PI / 2;
     pitRing.position.y = 0.03;
@@ -508,8 +590,8 @@ export class NexusSanctuaryScene {
     // Floating Volumetric Assembly above the holo-table (scanline holo shells + orbit rings)
     this.centerHoloAssembly = new THREE.Group();
     this.centerHoloAssembly.position.set(0, 1.48, 0);
-    const knotMat = new HoloScanMaterial(CYAN_HEX, { opacity: 0.55, scanDensity: 30 });
-    const coreMat = new HoloScanMaterial(0xddfbff, { opacity: 0.3, scanDensity: 20 });
+    const knotMat = new HoloScanMaterial(CYAN_HEX, { opacity: 0.42, scanDensity: 30 });
+    const coreMat = new HoloScanMaterial(0xddfbff, { opacity: 0.24, scanDensity: 20 });
     this.centerHoloMats = [knotMat, coreMat];
     const outerCore = new THREE.Mesh(new THREE.TorusKnotGeometry(0.34, 0.08, 96, 14, 2, 3), knotMat);
     const wireOverlay = new THREE.Mesh(
@@ -621,7 +703,7 @@ export class NexusSanctuaryScene {
     wallFrame.rotation.y = -0.62;
     this.architectureGroup.add(wallFrame);
 
-    this.mediaScreenMat = new THREE.MeshBasicMaterial({ map: this.schlierenFeed.texture });
+    this.mediaScreenMat = new THREE.MeshBasicMaterial({ map: this.schlierenFeed.texture, color: 0x93a9b2 }); // dimmed: the wall must glow, never blow out
     const screenMesh = new THREE.Mesh(new THREE.PlaneGeometry(4.38, 2.46), this.mediaScreenMat);
     screenMesh.position.set(6.86, 1.92, -5.74);
     screenMesh.rotation.y = -0.62;
@@ -657,7 +739,7 @@ export class NexusSanctuaryScene {
     // (the media wall itself sits behind the documentary camera).
     this.explainerSidePanel = new THREE.Mesh(
       new THREE.PlaneGeometry(2.05, 1.15),
-      new THREE.MeshBasicMaterial({ map: this.schlierenFeed.texture, transparent: true, opacity: 0.96, side: THREE.DoubleSide })
+      new THREE.MeshBasicMaterial({ map: this.schlierenFeed.texture, color: 0x93a9b2, transparent: true, opacity: 0.96, side: THREE.DoubleSide })
     );
     this.explainerSidePanel.position.set(-3.35, 2.1, 2.75);
     this.explainerSidePanel.lookAt(0.25, 1.85, 5.65);
@@ -930,7 +1012,8 @@ export class NexusSanctuaryScene {
     const w = window.innerWidth;
     const h = window.innerHeight;
     const isMobile = w <= 860;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? 1.35 : 2.0));
+    this._qualityDpr = Math.min(window.devicePixelRatio || 1, this._qualityDpr ? Math.min(this._qualityDpr, 2.0) : 2.0);
+    this.renderer.setPixelRatio(this._qualityDpr);
     this.renderer.setSize(w, h);
     this.composer.setSize(w, h);
     this.camera.aspect = w / h;
@@ -1005,10 +1088,29 @@ export class NexusSanctuaryScene {
       }
     }
 
-    // 2. Update Scenario Director, Living JARVIS, and Camera Director
+    // 2. Update Scenario Director, Living JARVIS, Autonomous Behavior & Camera
     this.scenarioDirector.update(dt);
     this.jarvis.update(dt, this.camera.position, this.reducedMotion);
+    this.behaviorDirector.update(dt, this.camera.position);
     this.cameraDirector.update(dt, this.jarvis, this.reducedMotion);
+
+    // 2b. Adaptive resolution guard: if the device can't hold the retina DPR,
+    // step it down (never below 1.0) instead of dropping frames. Only touches
+    // the pipeline when the value actually changes (no per-frame realloc churn).
+    this._frameTimeAvg = this._frameTimeAvg * 0.97 + Math.min(dt, 0.2) * 1000 * 0.03;
+    const maxDpr = Math.min(window.devicePixelRatio || 1, 2.0);
+    let targetDpr = this._qualityDpr;
+    if (this._frameTimeAvg > 42 && this._qualityDpr > 1.0) {
+      targetDpr = Math.max(1.0, this._qualityDpr - 0.25);
+    } else if (this._frameTimeAvg < 20 && this._qualityDpr < maxDpr) {
+      targetDpr = Math.min(this._qualityDpr + 0.125, maxDpr);
+    }
+    if (targetDpr !== this._qualityDpr && targetDpr !== this._appliedDpr) {
+      this._qualityDpr = targetDpr;
+      this._appliedDpr = targetDpr;
+      this.renderer.setPixelRatio(targetDpr);
+      this.composer.setSize(window.innerWidth, window.innerHeight);
+    }
 
     // 3. Project 3D world-space scenario callout tags onto screen
     this._renderSpatialAnchors();

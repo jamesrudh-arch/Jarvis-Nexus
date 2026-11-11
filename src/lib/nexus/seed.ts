@@ -27,8 +27,8 @@ export const SPATIAL_ZONES: Record<string, ZoneDef> = {
   simulation_stage: {
     id: 'simulation_stage',
     label: 'Volumetric Simulation & Scenario Stage',
-    x: 0.0, z: 1.85, yaw: 0.0,
-    look_target: [0.0, 1.4, 4.8],
+    x: 1.9, z: 2.9, yaw: -2.11, // presenter's mark BESIDE the hologram — she directs it from inside the documentary frame
+    look_target: [0.15, 1.4, 1.85],
     camera_preset: 'scenario_stage',
     description: 'Recessed emitter floor for room-scale 3D LiDAR reconstructions and parallel physics simulations.',
   },

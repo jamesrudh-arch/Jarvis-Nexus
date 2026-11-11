@@ -135,6 +135,8 @@ export class NexusClient {
   private scenarioPhase = '';
   private scenarioTimeReadout = '';
   private lastTickEmit = 0;
+  private lastNarrCueIndex = -1;
+  private narratingScenario = false;
 
   private micStream: MediaStream | null = null;
   private camStream: MediaStream | null = null;
@@ -285,6 +287,15 @@ export class NexusClient {
     const posture = postureMap[snap.current_zone] || 'console_interaction';
     const pos = snap.position;
 
+    // Autonomous behavior permission: only in ambient modes, autonomy switch ON,
+    // no active scenario, and no pending conversation. She lives on her own.
+    const ambientModes = ['living_presence', 'wake_auth', 'digital_human_embodiment'];
+    sanctuary.behaviorDirector?.setServerPermitted(
+      Boolean(snap.switches?.autonomy)
+      && !snap.active_scenario
+      && ambientModes.includes(snap.active_mode)
+    );
+
     if (initialSnap) {
       sanctuary.jarvis.root.position.set(pos.x, 0, pos.z);
       sanctuary.jarvis.root.rotation.y = pos.yaw;
@@ -292,7 +303,17 @@ export class NexusClient {
       sanctuary.jarvis.postureMode = posture;
       sanctuary.jarvis.emotionalState = snap.emotional_state;
     } else {
-      sanctuary.jarvis.navigateTo(pos.x, pos.z, pos.yaw, {
+      // Presenter's mark: while a scenario plays she stands BESIDE the hologram
+      // (never inside the emitter volume), framed with the evidence she directs.
+      let navX = pos.x;
+      let navZ = pos.z;
+      let navYaw = pos.yaw;
+      if (snap.active_scenario && snap.current_zone === 'simulation_stage') {
+        navX = 1.9;
+        navZ = 2.9;
+        navYaw = -2.11;
+      }
+      sanctuary.jarvis.navigateTo(navX, navZ, navYaw, {
         urgent: snap.locomotion_state === 'running' || snap.emotional_state === 'urgent',
         posture,
         emotion: snap.emotional_state || 'focused',
@@ -323,6 +344,8 @@ export class NexusClient {
   // Conversation
   // ------------------------------------------------------------------
   async sendConversation(content: string, modality: 'text' | 'voice' | 'vision' = 'text') {
+    // She stops autonomous wandering the moment you address her
+    this.sanctuary?.behaviorDirector?.pause(18);
     try {
       const payload = await api<{
         jarvis_message: JarvisMessage;
@@ -370,6 +393,7 @@ export class NexusClient {
     this.sanctuary?.jarvis.interruptSpeech();
     this.interruptAvailable = false;
     this.speakingState = false;
+    this.narratingScenario = false;
     this.emit();
     try {
       const world = await api<WorldSnapshot>('/api/v1/world/interrupt', { method: 'POST' });
@@ -421,6 +445,18 @@ export class NexusClient {
 
   setCameraPreset(value: string) {
     this.sanctuary?.cameraDirector.setManualSelect(value, this.sanctuary.reducedMotion);
+    // Manual framing = you're directing HER: autonomy yields, and conversational
+    // framing means EYE CONTACT with the lens.
+    this.sanctuary?.behaviorDirector?.pause(30);
+    const j = this.sanctuary?.jarvis;
+    if (j) {
+      if (value === 'conversation') {
+        j.focusCamera = true;
+        if (!j.isSpeaking) j.postureMode = 'conversational_focus';
+      } else if (value === 'living_presence') {
+        j.focusCamera = true;
+      }
+    }
   }
 
   async completeOnboarding(action: 'dismiss' | 'compute' | 'scenario') {
@@ -455,7 +491,16 @@ export class NexusClient {
   activateClientScenario(def: ScenarioDef, runtime: ScenarioRuntime) {
     if (!this.sanctuary) return;
     this.activeScenarioDef = def;
+    this.sanctuary.behaviorDirector?.pause(20);
     this.sanctuary.scenarioDirector.loadScenario(def, runtime);
+    // She directs the documentary: camera returns to auto (cue choreography),
+    // posture + aim at the holographic evidence.
+    this.sanctuary.cameraDirector.setManualSelect('auto', this.sanctuary.reducedMotion);
+    const j = this.sanctuary.jarvis;
+    j.gestureWorldTarget = this.sanctuary.scenarioDirector.originPoint.clone();
+    j.postureMode = 'scenario_direct';
+    j.emotionalState = 'focused';
+    this.narratingScenario = true;
     this.emit();
   }
 
@@ -478,6 +523,12 @@ export class NexusClient {
     try {
       const world = await api<WorldSnapshot>('/api/v1/scenarios/restore', { method: 'POST' });
       this.sanctuary?.scenarioDirector.clearStage();
+      if (this.sanctuary) {
+        this.sanctuary.jarvis.gestureWorldTarget = null;
+        this.sanctuary.jarvis.interruptSpeech();
+      }
+      this.narratingScenario = false;
+      this.lastNarrCueIndex = -1;
       this.activeScenarioDef = null;
       this.applyWorldState(world, false);
     } catch (err) {
@@ -561,8 +612,22 @@ export class NexusClient {
         this.scenarioPhase = '';
         this.emit();
       }
+      this.lastNarrCueIndex = -1;
       return;
     }
+
+    // Scenario narration: when the timeline crosses into a new cue she SPEAKS
+    // the phase narration with her synthesized voice + synced mouth, pointing
+    // at the hologram. Skipped while she's already speaking (never overlaps).
+    const cueIdx = sd.lastCueIndex;
+    if (sd.playing && cueIdx !== this.lastNarrCueIndex && !this.speaking) {
+      this.lastNarrCueIndex = cueIdx;
+      const cue = sd.activeScenario.timeline?.[Math.max(0, cueIdx)];
+      if (cue?.narration && this.narratingScenario) {
+        void this.speakScenarioNarration(cue.narration);
+      }
+    }
+
     const now = performance.now();
     if (now - this.lastTickEmit < 200) return;
     this.lastTickEmit = now;
@@ -575,6 +640,31 @@ export class NexusClient {
     }
     if (activeCue) this.scenarioPhase = activeCue.phase;
     this.emit();
+  }
+
+  /** Narrate one scenario timeline cue with her real voice (server TTS) and
+   *  audio-driven viseme lip-sync. Falls back to silent-browser TTS on error. */
+  private async speakScenarioNarration(text: string) {
+    const sanctuary = this.sanctuary;
+    if (!sanctuary || !sanctuary.jarvis.loaded) return;
+    if (sanctuary.jarvis.isSpeaking) return;
+    try {
+      const voice = await api<{ audio?: string; mime?: string }>('/api/v1/voice/tts', {
+        method: 'POST',
+        body: JSON.stringify({ text, emotion: 'focused' }),
+      });
+      if (!sanctuary.scenarioDirector.activeScenario) return; // scenario closed mid-fetch
+      sanctuary.jarvis.speak(text, {
+        audio: voice?.audio ? { data: voice.audio, mime: voice.mime || 'audio/wav' } : undefined,
+        onEnd: () => {
+          this.narratingScenario = Boolean(sanctuary.scenarioDirector.activeScenario);
+        },
+      });
+    } catch {
+      if (sanctuary.scenarioDirector.activeScenario) {
+        sanctuary.jarvis.speak(text);
+      }
+    }
   }
 
   get scenarioDirector() {

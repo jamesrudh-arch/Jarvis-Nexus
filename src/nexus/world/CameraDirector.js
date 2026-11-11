@@ -36,6 +36,8 @@ export class CameraDirector {
     this.desiredPos = new THREE.Vector3(2.55, 1.58, 3.85);
     this.desiredTarget = new THREE.Vector3(0.85, 1.42, 0.65);
     this.desiredFov = focalLengthToVerticalFov(40);
+    this._breathSeed = Math.random() * 97;
+    this._orbitPhase = Math.random() * Math.PI * 2;
 
     this.camera.position.copy(this.desiredPos);
     this.camera.fov = this.desiredFov;
@@ -68,6 +70,7 @@ export class CameraDirector {
   setScenarioCue(kind, originPoint, actorObject) {
     this.scenarioFocus = { kind, origin: originPoint || new THREE.Vector3(0.15, 1.4, 1.85), actor: actorObject || null };
     this.activePreset = 'scenario_dynamic';
+    this.mode = 'auto'; // documentary override — cue choreography owns the camera
     this.manualUserHoldSec = 0;
   }
 
@@ -83,10 +86,11 @@ export class CameraDirector {
       this.desiredPos.set(a.x + 1.3, 1.62, a.z + 1.85);
       this.desiredTarget.set(a.x, 1.18, a.z);
     } else {
-      // scenario_wide (default)
-      this.desiredFov = focalLengthToVerticalFov(28);
-      this.desiredPos.set(0.25, 1.78, 5.65);
-      this.desiredTarget.set(0.0, 1.42, 1.65);
+      // scenario_wide (default) — 24mm pulled back so BOTH the holographic
+      // reconstruction AND NEXUS at her presenter's mark share the frame.
+      this.desiredFov = focalLengthToVerticalFov(24);
+      this.desiredPos.set(0.35, 1.75, 6.4);
+      this.desiredTarget.set(0.1, 1.55, 1.6);
     }
   }
 
@@ -126,14 +130,15 @@ export class CameraDirector {
         break;
 
       case 'conversation':
-        // Intimate-yet-respectful 65mm eye-level conversational composition
-        this.desiredFov = focalLengthToVerticalFov(60);
+        // Intimate 65mm conversational portrait — close enough to read her eyes
+        // and lips, far enough to stay respectful (chest-up framing).
+        this.desiredFov = focalLengthToVerticalFov(65);
         this.desiredPos.set(
-          jPos.x + fwd.x * 1.95 + right.x * 0.25,
-          1.58,
-          jPos.z + fwd.z * 1.95 + right.z * 0.25
+          jPos.x + fwd.x * 1.42 + right.x * 0.18,
+          1.57,
+          jPos.z + fwd.z * 1.42 + right.z * 0.18
         );
-        this.desiredTarget.set(jPos.x, 1.52, jPos.z);
+        this.desiredTarget.set(jPos.x, 1.54, jPos.z);
         break;
 
       case 'follow_jarvis':
@@ -255,6 +260,30 @@ export class CameraDirector {
       this.manualUserHoldSec -= dt;
       this.controls.update();
       return;
+    }
+
+    // Cinematic life: subtle operator breathing + a very slow orbital drift on
+    // the presence preset — even stillness should feel filmed, not frozen.
+    if (!reducedMotion) {
+      const t = performance.now() / 1000;
+      const bx = Math.sin(t * 0.42 + this._breathSeed) * 0.035;
+      const by = Math.sin(t * 0.31 + this._breathSeed * 2.0) * 0.024;
+      const bz = Math.cos(t * 0.38 + this._breathSeed) * 0.032;
+
+      if (this.mode === 'auto' && !this.scenarioFocus && (this.activePreset === 'living_presence' || this.activePreset === 'arrival_wake')) {
+        // Slow ±0.16 rad orbital sway around her
+        this._orbitPhase += dt * 0.055;
+        const ang = Math.sin(this._orbitPhase) * 0.16;
+        const dx = this.desiredPos.x - this.desiredTarget.x;
+        const dz = this.desiredPos.z - this.desiredTarget.z;
+        const r = Math.hypot(dx, dz);
+        const baseAng = Math.atan2(dx, dz) + ang - Math.asin(Math.sin(ang) || 0.0001) * 0; // rotate offset
+        this.desiredPos.x = this.desiredTarget.x + Math.sin(baseAng) * r;
+        this.desiredPos.z = this.desiredTarget.z + Math.cos(baseAng) * r;
+      }
+      this.desiredPos.x += bx;
+      this.desiredPos.y += by;
+      this.desiredPos.z += bz;
     }
 
     const alpha = reducedMotion ? 1.0 : 1.0 - Math.exp(-dt * 2.8);

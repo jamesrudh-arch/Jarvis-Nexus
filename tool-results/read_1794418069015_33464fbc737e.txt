@@ -1,0 +1,1115 @@
+     1→/**
+     2→ * JARVIS NEXUS — Real-Time 3D Architectural Sanctuary & Holographic Projection Engine. v2
+     3→ *
+     4→ * All 12 spatial zones in restrained cinematic realism (#02070B / #06121A / #62E6F2):
+     5→ *  1. Central Operations Circular Obsidian Holo-Ring + Volumetric Assembly
+     6→ *  2. Volumetric Simulation & Scenario Stage
+     7→ *  3. Memory Archive Crystalline Colonnade (5 optical glass columns + 3D knowledge nodes)
+     8→ *  4. Live Research Alcove (Z-depth optical literature planes)
+     9→ *  5. Goals & Ongoing Work Bay (Z-depth dependency DAG)
+    10→ *  6. Multi-Agent Collaboration Table (4 rotating geometric specialist workspaces)
+    11→ *  7. Frameless 4.8m Architectural Media Wall + Extracted 3D Volumetric Twin
+    12→ *  8. Defensive Security Bulkhead Vault + 3D Geodesic Perimeter Lattice
+    13→ *  9. Vision & Optical Input Station (explicit live capture badge + camera prop)
+    14→ * 10. Diagnostics & Telemetry Station
+    15→ * 11. Local PC & Private Kaggle Compute Routing Bay
+    16→ * 12. Seven-Channel Physical Hardware Switch Console & Embodiment Pedestal
+    17→ *
+    18→ * v2 completeness pass: visible coffered ceiling dome + oculus, wall light reveals
+    19→ * (cyan + warm amber accent), planar floor reflections, volumetric downlight cone
+    20→ * with drifting dust motes, floor cable conduits, hanging zone signage + etched
+    21→ * floor plates, scanline hologram materials, MSAA + vignette post pipeline, and a
+    22→ * documentary explainer feed on the media wall while scenarios replay.
+    23→ */
+    24→import * as THREE from 'three';
+    25→import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    26→import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    27→import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+    28→import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+    29→import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+    30→import { VignetteShader } from 'three/addons/shaders/VignetteShader.js';
+    31→import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+    32→import { Reflector } from 'three/addons/objects/Reflector.js';
+    33→
+    34→import {
+    35→  createBasaltTextures,
+    36→  createHonedSlateFloorTextures,
+    37→  createConeGradientTexture,
+    38→  createZoneLabelTexture,
+    39→  setGlobalAnisotropy,
+    40→  SchlierenFeedRenderer,
+    41→} from './ProceduralTextures.js';
+    42→import { JarvisCharacterController } from './JarvisCharacterController.js';
+    43→import { ScenarioDirector3D, HoloScanMaterial } from './ScenarioDirector3D.js';
+    44→import { CameraDirector } from './CameraDirector.js';
+    45→
+    46→const CYAN_HEX = 0x62e6f2;
+    47→
+    48→const ZONE_SIGNAGE = [
+    49→  { idx: 1, title: 'Central Ops', sub: 'Obsidian Holo-Ring', pos: null }, // holo assembly is the identity here
+    50→  { idx: 2, title: 'Simulation Stage', sub: 'Volumetric Reconstruction', pos: [0.15, 3.15, 4.35] },
+    51→  { idx: 3, title: 'Memory Archive', sub: 'Crystalline Colonnade', pos: [-7.8, 3.45, -1.5] },
+    52→  { idx: 4, title: 'Live Research', sub: 'Literature Alcove', pos: [-6.6, 3.35, -7.0] },
+    53→  { idx: 5, title: 'Goals & Work', sub: 'Dependency DAG Bay', pos: [-3.0, 3.35, -8.2] },
+    54→  { idx: 6, title: 'Agent Table', sub: 'Specialist Collaboration', pos: [3.2, 3.35, -8.2] },
+    55→  { idx: 7, title: 'Media Wall', sub: 'Frameless 4.8m Display', pos: [6.9, 3.45, -5.8] },
+    56→  { idx: 8, title: 'Security Vault', sub: 'Bulkhead + Lattice', pos: [8.3, 3.45, 0.5] },
+    57→  { idx: 9, title: 'Vision Bay', sub: 'Optical Input Station', pos: [6.8, 3.35, 5.4] },
+    58→  { idx: 10, title: 'Diagnostics', sub: 'Telemetry Station', pos: [-6.8, 3.35, 5.4] },
+    59→  { idx: 11, title: 'Compute Bay', sub: 'Local + Kaggle Routing', pos: [3.2, 3.35, 7.9] },
+    60→  { idx: 12, title: 'Owner Switches', sub: '7-Channel Console', pos: [-3.2, 3.35, 7.9] },
+    61→];
+    62→
+    63→const CONDUIT_TARGETS = [
+    64→  [-7.4, -1.5], [-5.6, -6.4], [-2.8, -7.7], [3.1, -7.6],
+    65→  [5.6, -4.9], [7.9, 0.5], [6.4, 5.0], [-6.4, 5.0], [3.1, 7.5], [-3.1, 7.5],
+    66→];
+    67→
+    68→export class NexusSanctuaryScene {
+    69→  constructor(canvas, labelsContainer) {
+    70→    this.canvas = canvas;
+    71→    this.labelsContainer = labelsContainer;
+    72→
+    73→    this.renderer = new THREE.WebGLRenderer({
+    74→      canvas,
+    75→      antialias: true,
+    76→      powerPreference: 'high-performance',
+    77→      preserveDrawingBuffer: true, // Supports WebM recording & frame extraction
+    78→    });
+    79→    const isMobile = window.innerWidth <= 860;
+    80→    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? 1.35 : 2.0));
+    81→    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    82→    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    83→    this.renderer.toneMappingExposure = 1.08;
+    84→    this.renderer.shadowMap.enabled = true;
+    85→    this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    86→
+    87→    // Crisp grazing-angle texture filtering (the "blurry when zooming" fix)
+    88→    setGlobalAnisotropy(this.renderer.capabilities.getMaxAnisotropy());
+    89→
+    90→    this.scene = new THREE.Scene();
+    91→    this.scene.background = new THREE.Color(0x02070b);
+    92→    this.scene.fog = new THREE.FogExp2(0x02070b, 0.028); // Subtle depth, never obscuring JARVIS
+    93→
+    94→    // Subtle PBR environment reflection map (low intensity so surfaces don't look glossy plastic)
+    95→    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    96→    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    97→    this.scene.environmentIntensity = 0.24;
+    98→
+    99→    this.camera = new THREE.PerspectiveCamera(34, window.innerWidth / window.innerHeight, 0.1, 65);
+   100→    this.cameraDirector = new CameraDirector(this.camera, this.canvas);
+   101→
+   102→    // Post pipeline: MSAA render target + restrained bloom + cinematic vignette
+   103→    const rtSamples = isMobile ? 0 : 4;
+   104→    const composerRT = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, {
+   105→      samples: rtSamples,
+   106→      type: THREE.HalfFloatType,
+   107→    });
+   108→    this.composer = new EffectComposer(this.renderer, composerRT);
+   109→    this.renderPass = new RenderPass(this.scene, this.camera);
+   110→    this.bloomPass = new UnrealBloomPass(
+   111→      new THREE.Vector2(window.innerWidth, window.innerHeight),
+   112→      0.26, // strength (restrained — bloom must never halate the signage)
+   113→      0.36, // radius
+   114→      0.86  // high threshold so skin, signage & dark stone stay crisp
+   115→    );
+   116→    this.vignettePass = new ShaderPass(VignetteShader);
+   117→    this.vignettePass.uniforms.offset.value = 1.14;
+   118→    this.vignettePass.uniforms.darkness.value = 1.24;
+   119→    this.composer.addPass(this.renderPass);
+   120→    this.composer.addPass(this.bloomPass);
+   121→    this.composer.addPass(this.vignettePass);
+   122→    this.composer.addPass(new OutputPass());
+   123→
+   124→    // Architecture & Interactive Station Groups
+   125→    this.architectureGroup = new THREE.Group();
+   126→    this.scene.add(this.architectureGroup);
+   127→
+   128→    this.schlierenFeed = new SchlierenFeedRenderer();
+   129→    this.mediaScreenMat = null;
+   130→    this.extracted3DTwinGroup = null;
+   131→    this.centerHoloAssembly = null;
+   132→    this.centerHoloMats = [];
+   133→    this.idleHoloMats = [];
+   134→    this.securityLattice = null;
+   135→    this.agentSolids = [];
+   136→    this.memoryNodes = [];
+   137→    this.switchLevers = {};
+   138→    this.visionBoardCtx = null;
+   139→    this.visionBoardTex = null;
+   140→    this.visionLed = null;
+   141→    this.telemetryBoardCtx = null;
+   142→    this.telemetryBoardTex = null;
+   143→    this.dustField = null;
+   144→    this.explainerTimer = 0;
+   145→
+   146→    this._buildArchitecturalShellAndLighting();
+   147→    this._buildZoneInfrastructure();
+   148→    this._buildAllTwelveZones();
+   149→
+   150→    // Living Character & Scenario Director
+   151→    this.jarvis = new JarvisCharacterController(this.scene);
+   152→    this.scenarioDirector = new ScenarioDirector3D(this.scene);
+   153→    this.scenarioDirector.attachCameraDirector(this.cameraDirector);
+   154→
+   155→    // Holographic Mode State (Mode 15)
+   156→    this.hologramMode = false;
+   157→    this.hologramLayout = 'peppers_ghost'; // peppers_ghost | pyramid_4face | direct_black
+   158→    this.pyramidCam = new THREE.PerspectiveCamera(38, 1, 0.1, 30);
+   159→
+   160→    this.reducedMotion = false;
+   161→    this.embodimentEnabled = true;
+   162→
+   163→    window.addEventListener('resize', () => this.onResize());
+   164→  }
+   165→
+   166→  async initCharacter(onProgress) {
+   167→    await this.jarvis.load(onProgress);
+   168→  }
+   169→
+   170→  _buildArchitecturalShellAndLighting() {
+   171→    const basalt = createBasaltTextures();
+   172→    const slate = createHonedSlateFloorTextures();
+   173→    const isMobile = window.innerWidth <= 860;
+   174→
+   175→    // ------------------------------------------------------------------
+   176→    // 1. Honed Dark Obsidian Slate Floor (28m diameter) + planar reflections
+   177→    // ------------------------------------------------------------------
+   178→    const floorMat = new THREE.MeshStandardMaterial({
+   179→      map: slate.map,
+   180→      roughnessMap: slate.roughnessMap,
+   181→      bumpMap: slate.bumpMap,
+   182→      bumpScale: 0.012,
+   183→      roughness: 0.34,
+   184→      metalness: 0.22,
+   185→    });
+   186→
+   187→    if (!isMobile) {
+   188→      // Real planar reflection beneath the semi-transparent honed slate
+   189→      // (512px is sufficient — it reads as a subtle sheen through the slate)
+   190→      this.floorReflector = new Reflector(new THREE.CircleGeometry(14.4, 72), {
+   191→        clipBias: 0.003,
+   192→        textureWidth: 512,
+   193→        textureHeight: 512,
+   194→        color: 0x50606a,
+   195→      });
+   196→      this.floorReflector.rotation.x = -Math.PI / 2;
+   197→      this.floorReflector.position.y = 0.0;
+   198→      this.architectureGroup.add(this.floorReflector);
+   199→      floorMat.transparent = true;
+   200→      floorMat.opacity = 0.86;
+   201→    }
+   202→
+   203→    const floor = new THREE.Mesh(new THREE.CircleGeometry(14.5, 72), floorMat);
+   204→    floor.rotation.x = -Math.PI / 2;
+   205→    floor.position.y = 0.012;
+   206→    floor.receiveShadow = true;
+   207→    this.architectureGroup.add(floor);
+   208→
+   209→    // Restrained recessed floor calibration rings
+   210→    const ringMat = new THREE.MeshBasicMaterial({ color: 0x3b9aa6, transparent: true, opacity: 0.5 });
+   211→    for (const [rIn, rOut] of [[1.95, 1.98], [4.35, 4.38], [8.85, 8.88]]) {
+   212→      const ring = new THREE.Mesh(new THREE.RingGeometry(rIn, rOut, 96), ringMat);
+   213→      ring.rotation.x = -Math.PI / 2;
+   214→      ring.position.y = 0.02;
+   215→      this.architectureGroup.add(ring);
+   216→    }
+   217→
+   218→    // ------------------------------------------------------------------
+   219→    // 2. Perimeter Split-Basalt Monolith Walls + Light Reveals + Structural Ribs
+   220→    // ------------------------------------------------------------------
+   221→    const basaltMat = new THREE.MeshStandardMaterial({
+   222→      map: basalt.map,
+   223→      roughnessMap: basalt.roughnessMap,
+   224→      bumpMap: basalt.bumpMap,
+   225→      bumpScale: 0.045,
+   226→      roughness: 0.88,
+   227→      metalness: 0.08,
+   228→    });
+   229→    const titaniumMat = new THREE.MeshStandardMaterial({
+   230→      color: 0x101920,
+   231→      roughness: 0.34,
+   232→      metalness: 0.84,
+   233→    });
+   234→    const stripCyan = new THREE.MeshBasicMaterial({ color: 0x62e6f2 });
+   235→    const stripAmber = new THREE.MeshBasicMaterial({ color: 0xe7ae5b });
+   236→    const stripDim = new THREE.MeshBasicMaterial({ color: 0x1d4f58 });
+   237→
+   238→    const segments = 12;
+   239→    const wallRadius = 12.2;
+   240→    for (let i = 0; i < segments; i++) {
+   241→      const ang = (i / segments) * Math.PI * 2;
+   242→      const cx = Math.cos(ang) * wallRadius;
+   243→      const cz = Math.sin(ang) * wallRadius;
+   244→      const wallPanel = new THREE.Mesh(new THREE.BoxGeometry(5.6, 6.8, 0.55), basaltMat);
+   245→      wallPanel.position.set(cx, 3.4, cz);
+   246→      wallPanel.rotation.y = -ang + Math.PI / 2;
+   247→      wallPanel.receiveShadow = true;
+   248→      this.architectureGroup.add(wallPanel);
+   249→
+   250→      const rib = new THREE.Mesh(new THREE.BoxGeometry(0.28, 7.0, 0.75), titaniumMat);
+   251→      const ribAng = ang + Math.PI / segments;
+   252→      rib.position.set(Math.cos(ribAng) * (wallRadius - 0.15), 3.5, Math.sin(ribAng) * (wallRadius - 0.15));
+   253→      rib.rotation.y = -ribAng + Math.PI / 2;
+   254→      this.architectureGroup.add(rib);
+   255→
+   256→      // Top & bottom architectural light reveals so walls READ as lit surfaces.
+   257→      // Amber accents on the rear-center and right-edge walls (visible in the
+   258→      // standard compositions) for warm/cool contrast against the cyan field.
+   259→      const isAmberWall = i === 0 || i === 6;
+   260→      const topStrip = new THREE.Mesh(new THREE.BoxGeometry(5.5, 0.05, 0.05), isAmberWall ? stripAmber : stripCyan);
+   261→      topStrip.position.set(Math.cos(ang) * (wallRadius - 0.42), 6.62, Math.sin(ang) * (wallRadius - 0.42));
+   262→      topStrip.rotation.y = -ang + Math.PI / 2;
+   263→      this.architectureGroup.add(topStrip);
+   264→
+   265→      const botStrip = new THREE.Mesh(new THREE.BoxGeometry(5.5, 0.045, 0.045), isAmberWall ? stripDim : stripCyan);
+   266→      botStrip.position.set(Math.cos(ang) * (wallRadius - 0.42), 0.16, Math.sin(ang) * (wallRadius - 0.42));
+   267→      botStrip.rotation.y = -ang + Math.PI / 2;
+   268→      this.architectureGroup.add(botStrip);
+   269→    }
+   270→
+   271→    // ------------------------------------------------------------------
+   272→    // 3. Coffered Ceiling Dome: baffle cone + ring beams + spokes + oculus
+   273→    // ------------------------------------------------------------------
+   274→    const ceiling = new THREE.Mesh(
+   275→      new THREE.CircleGeometry(13.0, 48),
+   276→      new THREE.MeshStandardMaterial({ color: 0x040b10, roughness: 0.92, metalness: 0.2 })
+   277→    );
+   278→    ceiling.rotation.x = Math.PI / 2;
+   279→    ceiling.position.y = 6.85;
+   280→    this.architectureGroup.add(ceiling);
+   281→
+   282→    // Sloped perimeter baffle (catches the downlight, encloses the room visually)
+   283→    const baffle = new THREE.Mesh(
+   284→      new THREE.CylinderGeometry(8.8, 12.15, 0.95, 12, 1, true),
+   285→      new THREE.MeshStandardMaterial({ color: 0x071219, roughness: 0.85, metalness: 0.3, side: THREE.DoubleSide })
+   286→    );
+   287→    baffle.position.y = 6.32;
+   288→    this.architectureGroup.add(baffle);
+   289→
+   290→    // Concentric ring beams
+   291→    for (const [r, tube, mat] of [[7.2, 0.1, titaniumMat], [10.6, 0.12, titaniumMat]]) {
+   292→      const beam = new THREE.Mesh(new THREE.TorusGeometry(r, tube, 12, 72), mat);
+   293→      beam.rotation.x = Math.PI / 2;
+   294→      beam.position.y = 6.55;
+   295→      this.architectureGroup.add(beam);
+   296→    }
+   297→
+   298→    // Radial spokes
+   299→    for (let i = 0; i < 12; i++) {
+   300→      const ang = (i / 12) * Math.PI * 2 + Math.PI / 12;
+   301→      const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.1, 7.3), titaniumMat);
+   302→      spoke.position.set(Math.cos(ang) * 5.6, 6.55, Math.sin(ang) * 5.6);
+   303→      spoke.rotation.y = -ang + Math.PI / 2;
+   304→      this.architectureGroup.add(spoke);
+   305→    }
+   306→
+   307→    // Glowing oculus ring
+   308→    const oculus = new THREE.Mesh(
+   309→      new THREE.TorusGeometry(3.9, 0.045, 10, 72),
+   310→      new THREE.MeshBasicMaterial({ color: 0xbfe9f2 })
+   311→    );
+   312→    oculus.rotation.x = Math.PI / 2;
+   313→    oculus.position.y = 6.5;
+   314→    this.architectureGroup.add(oculus);
+   315→
+   316→    // Suspended circular lighting gantry
+   317→    const gantry = new THREE.Mesh(new THREE.TorusGeometry(3.6, 0.09, 16, 72), titaniumMat);
+   318→    gantry.rotation.x = Math.PI / 2;
+   319→    gantry.position.y = 5.45;
+   320→    this.architectureGroup.add(gantry);
+   321→
+   322→    // Central hanging fixture above the holo-table
+   323→    const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 1.05, 8), titaniumMat);
+   324→    cable.position.set(0, 6.02, 0.5);
+   325→    this.architectureGroup.add(cable);
+   326→    const fixtureDisc = new THREE.Mesh(
+   327→      new THREE.CylinderGeometry(0.52, 0.4, 0.09, 32),
+   328→      new THREE.MeshBasicMaterial({ color: 0x9fb9c2 })
+   329→    );
+   330→    fixtureDisc.position.set(0, 5.52, 0.5);
+   331→    this.architectureGroup.add(fixtureDisc);
+   332→
+   333→    // ------------------------------------------------------------------
+   334→    // 4. Volumetric downlight cone + drifting dust motes
+   335→    // ------------------------------------------------------------------
+   336→    const coneTex = createConeGradientTexture(0.02, 0.3, 0.005);
+   337→    const lightCone = new THREE.Mesh(
+   338→      new THREE.ConeGeometry(3.05, 5.4, 48, 1, true),
+   339→      new THREE.MeshBasicMaterial({
+   340→        map: coneTex,
+   341→        color: 0xcfe6ee,
+   342→        transparent: true,
+   343→        opacity: 0.13,
+   344→        blending: THREE.AdditiveBlending,
+   345→        depthWrite: false,
+   346→        side: THREE.DoubleSide,
+   347→      })
+   348→    );
+   349→    lightCone.position.set(0, 2.72, 0.5);
+   350→    this.architectureGroup.add(lightCone);
+   351→
+   352→    const dustCount = isMobile ? 220 : 620;
+   353→    const dustPos = new Float32Array(dustCount * 3);
+   354→    this.dustSeeds = new Float32Array(dustCount);
+   355→    for (let i = 0; i < dustCount; i++) {
+   356→      const r = Math.sqrt(Math.random()) * 2.35; // stay inside the light cone volume
+   357→      const a = Math.random() * Math.PI * 2;
+   358→      dustPos[i * 3] = Math.cos(a) * r;
+   359→      dustPos[i * 3 + 1] = 0.25 + Math.random() * 5.1;
+   360→      dustPos[i * 3 + 2] = 0.5 + Math.sin(a) * r;
+   361→      this.dustSeeds[i] = Math.random() * Math.PI * 2;
+   362→    }
+   363→    const dustGeo = new THREE.BufferGeometry();
+   364→    dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+   365→    this.dustField = new THREE.Points(dustGeo, new THREE.PointsMaterial({
+   366→      color: 0xbfe0e8,
+   367→      size: 0.016,
+   368→      transparent: true,
+   369→      opacity: 0.5,
+   370→      blending: THREE.AdditiveBlending,
+   371→      depthWrite: false,
+   372→    }));
+   373→    this.architectureGroup.add(this.dustField);
+   374→
+   375→    // ------------------------------------------------------------------
+   376→    // 5. Motivated Architectural Lighting
+   377→    // ------------------------------------------------------------------
+   378→    const ambient = new THREE.HemisphereLight(0x9ec5d6, 0x061017, 0.52);
+   379→    this.architectureGroup.add(ambient);
+   380→
+   381→    const centralDownlight = new THREE.SpotLight(0xfff0dd, 8.5, 16, Math.PI * 0.34, 0.65, 1.2);
+   382→    centralDownlight.position.set(0, 5.8, 0.5);
+   383→    centralDownlight.castShadow = true;
+   384→    centralDownlight.shadow.mapSize.set(2048, 2048);
+   385→    centralDownlight.shadow.bias = -0.0004;
+   386→    this.architectureGroup.add(centralDownlight);
+   387→
+   388→    // Cove accents over perimeter stations
+   389→    for (const [lx, lz, col, intensity] of [
+   390→      [-6.8, -1.5, 0x62e6f2, 2.4], // Memory Colonnade
+   391→      [-5.8, -6.2, 0xd8eef5, 2.6], // Research Alcove
+   392→      [3.0, -7.2, 0x62e6f2, 2.2],  // Collaboration
+   393→      [6.2, -5.2, 0xd8eef5, 2.6],  // Media Wall
+   394→      [7.2, 0.5, 0x9ec5d6, 2.4],   // Security Vault
+   395→      [0.0, 6.8, 0xd8eef5, 2.4],   // Compute & Switches
+   396→      [-6.6, 4.6, 0xe7c98f, 1.6],  // warm wash, Diagnostics side
+   397→      [8.9, 3.8, -2.8, 0x9ec5d6, 2.1], // fill the +X dead zone
+   398→    ]) {
+   399→      const pl = new THREE.PointLight(col, intensity, 8.5, 1.5);
+   400→      pl.position.set(lx, 3.8, lz);
+   401→      this.architectureGroup.add(pl);
+   402→    }
+   403→  }
+   404→
+   405→  /** Cable conduits, hanging zone signage, etched floor plates. */
+   406→  _buildZoneInfrastructure() {
+   407→    const conduitMat = new THREE.MeshStandardMaterial({ color: 0x0c141b, roughness: 0.5, metalness: 0.7 });
+   408→
+   409→    // Floor cable conduits from the central ring to each station
+   410→    for (const [tx, tz] of CONDUIT_TARGETS) {
+   411→      const dir = new THREE.Vector2(tx, tz).normalize();
+   412→      const start = new THREE.Vector3(dir.x * 2.1, 0.035, dir.y * 2.1);
+   413→      const end = new THREE.Vector3(tx, 0.035, tz);
+   414→      const mid = start.clone().add(end).multiplyScalar(0.5);
+   415→      mid.y = 0.052;
+   416→      const curve = new THREE.CatmullRomCurve3([start, mid, end]);
+   417→      const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 28, 0.028, 6), conduitMat);
+   418→      this.architectureGroup.add(tube);
+   419→    }
+   420→
+   421→    // Hanging zone signage plates — two back-to-back front-face planes so the
+   422→    // text reads correctly from BOTH sides (never mirrored)
+   423→    for (const z of ZONE_SIGNAGE) {
+   424→      if (!z.pos) continue;
+   425→      const tex = createZoneLabelTexture(z.idx, z.title, z.sub, (z.idx === 8 || z.idx === 7) ? '#e7ae5b' : '#62e6f2');
+   426→      const plateMat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false });
+   427→      const plateGeo = new THREE.PlaneGeometry(1.62, 0.6);
+   428→      const plateGroup = new THREE.Group();
+   429→      plateGroup.position.set(z.pos[0], z.pos[1], z.pos[2]);
+   430→      plateGroup.lookAt(0, z.pos[1], 0);
+   431→      const front = new THREE.Mesh(plateGeo, plateMat);
+   432→      front.position.z = 0.0015;
+   433→      const back = new THREE.Mesh(plateGeo, plateMat);
+   434→      back.rotation.y = Math.PI;
+   435→      back.position.z = -0.0015;
+   436→      plateGroup.add(front, back);
+   437→      this.architectureGroup.add(plateGroup);
+   438→
+   439→      // thin suspension filament to the ceiling
+   440→      const h = 6.6 - z.pos[1];
+   441→      const wire = new THREE.Mesh(
+   442→        new THREE.CylinderGeometry(0.006, 0.006, h, 4),
+   443→        new THREE.MeshBasicMaterial({ color: 0x23323b })
+   444→      );
+   445→      wire.position.set(z.pos[0], z.pos[1] + h / 2 + 0.3, z.pos[2]);
+   446→      this.architectureGroup.add(wire);
+   447→
+   448→      // Etched floor plate in front of the zone (readable walking outward from center)
+   449→      const fl = new THREE.Vector3(z.pos[0], 0, z.pos[2]);
+   450→      if (fl.length() > 2.6) {
+   451→        const floorTex = createZoneLabelTexture(z.idx, z.title, z.sub.split(' ')[0], '#4db3c0');
+   452→        const fp = new THREE.Mesh(
+   453→          new THREE.PlaneGeometry(1.24, 0.47),
+   454→          new THREE.MeshBasicMaterial({ map: floorTex, transparent: true, opacity: 0.62, side: THREE.DoubleSide, depthWrite: false })
+   455→        );
+   456→        fp.position.set(z.pos[0] * 0.76, 0.024, z.pos[2] * 0.76);
+   457→        fp.rotation.x = -Math.PI / 2;
+   458→        fp.rotation.z = Math.atan2(z.pos[0], z.pos[2]) + Math.PI;
+   459→        this.architectureGroup.add(fp);
+   460→      }
+   461→    }
+   462→  }
+   463→
+   464→  _buildAllTwelveZones() {
+   465→    const smokedGlassMat = new THREE.MeshPhysicalMaterial({
+   466→      color: 0x091924,
+   467→      roughness: 0.14,
+   468→      metalness: 0.1,
+   469→      transmission: 0.62,
+   470→      thickness: 0.08,
+   471→      transparent: true,
+   472→      opacity: 0.86,
+   473→    });
+   474→    const darkMetalMat = new THREE.MeshStandardMaterial({
+   475→      color: 0x0e171f,
+   476→      roughness: 0.36,
+   477→      metalness: 0.82,
+   478→    });
+   479→
+   480→    // ZONE 1 & 2: Central Operations Holo-Table + Recessed Stage Ring
+   481→    const pitRing = new THREE.Mesh(new THREE.TorusGeometry(1.55, 0.06, 16, 64), darkMetalMat);
+   482→    pitRing.rotation.x = Math.PI / 2;
+   483→    pitRing.position.y = 0.03;
+   484→    this.architectureGroup.add(pitRing);
+   485→
+   486→    const holoTableTop = new THREE.Mesh(new THREE.CylinderGeometry(1.42, 1.36, 0.045, 64), smokedGlassMat);
+   487→    holoTableTop.position.set(0, 0.92, 0);
+   488→    this.architectureGroup.add(holoTableTop);
+   489→
+   490→    for (let s = 0; s < 4; s++) {
+   491→      const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.94, 12), darkMetalMat);
+   492→      const a = (s / 4) * Math.PI * 2 + Math.PI / 4;
+   493→      strut.position.set(Math.cos(a) * 0.92, 0.46, Math.sin(a) * 0.92);
+   494→      strut.rotation.z = Math.cos(a) * 0.18;
+   495→      strut.rotation.x = -Math.sin(a) * 0.18;
+   496→      this.architectureGroup.add(strut);
+   497→    }
+   498→
+   499→    // Emitter ring glow on the table rim
+   500→    const emitterRing = new THREE.Mesh(
+   501→      new THREE.TorusGeometry(1.4, 0.012, 8, 64),
+   502→      new THREE.MeshBasicMaterial({ color: 0x62e6f2 })
+   503→    );
+   504→    emitterRing.rotation.x = Math.PI / 2;
+   505→    emitterRing.position.y = 0.945;
+   506→    this.architectureGroup.add(emitterRing);
+   507→
+   508→    // Floating Volumetric Assembly above the holo-table (scanline holo shells + orbit rings)
+   509→    this.centerHoloAssembly = new THREE.Group();
+   510→    this.centerHoloAssembly.position.set(0, 1.48, 0);
+   511→    const knotMat = new HoloScanMaterial(CYAN_HEX, { opacity: 0.55, scanDensity: 30 });
+   512→    const coreMat = new HoloScanMaterial(0xddfbff, { opacity: 0.3, scanDensity: 20 });
+   513→    this.centerHoloMats = [knotMat, coreMat];
+   514→    const outerCore = new THREE.Mesh(new THREE.TorusKnotGeometry(0.34, 0.08, 96, 14, 2, 3), knotMat);
+   515→    const wireOverlay = new THREE.Mesh(
+   516→      new THREE.TorusKnotGeometry(0.34, 0.08, 96, 14, 2, 3),
+   517→      new THREE.MeshBasicMaterial({ color: 0x9fe8f2, wireframe: true, transparent: true, opacity: 0.3 })
+   518→    );
+   519→    const innerFrame = new THREE.Mesh(new THREE.IcosahedronGeometry(0.56, 1), coreMat);
+   520→    const orbitA = new THREE.Mesh(
+   521→      new THREE.TorusGeometry(0.72, 0.006, 6, 64),
+   522→      new THREE.MeshBasicMaterial({ color: 0x62e6f2, transparent: true, opacity: 0.55 })
+   523→    );
+   524→    orbitA.rotation.x = 1.15;
+   525→    const orbitB = new THREE.Mesh(
+   526→      new THREE.TorusGeometry(0.86, 0.005, 6, 64),
+   527→      new THREE.MeshBasicMaterial({ color: 0xbfe9f2, transparent: true, opacity: 0.4 })
+   528→    );
+   529→    orbitB.rotation.x = 2.1;
+   530→    orbitB.rotation.y = 0.5;
+   531→    const holoGlow = new THREE.PointLight(0x62e6f2, 1.6, 4.5, 1.6);
+   532→    this.centerHoloAssembly.add(outerCore, wireOverlay, innerFrame, orbitA, orbitB, holoGlow);
+   533→    this.centerOrbits = [orbitA, orbitB];
+   534→    this.architectureGroup.add(this.centerHoloAssembly);
+   535→
+   536→    // ZONE 3: Memory Archive Crystalline Colonnade
+   537→    for (let c = 0; c < 5; c++) {
+   538→      const cz = -3.5 + c * 1.05;
+   539→      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 4.4, 6), smokedGlassMat);
+   540→      col.position.set(-7.8, 2.2, cz);
+   541→      this.architectureGroup.add(col);
+   542→
+   543→      const capTop = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.26, 0.08, 6), darkMetalMat);
+   544→      capTop.position.set(-7.8, 4.42, cz);
+   545→      this.architectureGroup.add(capTop);
+   546→
+   547→      for (let n = 0; n < 7; n++) {
+   548→        const isHyp = (c + n) % 4 === 0;
+   549→        const node = new THREE.Mesh(
+   550→          new THREE.SphereGeometry(0.032, 10, 10),
+   551→          new THREE.MeshBasicMaterial({ color: isHyp ? 0xe7ae5b : 0xddfbff })
+   552→        );
+   553→        node.position.set(
+   554→          -7.2 + Math.sin(n * 1.7 + c) * 0.45,
+   555→          0.95 + n * 0.34,
+   556→          cz + Math.cos(n * 2.1) * 0.28
+   557→        );
+   558→        node.userData.pulsePhase = n * 1.3 + c * 0.7;
+   559→        this.architectureGroup.add(node);
+   560→        this.memoryNodes.push(node);
+   561→      }
+   562→    }
+   563→
+   564→    // ZONE 4: Live Research Alcove — multi-plane translucent optical sheets
+   565→    for (let p = 0; p < 3; p++) {
+   566→      const sheet = this._makeTexturedGlassPanel(
+   567→        1.35, 0.92,
+   568→        `RESEARCH PLANE 0${p + 1}`,
+   569→        p === 1 ? 'JOURNAL OF AEROTHERMODYNAMICS · VERIFIED' : 'EMPIRICAL CURVE · PROVENANCE LINKED',
+   570→        p === 2 ? '#e7ae5b' : '#62e6f2'
+   571→      );
+   572→      sheet.position.set(-7.1 + p * 0.85, 1.55 + (p % 2) * 0.14, -7.2 + p * 0.32);
+   573→      sheet.rotation.y = 0.62;
+   574→      this.architectureGroup.add(sheet);
+   575→    }
+   576→
+   577→    // ZONE 5: Goals & Ongoing Work Bay — Z-depth dependency DAG
+   578→    const dagGroup = new THREE.Group();
+   579→    dagGroup.position.set(-3.0, 1.52, -8.0);
+   580→    dagGroup.rotation.y = 0.22;
+   581→    const dagCoords = [
+   582→      [-0.8, 0.35, 0, 0xddfbff],
+   583→      [-0.8, -0.25, 0.15, 0x62e6f2],
+   584→      [0.0, 0.08, 0.25, 0x62e6f2],
+   585→      [0.85, 0.08, 0.4, 0xe7ae5b],
+   586→    ];
+   587→    const linePts = [];
+   588→    for (const [dx, dy, dz, col] of dagCoords) {
+   589→      const box = new THREE.Mesh(
+   590→        new THREE.BoxGeometry(0.24, 0.15, 0.04),
+   591→        new THREE.MeshBasicMaterial({ color: col, wireframe: true })
+   592→      );
+   593→      box.position.set(dx, dy, dz);
+   594→      dagGroup.add(box);
+   595→      linePts.push(new THREE.Vector3(dx, dy, dz));
+   596→    }
+   597→    dagGroup.add(new THREE.Line(
+   598→      new THREE.BufferGeometry().setFromPoints(linePts),
+   599→      new THREE.LineBasicMaterial({ color: 0x62e6f2, transparent: true, opacity: 0.65 })
+   600→    ));
+   601→    this.architectureGroup.add(dagGroup);
+   602→
+   603→    // ZONE 6: Multi-Agent Collaboration Table
+   604→    const collabTable = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 0.98, 0.04, 48), smokedGlassMat);
+   605→    collabTable.position.set(3.2, 0.92, -8.0);
+   606→    this.architectureGroup.add(collabTable);
+   607→
+   608→    for (let a = 0; a < 4; a++) {
+   609→      const ang = (a / 4) * Math.PI * 2;
+   610→      const shellMat = new HoloScanMaterial(a === 0 ? 0xddfbff : CYAN_HEX, { opacity: 0.4, scanDensity: 26 });
+   611→      this.idleHoloMats.push(shellMat);
+   612→      const ico = new THREE.Mesh(new THREE.IcosahedronGeometry(0.16, 0), shellMat);
+   613→      ico.position.set(3.2 + Math.cos(ang) * 0.62, 1.38, -8.0 + Math.sin(ang) * 0.62);
+   614→      this.architectureGroup.add(ico);
+   615→      this.agentSolids.push(ico);
+   616→    }
+   617→
+   618→    // ZONE 7: Frameless 4.4m x 2.48m Architectural Media Wall
+   619→    const wallFrame = new THREE.Mesh(new THREE.BoxGeometry(4.52, 2.6, 0.08), darkMetalMat);
+   620→    wallFrame.position.set(6.9, 1.92, -5.8);
+   621→    wallFrame.rotation.y = -0.62;
+   622→    this.architectureGroup.add(wallFrame);
+   623→
+   624→    this.mediaScreenMat = new THREE.MeshBasicMaterial({ map: this.schlierenFeed.texture });
+   625→    const screenMesh = new THREE.Mesh(new THREE.PlaneGeometry(4.38, 2.46), this.mediaScreenMat);
+   626→    screenMesh.position.set(6.86, 1.92, -5.74);
+   627→    screenMesh.rotation.y = -0.62;
+   628→    this.architectureGroup.add(screenMesh);
+   629→
+   630→    // Emissive edge reveal around the frameless wall
+   631→    const edgeMat = new THREE.MeshBasicMaterial({ color: 0x62e6f2 });
+   632→    for (const [w, h, ox, oy] of [[4.5, 0.025, 0, 1.315], [4.5, 0.025, 0, -1.315], [0.025, 2.62, -2.26, 0], [0.025, 2.62, 2.26, 0]]) {
+   633→      const edge = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.02), edgeMat);
+   634→      edge.rotation.y = -0.62;
+   635→      edge.position.set(6.86 + ox * Math.cos(-0.62), 1.92 + oy, -5.74 - ox * Math.sin(-0.62));
+   636→      this.architectureGroup.add(edge);
+   637→    }
+   638→
+   639→    // Extracted 3D Volumetric Twin beside Media Wall
+   640→    this.extracted3DTwinGroup = new THREE.Group();
+   641→    this.extracted3DTwinGroup.position.set(5.25, 1.38, -4.15);
+   642→    this.extracted3DTwinGroup.visible = false;
+   643→    const twinOuter = new THREE.Mesh(
+   644→      new THREE.CylinderGeometry(0.46, 0.38, 0.78, 24, 3, true),
+   645→      new THREE.MeshBasicMaterial({ color: 0x62e6f2, wireframe: true })
+   646→    );
+   647→    twinOuter.rotation.z = Math.PI / 2;
+   648→    const twinCore = new THREE.Mesh(
+   649→      new THREE.SphereGeometry(0.2, 14, 14),
+   650→      new THREE.MeshBasicMaterial({ color: 0xe7ae5b, wireframe: true })
+   651→    );
+   652→    this.extracted3DTwinGroup.add(twinOuter, twinCore);
+   653→    this.architectureGroup.add(this.extracted3DTwinGroup);
+   654→
+   655→    // Floating explainer side-panel beside the Scenario Stage — shares the media
+   656→    // wall's live texture so the documentary feed is always in frame during replay
+   657→    // (the media wall itself sits behind the documentary camera).
+   658→    this.explainerSidePanel = new THREE.Mesh(
+   659→      new THREE.PlaneGeometry(2.05, 1.15),
+   660→      new THREE.MeshBasicMaterial({ map: this.schlierenFeed.texture, transparent: true, opacity: 0.96, side: THREE.DoubleSide })
+   661→    );
+   662→    this.explainerSidePanel.position.set(-3.35, 2.1, 2.75);
+   663→    this.explainerSidePanel.lookAt(0.25, 1.85, 5.65);
+   664→    this.explainerSidePanel.visible = false;
+   665→    this.architectureGroup.add(this.explainerSidePanel);
+   666→    const panelEdge = new THREE.Mesh(
+   667→      new THREE.PlaneGeometry(2.14, 1.24),
+   668→      new THREE.MeshBasicMaterial({ color: 0x0a1d27, transparent: true, opacity: 0.85, side: THREE.DoubleSide })
+   669→    );
+   670→    panelEdge.position.copy(this.explainerSidePanel.position);
+   671→    panelEdge.quaternion.copy(this.explainerSidePanel.quaternion);
+   672→    panelEdge.translateZ(-0.006);
+   673→    panelEdge.visible = false;
+   674→    this.architectureGroup.add(panelEdge);
+   675→    this.explainerSidePanelEdge = panelEdge;
+   676→
+   677→    // ZONE 8: Defensive Security Bulkhead Vault + Geodesic Lattice
+   678→    const vaultDoor = new THREE.Mesh(new THREE.CylinderGeometry(1.55, 1.55, 0.22, 48), darkMetalMat);
+   679→    vaultDoor.rotation.z = Math.PI / 2;
+   680→    vaultDoor.position.set(9.4, 1.95, 0.5);
+   681→    this.architectureGroup.add(vaultDoor);
+   682→    const vaultWheel = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.05, 10, 32), darkMetalMat);
+   683→    vaultWheel.rotation.y = Math.PI / 2;
+   684→    vaultWheel.position.set(9.22, 1.95, 0.5);
+   685→    this.architectureGroup.add(vaultWheel);
+   686→
+   687→    this.securityLattice = new THREE.Mesh(
+   688→      new THREE.IcosahedronGeometry(0.58, 2),
+   689→      new THREE.MeshBasicMaterial({ color: 0x62e6f2, wireframe: true, transparent: true, opacity: 0.55 })
+   690→    );
+   691→    this.securityLattice.position.set(7.6, 1.52, 0.5);
+   692→    this.architectureGroup.add(this.securityLattice);
+   693→
+   694→    // ZONE 9: Vision & Optical Input Bay — board + physical camera prop
+   695→    const { mesh: visMesh, ctx: visCtx, tex: visTex } = this._makeDynamicCanvasBoard(1.6, 1.0);
+   696→    visMesh.position.set(6.8, 1.55, 5.4);
+   697→    visMesh.rotation.y = -2.32;
+   698→    this.visionBoardCtx = visCtx;
+   699→    this.visionBoardTex = visTex;
+   700→    this.architectureGroup.add(visMesh);
+   701→
+   702→    const camProp = new THREE.Group();
+   703→    const camBody = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.13, 0.16), darkMetalMat);
+   704→    const camLens = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.1, 16), darkMetalMat);
+   705→    camLens.rotation.x = Math.PI / 2;
+   706→    camLens.position.z = 0.12;
+   707→    this.visionLed = new THREE.Mesh(new THREE.SphereGeometry(0.016, 8, 8), new THREE.MeshBasicMaterial({ color: 0x32444d }));
+   708→    this.visionLed.position.set(0.07, 0.08, 0.06);
+   709→    camProp.add(camBody, camLens, this.visionLed);
+   710→    const camMount = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.5, 8), darkMetalMat);
+   711→    camMount.position.y = -0.3;
+   712→    camProp.add(camMount);
+   713→    camProp.position.set(6.1, 1.12, 5.05);
+   714→    camProp.rotation.y = -2.32 + Math.PI; // face room center
+   715→    this.architectureGroup.add(camProp);
+   716→    this.updateVisionBoard(false, null);
+   717→
+   718→    // ZONE 10: Diagnostics & Telemetry Station
+   719→    const { mesh: telMesh, ctx: telCtx, tex: telTex } = this._makeDynamicCanvasBoard(1.75, 1.05);
+   720→    telMesh.position.set(-6.8, 1.55, 5.4);
+   721→    telMesh.rotation.y = 2.32;
+   722→    this.telemetryBoardCtx = telCtx;
+   723→    this.telemetryBoardTex = telTex;
+   724→    this.architectureGroup.add(telMesh);
+   725→    this.updateTelemetryBoard({ cpu_percent: 0, memory_used_mb: 0, memory_total_mb: 3800, uptime_sec: 0 });
+   726→
+   727→    // ZONE 11: Compute & Private Kaggle Connection Bay
+   728→    const computeDesk = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.88, 0.72), darkMetalMat);
+   729→    computeDesk.position.set(3.2, 0.44, 7.8);
+   730→    computeDesk.rotation.y = -2.85;
+   731→    this.architectureGroup.add(computeDesk);
+   732→
+   733→    const localGpuCube = new THREE.Mesh(
+   734→      new THREE.BoxGeometry(0.28, 0.28, 0.28),
+   735→      new THREE.MeshBasicMaterial({ color: 0x62e6f2, wireframe: true })
+   736→    );
+   737→    localGpuCube.position.set(2.75, 1.32, 7.65);
+   738→    this.architectureGroup.add(localGpuCube);
+   739→
+   740→    for (let k = 0; k < 6; k++) {
+   741→      const slotMesh = new THREE.Mesh(
+   742→        new THREE.BoxGeometry(0.18, 0.14, 0.04),
+   743→        new THREE.MeshBasicMaterial({ color: k === 0 ? 0xddfbff : 0x7799a5, wireframe: true })
+   744→      );
+   745→      slotMesh.position.set(3.45 + (k % 2) * 0.26, 1.18 + Math.floor(k / 2) * 0.2, 7.9);
+   746→      slotMesh.rotation.y = -2.85;
+   747→      this.architectureGroup.add(slotMesh);
+   748→    }
+   749→
+   750→    // ZONE 12: Owner 7-Channel Switch Console
+   751→    const switchPedestal = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.92, 0.65), darkMetalMat);
+   752→    switchPedestal.position.set(-3.2, 0.46, 7.8);
+   753→    switchPedestal.rotation.y = 2.85;
+   754→    this.architectureGroup.add(switchPedestal);
+   755→
+   756→    const keys = ['master', 'microphone', 'camera', 'autonomy', 'remote_compute', 'computer_control', 'embodiment'];
+   757→    keys.forEach((k, idx) => {
+   758→      const lever = new THREE.Mesh(
+   759→        new THREE.BoxGeometry(0.08, 0.16, 0.04),
+   760→        new THREE.MeshStandardMaterial({
+   761→          color: 0x62e6f2,
+   762→          emissive: 0x62e6f2,
+   763→          emissiveIntensity: 0.45,
+   764→          roughness: 0.3,
+   765→        })
+   766→      );
+   767→      const offset = (idx - 3) * 0.21;
+   768→      lever.position.set(-3.2 + offset * Math.cos(2.85), 0.98, 7.8 - offset * Math.sin(2.85));
+   769→      lever.rotation.y = 2.85;
+   770→      this.architectureGroup.add(lever);
+   771→      this.switchLevers[k] = lever;
+   772→    });
+   773→  }
+   774→
+   775→  _makeTexturedGlassPanel(w, h, title, subtitle, accentHex) {
+   776→    const canvas = document.createElement('canvas');
+   777→    canvas.width = 768;
+   778→    canvas.height = 512;
+   779→    const ctx = canvas.getContext('2d');
+   780→    ctx.fillStyle = 'rgba(6, 18, 26, 0.82)';
+   781→    ctx.fillRect(0, 0, 768, 512);
+   782→    ctx.strokeStyle = accentHex;
+   783→    ctx.lineWidth = 4;
+   784→    ctx.strokeRect(9, 9, 750, 494);
+   785→
+   786→    ctx.fillStyle = accentHex;
+   787→    ctx.font = 'bold 27px monospace';
+   788→    ctx.fillText(title, 36, 64);
+   789→    ctx.fillStyle = '#ddfbff';
+   790→    ctx.font = '21px sans-serif';
+   791→    ctx.fillText(subtitle, 36, 108);
+   792→
+   793→    ctx.strokeStyle = accentHex;
+   794→    ctx.lineWidth = 3;
+   795→    ctx.beginPath();
+   796→    for (let x = 36; x <= 720; x += 24) {
+   797→      const y = 322 - Math.sin(x * 0.025) * 72 - (x - 36) * 0.21;
+   798→      if (x === 36) ctx.moveTo(x, y);
+   799→      else ctx.lineTo(x, y);
+   800→    }
+   801→    ctx.stroke();
+   802→
+   803→    // secondary data striations
+   804→    ctx.strokeStyle = 'rgba(221, 251, 255, 0.35)';
+   805→    ctx.lineWidth = 2;
+   806→    for (let row = 0; row < 3; row++) {
+   807→      ctx.beginPath();
+   808→      for (let x = 36; x <= 720; x += 18) {
+   809→        const y = 400 + row * 28 - Math.abs(Math.sin(x * 0.02 + row)) * 16;
+   810→        if (x === 36) ctx.moveTo(x, y);
+   811→        else ctx.lineTo(x, y);
+   812→      }
+   813→      ctx.stroke();
+   814→    }
+   815→
+   816→    const tex = new THREE.CanvasTexture(canvas);
+   817→    tex.colorSpace = THREE.SRGBColorSpace;
+   818→    tex.anisotropy = 8;
+   819→    return new THREE.Mesh(
+   820→      new THREE.PlaneGeometry(w, h),
+   821→      new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide })
+   822→    );
+   823→  }
+   824→
+   825→  _makeDynamicCanvasBoard(w, h) {
+   826→    const canvas = document.createElement('canvas');
+   827→    canvas.width = 1024;
+   828→    canvas.height = 640;
+   829→    const ctx = canvas.getContext('2d');
+   830→    const tex = new THREE.CanvasTexture(canvas);
+   831→    tex.colorSpace = THREE.SRGBColorSpace;
+   832→    tex.anisotropy = 8;
+   833→    const mesh = new THREE.Mesh(
+   834→      new THREE.PlaneGeometry(w, h),
+   835→      new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide })
+   836→    );
+   837→    return { mesh, ctx, tex };
+   838→  }
+   839→
+   840→  updateVisionBoard(cameraActive, videoEl) {
+   841→    const ctx = this.visionBoardCtx;
+   842→    if (!ctx) return;
+   843→    const W = 1024, H = 640;
+   844→    ctx.fillStyle = '#040d14';
+   845→    ctx.fillRect(0, 0, W, H);
+   846→    ctx.strokeStyle = cameraActive ? '#e7ae5b' : '#62e6f2';
+   847→    ctx.lineWidth = 6;
+   848→    ctx.strokeRect(10, 10, W - 20, H - 20);
+   849→
+   850→    if (cameraActive && videoEl && videoEl.readyState >= 2) {
+   851→      ctx.drawImage(videoEl, 28, 100, W - 56, H - 150);
+   852→    } else {
+   853→      ctx.fillStyle = '#7799a5';
+   854→      ctx.font = '29px monospace';
+   855→      ctx.fillText('NO HIDDEN OPTICAL CAPTURE', 250, 320);
+   856→      ctx.font = '23px sans-serif';
+   857→      ctx.fillText('Enable Switch #3 (CAM) to stream real optical input.', 235, 372);
+   858→    }
+   859→
+   860→    ctx.fillStyle = cameraActive ? '#e7ae5b' : '#62e6f2';
+   861→    ctx.font = 'bold 29px monospace';
+   862→    ctx.fillText(cameraActive ? 'OPTICAL INPUT: ACTIVE (LIVE STREAM)' : 'OPTICAL INPUT: LOCKED OFF', 34, 62);
+   863→    this.visionBoardTex.needsUpdate = true;
+   864→
+   865→    if (this.visionLed) {
+   866→      this.visionLed.material.color.setHex(cameraActive ? 0xe7ae5b : 0x32444d);
+   867→    }
+   868→  }
+   869→
+   870→  updateTelemetryBoard(tel) {
+   871→    const ctx = this.telemetryBoardCtx;
+   872→    if (!ctx) return;
+   873→    const W = 1024, H = 640;
+   874→    ctx.fillStyle = '#040d14';
+   875→    ctx.fillRect(0, 0, W, H);
+   876→    ctx.strokeStyle = '#62e6f2';
+   877→    ctx.lineWidth = 5;
+   878→    ctx.strokeRect(10, 10, W - 20, H - 20);
+   879→
+   880→    ctx.fillStyle = '#62e6f2';
+   881→    ctx.font = 'bold 30px monospace';
+   882→    ctx.fillText('SANCTUARY TELEMETRY · MEASURED HOST', 38, 66);
+   883→
+   884→    ctx.fillStyle = '#ddfbff';
+   885→    ctx.font = '27px monospace';
+   886→    const lines = [
+   887→      `CPU UTILISATION : ${Number(tel.cpu_percent || 0).toFixed(1)} %`,
+   888→      `MEMORY USED     : ${Number(tel.memory_used_mb || 0).toFixed(0)} / ${Number(tel.memory_total_mb || 0).toFixed(0)} MB`,
+   889→      `UPTIME          : ${Number(tel.uptime_sec || 0).toFixed(0)} s`,
+   890→      `INFERENCE ROUTE : ${(tel.inference?.active_backend || 'executive_offline').toUpperCase()}`,
+   891→      `PUBLIC PORTS    : 0 (ZERO-TRUST VERIFIED)`,
+   892→    ];
+   893→    lines.forEach((ln, idx) => ctx.fillText(ln, 44, 160 + idx * 74));
+   894→    this.telemetryBoardTex.needsUpdate = true;
+   895→  }
+   896→
+   897→  syncPhysicalSwitchLevers(switchMap) {
+   898→    for (const [k, lever] of Object.entries(this.switchLevers)) {
+   899→      const on = Boolean(switchMap[k]);
+   900→      lever.rotation.x = on ? -0.35 : 0.35;
+   901→      const col = !switchMap.master ? 0xff6b67 : ((k === 'microphone' || k === 'camera') && on ? 0xe7ae5b : (on ? 0x62e6f2 : 0x32444d));
+   902→      lever.material.color.setHex(col);
+   903→      lever.material.emissive.setHex(col);
+   904→      lever.material.emissiveIntensity = on ? 0.55 : 0.08;
+   905→    }
+   906→    this.embodimentEnabled = Boolean(switchMap.embodiment ?? true);
+   907→    this.jarvis.root.visible = this.embodimentEnabled;
+   908→  }
+   909→
+   910→  setExternalVideoTexture(videoEl) {
+   911→    if (videoEl) {
+   912→      const vTex = new THREE.VideoTexture(videoEl);
+   913→      vTex.colorSpace = THREE.SRGBColorSpace;
+   914→      this.mediaScreenMat.map = vTex;
+   915→    } else {
+   916→      this.mediaScreenMat.map = this.schlierenFeed.texture;
+   917→    }
+   918→    this.mediaScreenMat.needsUpdate = true;
+   919→  }
+   920→
+   921→  setHologramMode(enabled, layout = 'peppers_ghost') {
+   922→    this.hologramMode = enabled;
+   923→    this.hologramLayout = layout;
+   924→    this.architectureGroup.visible = !enabled; // Pure optical black background for Pepper's Ghost reflection
+   925→    this.scene.background.setHex(enabled ? 0x000000 : 0x02070b);
+   926→    document.body.classList.toggle('holo-mirror-active', enabled && layout === 'peppers_ghost');
+   927→  }
+   928→
+   929→  onResize() {
+   930→    const w = window.innerWidth;
+   931→    const h = window.innerHeight;
+   932→    const isMobile = w <= 860;
+   933→    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? 1.35 : 2.0));
+   934→    this.renderer.setSize(w, h);
+   935→    this.composer.setSize(w, h);
+   936→    this.camera.aspect = w / h;
+   937→    this.camera.updateProjectionMatrix();
+   938→  }
+   939→
+   940→  renderFrame(dt, opticalVideoEl, cameraSwitchOn) {
+   941→    // 1. Procedural video & volumetric idle elements
+   942→    const scenarioActive = Boolean(this.scenarioDirector.activeScenario);
+   943→    this.explainerSidePanel.visible = scenarioActive && this.mediaScreenMat.map === this.schlierenFeed.texture;
+   944→    this.explainerSidePanelEdge.visible = this.explainerSidePanel.visible;
+   945→    if (scenarioActive && this.mediaScreenMat.map === this.schlierenFeed.texture) {
+   946→      // Documentary explainer feed synchronized to the active 3D scenario
+   947→      this.schlierenFeed.mode = 'explainer';
+   948→      this.explainerTimer += dt;
+   949→      if (this.explainerTimer > 0.1) {
+   950→        this.explainerTimer = 0;
+   951→        this.schlierenFeed.renderExplainer(this.scenarioDirector.getMediaFeedState());
+   952→      }
+   953→    } else {
+   954→      if (this.schlierenFeed.mode === 'explainer') {
+   955→        this.schlierenFeed.mode = 'schlieren';
+   956→        this.schlierenFeed.renderFrame(this.schlierenFeed.currentTime);
+   957→      }
+   958→      this.schlierenFeed.update(dt);
+   959→    }
+   960→    if (cameraSwitchOn && opticalVideoEl) {
+   961→      this.updateVisionBoard(true, opticalVideoEl);
+   962→    }
+   963→
+   964→    const holoClock = (this.holoClock = (this.holoClock || 0) + dt);
+   965→    for (const m of this.centerHoloMats) m.uniforms.uTime.value = holoClock;
+   966→    for (const m of this.idleHoloMats) m.uniforms.uTime.value = holoClock;
+   967→
+   968→    if (this.centerHoloAssembly) {
+   969→      const stageActive = Boolean(this.scenarioDirector.activeScenario);
+   970→      this.centerHoloAssembly.visible = !stageActive;
+   971→      if (!this.reducedMotion) {
+   972→        this.centerHoloAssembly.rotation.y += dt * 0.28;
+   973→        if (this.centerOrbits) {
+   974→          this.centerOrbits[0].rotation.z += dt * 0.55;
+   975→          this.centerOrbits[1].rotation.z -= dt * 0.4;
+   976→        }
+   977→      }
+   978→    }
+   979→
+   980→    if (!this.reducedMotion) {
+   981→      if (this.securityLattice) this.securityLattice.rotation.y += dt * 0.22;
+   982→      this.agentSolids.forEach((s, i) => {
+   983→        s.rotation.x += dt * (0.35 + i * 0.08);
+   984→        s.rotation.y += dt * 0.45;
+   985→      });
+   986→      if (this.extracted3DTwinGroup?.visible) {
+   987→        this.extracted3DTwinGroup.rotation.y += dt * 0.65;
+   988→      }
+   989→      // Memory constellation breathing
+   990→      for (const node of this.memoryNodes) {
+   991→        const k = 1 + 0.35 * Math.sin(holoClock * 1.6 + node.userData.pulsePhase);
+   992→        node.scale.setScalar(k);
+   993→      }
+   994→      // Dust motes drifting through the downlight cone
+   995→      if (this.dustField) {
+   996→        const pos = this.dustField.geometry.attributes.position;
+   997→        for (let i = 0; i < pos.count; i++) {
+   998→          let y = pos.getY(i) + dt * (0.045 + 0.02 * Math.sin(this.dustSeeds[i]));
+   999→          let x = pos.getX(i) + Math.sin(holoClock * 0.35 + this.dustSeeds[i]) * dt * 0.05;
+  1000→          if (y > 5.4) y = 0.25;
+  1001→          pos.setY(i, y);
+  1002→          pos.setX(i, x);
+  1003→        }
+  1004→        pos.needsUpdate = true;
+  1005→      }
+  1006→    }
+  1007→
+  1008→    // 2. Update Scenario Director, Living JARVIS, and Camera Director
+  1009→    this.scenarioDirector.update(dt);
+  1010→    this.jarvis.update(dt, this.camera.position, this.reducedMotion);
+  1011→    this.cameraDirector.update(dt, this.jarvis, this.reducedMotion);
+  1012→
+  1013→    // 3. Project 3D world-space scenario callout tags onto screen
+  1014→    this._renderSpatialAnchors();
+  1015→
+  1016→    // 4. Render either standard ACES Filmic sanctuary OR 4-Face Holographic Pyramid Scissor Viewports
+  1017→    if (this.hologramMode && this.hologramLayout === 'pyramid_4face') {
+  1018→      this._renderFourFacePyramid();
+  1019→    } else {
+  1020→      this.renderer.setScissorTest(false);
+  1021→      this.composer.render();
+  1022→    }
+  1023→  }
+  1024→
+  1025→  _renderFourFacePyramid() {
+  1026→    const w = window.innerWidth;
+  1027→    const h = window.innerHeight;
+  1028→    const size = Math.floor(Math.min(w, h) * 0.44);
+  1029→    const cx = Math.floor(w / 2);
+  1030→    const cy = Math.floor(h / 2);
+  1031→
+  1032→    this.renderer.setScissorTest(false);
+  1033→    this.renderer.setClearColor(0x000000, 1);
+  1034→    this.renderer.clear();
+  1035→    this.renderer.setScissorTest(true);
+  1036→
+  1037→    const jPos = this.jarvis.root.position;
+  1038→    const views = [
+  1039→      { x: cx - size / 2, y: cy + 16, yaw: 0 },               // Top (0 deg)
+  1040→      { x: cx + 16, y: cy - size / 2, yaw: Math.PI / 2 },     // Right (90 deg)
+  1041→      { x: cx - size / 2, y: cy - size - 16, yaw: Math.PI },  // Bottom (180 deg)
+  1042→      { x: cx - size - 16, y: cy - size / 2, yaw: -Math.PI / 2 }, // Left (270 deg)
+  1043→    ];
+  1044→
+  1045→    for (const v of views) {
+  1046→      const vx = Math.max(0, Math.floor(v.x));
+  1047→      const vy = Math.max(0, Math.floor(v.y));
+  1048→      const vw = Math.min(size, w - vx);
+  1049→      const vh = Math.min(size, h - vy);
+  1050→      if (vw <= 10 || vh <= 10) continue;
+  1051→
+  1052→      this.renderer.setViewport(vx, vy, vw, vh);
+  1053→      this.renderer.setScissor(vx, vy, vw, vh);
+  1054→      this.pyramidCam.aspect = vw / vh;
+  1055→      this.pyramidCam.position.set(
+  1056→        jPos.x + Math.sin(v.yaw) * 2.85,
+  1057→        1.15,
+  1058→        jPos.z + Math.cos(v.yaw) * 2.85
+  1059→      );
+  1060→      this.pyramidCam.lookAt(jPos.x, 0.98, jPos.z);
+  1061→      this.pyramidCam.updateProjectionMatrix();
+  1062→      this.renderer.render(this.scene, this.pyramidCam);
+  1063→    }
+  1064→    this.renderer.setViewport(0, 0, w, h);
+  1065→    this.renderer.setScissorTest(false);
+  1066→  }
+  1067→
+  1068→  /** Project world anchors to screen with leader dots and simple collision offsets. */
+  1069→  _renderSpatialAnchors() {
+  1070→    const anchors = this.scenarioDirector.worldAnchors;
+  1071→    if (!anchors || anchors.length === 0 || this.hologramMode) {
+  1072→      if (this.labelsContainer.childElementCount > 0) this.labelsContainer.innerHTML = '';
+  1073→      return;
+  1074→    }
+  1075→
+  1076→    while (this.labelsContainer.childElementCount < anchors.length) {
+  1077→      const div = document.createElement('div');
+  1078→      div.className = 'spatial-tag';
+  1079→      this.labelsContainer.appendChild(div);
+  1080→    }
+  1081→    while (this.labelsContainer.childElementCount > anchors.length) {
+  1082→      this.labelsContainer.lastElementChild.remove();
+  1083→    }
+  1084→
+  1085→    // Project & gather
+  1086→    const placed = [];
+  1087→    anchors.forEach((a, i) => {
+  1088→      const el = this.labelsContainer.children[i];
+  1089→      const proj = a.pos.clone().project(this.camera);
+  1090→      if (proj.z > 1) {
+  1091→        el.style.opacity = '0';
+  1092→        return;
+  1093→      }
+  1094→      let sx = (proj.x * 0.5 + 0.5) * window.innerWidth;
+  1095→      let sy = (-proj.y * 0.5 + 0.5) * window.innerHeight;
+  1096→
+  1097→      // Naive collision offset: push down until free of previously placed tags
+  1098→      let guard = 0;
+  1099→      let clash = placed.some((p) => Math.abs(p.sx - sx) < 300 && Math.abs(p.sy - sy) < 76);
+  1100→      while (clash && guard < 6) {
+  1101→        sy += 66;
+  1102→        guard++;
+  1103→        clash = placed.some((p) => Math.abs(p.sx - sx) < 300 && Math.abs(p.sy - sy) < 76);
+  1104→      }
+  1105→      placed.push({ sx, sy });
+  1106→
+  1107→      el.className = `spatial-tag ${a.amber ? 'amber' : ''}`;
+  1108→      el.style.left = `${sx}px`;
+  1109→      el.style.top = `${sy}px`;
+  1110→      el.style.opacity = '1';
+  1111→      el.innerHTML = `${a.title}<span class="tag-sub">${a.sub}</span>`;
+  1112→    });
+  1113→  }
+  1114→}
+  1115→

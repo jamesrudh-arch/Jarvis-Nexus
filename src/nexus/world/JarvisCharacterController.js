@@ -39,6 +39,10 @@ const VISEME_NAMES = [
   'viseme_aa', 'viseme_E', 'viseme_I', 'viseme_O', 'viseme_U',
 ];
 
+function timeline_lastEnd(timeline) {
+  return timeline.length ? timeline[timeline.length - 1].endMs : 1;
+}
+
 export class JarvisCharacterController {
   constructor(scene) {
     this.scene = scene;
@@ -54,23 +58,42 @@ export class JarvisCharacterController {
     this.activeActionName = null;
     this.bones = {};
     this.morphMeshes = [];
+    this.gestureWorldTarget = null; // when set (scenario directing), she POINTS here
+    this._armAimWeight = 0;
+    this._audioCtx = null;
+    this.voiceAnalyser = null;
+    this.activeAudioSource = null;
+
+    const isSmallScreen = typeof window !== 'undefined' && window.innerWidth <= 860;
 
     // Dedicated character 3-point motivated lighting rig — repositioned every frame
     // RELATIVE TO THE CAMERA so the cyan rim always separates her from the scene
     // and the warm key always flatters the face toward the viewer. (Rig lives in
     // world space, not under root, so it never rotates with her body.)
     this.lightRig = new THREE.Group();
-    this.keyLight = new THREE.SpotLight(0xffe4c8, 2.7, 8.5, Math.PI * 0.3, 0.7, 1.4);
-    this.keyLight.castShadow = false;
+    this.keyLight = new THREE.SpotLight(0xffe4c8, 7.5, 8.5, Math.PI * 0.24, 0.8, 1.4);
+    this.keyLight.castShadow = !isSmallScreen; // real contact grounding on desktop-class GPUs
+    if (this.keyLight.castShadow) {
+      this.keyLight.shadow.mapSize.set(1024, 1024);
+      this.keyLight.shadow.bias = -0.0022;
+      this.keyLight.shadow.camera.near = 0.4;
+      this.keyLight.shadow.camera.far = 8.0;
+    }
     this.keyTarget = new THREE.Object3D();
     this.lightRig.add(this.keyTarget);
     this.keyLight.target = this.keyTarget;
 
-    this.fillLight = new THREE.PointLight(0xf5cbb0, 0.55, 5.5, 1.6); // warm low "bounce board" lift
-    this.rimLight = new THREE.PointLight(0x62e6f2, 2.3, 5.5, 1.5);
+    this.fillLight = new THREE.PointLight(0xf5cbb0, 0.3, 5.5, 1.6); // LOW fill — ~4:1 key ratio sculpts the face
+    this.rimLight = new THREE.PointLight(0x62e6f2, 3.0, 5.5, 1.5);
     // Cyan bounce from the holo-table side — the room's light kissing her front
-    this.bounceLight = new THREE.PointLight(0x62e6f2, 0.65, 2.8, 1.8);
-    this.lightRig.add(this.keyLight, this.fillLight, this.rimLight, this.bounceLight);
+    // (kept subtle: cyan spill on chest/skin reads as a bad comp)
+    this.bounceLight = new THREE.PointLight(0x62e6f2, 0.6, 2.8, 1.8);
+    // Dedicated soft warm face light — her face is ALWAYS readable, never a dark wax mask
+    this.faceLight = new THREE.PointLight(0xffe9d8, 2.4, 3.4, 1.8);
+    // Warm low kicker from the key-opposite side — models the dark torso so the
+    // outfit keeps form instead of reading as a black cardboard cutout.
+    this.kickerLight = new THREE.PointLight(0xffd9b0, 1.5, 6.5, 1.6);
+    this.lightRig.add(this.keyLight, this.fillLight, this.rimLight, this.bounceLight, this.faceLight, this.kickerLight);
     this.scene.add(this.lightRig);
 
     // Subtle ground contact shadow disc beneath feet (soft radial falloff)
@@ -81,10 +104,24 @@ export class JarvisCharacterController {
       opacity: 0.55,
       depthWrite: false,
     });
-    const contactDisc = new THREE.Mesh(contactGeo, contactMat);
+    const contactDisc = new THREE.Mesh(new THREE.CircleGeometry(0.52, 40), contactMat);
+    contactMat.opacity = 0.78;
     contactDisc.rotation.x = -Math.PI / 2;
     contactDisc.position.y = 0.006;
     this.root.add(contactDisc);
+    // Dense inner core — grounded feet, never a floating mannequin
+    const coreDisc = new THREE.Mesh(
+      new THREE.CircleGeometry(0.26, 32),
+      new THREE.MeshBasicMaterial({
+        map: createSoftContactShadowTexture(),
+        transparent: true,
+        opacity: 0.6,
+        depthWrite: false,
+      })
+    );
+    coreDisc.rotation.x = -Math.PI / 2;
+    coreDisc.position.y = 0.007;
+    this.root.add(coreDisc);
 
     // Locomotion & Navigation state
     this.waypoints = [];
@@ -153,6 +190,9 @@ export class JarvisCharacterController {
     microNormalSkin.repeat.set(6, 6);
     const weaveNormal = createMicroNormalTexture({ size: 256, scale: 30, strength: 1.0, weave: true, seed: 313 });
     weaveNormal.repeat.set(4, 4);
+    // High-frequency strand breakup for the hair surface (kills the carved-slab read)
+    const strandNormal = createMicroNormalTexture({ size: 256, scale: 68, strength: 1.5, seed: 77 });
+    strandNormal.repeat.set(7, 7);
 
     const injectFresnelRim = (mat, rimColor, strength, power = 2.8) => {
       mat.onBeforeCompile = (shader) => {
@@ -184,46 +224,98 @@ export class JarvisCharacterController {
         const mat = obj.material;
         if (mat) {
           const mName = (mat.name || obj.name || '').toLowerCase();
+          const objName = (obj.name || '').toLowerCase();
           if (mName.includes('look')) {
             // Tailored suit: woven micro normal + cool fresnel rim so cloth separates from the dark room
             mat.map = tailorSuitAlbedoTexture(mat.map);
             mat.normalMap = weaveNormal;
-            mat.normalScale = new THREE.Vector2(0.32, 0.32);
-            mat.roughness = 0.8;
+            mat.normalScale = new THREE.Vector2(0.42, 0.42);
+            mat.roughness = 0.72;
             mat.metalness = 0.06;
-            injectFresnelRim(mat, [0.16, 0.38, 0.44], 0.24);
+            mat.envMapIntensity = 0.6;
+            injectFresnelRim(mat, [0.18, 0.42, 0.48], 0.42);
             mat.needsUpdate = true;
           } else if (mName.includes('hair')) {
-            mat.color = new THREE.Color(0x241812);
-            mat.roughness = 0.5;
-            mat.metalness = 0.04;
-            mat.envMapIntensity = 0.85;
-            // Cyan environment kiss on the hair silhouette (kills the black-helmet read)
-            injectFresnelRim(mat, [0.26, 0.62, 0.7], 0.6, 2.4);
-            mat.needsUpdate = true;
+            // Hair v4: deep espresso, matte fiber feel, STRAND-LEVEL normal breakup
+            // so the mass reads as thousands of fibers, not carved slabs.
+            const hairPhys = new THREE.MeshPhysicalMaterial({
+              map: mat.map,
+              normalMap: strandNormal,
+              normalScale: new THREE.Vector2(0.85, 0.85),
+              color: 0x1d130d,
+              roughness: 0.58,
+              metalness: 0.02,
+              sheen: 0.35,
+              sheenRoughness: 0.55,
+              sheenColor: new THREE.Color(0x3d5a66),
+              clearcoat: 0.08,
+              clearcoatRoughness: 0.5,
+              envMapIntensity: 0.75,
+            });
+            injectFresnelRim(hairPhys, [0.28, 0.62, 0.72], 0.35, 3.2);
+            obj.material = hairPhys;
           } else if (mName.includes('shoe')) {
             mat.color = new THREE.Color(0x12161c);
             mat.roughness = 0.42;
             mat.metalness = 0.12;
             mat.needsUpdate = true;
+          } else if (mName === 'eyes') {
+            // Wet, living eyes: mirror-gloss clearcoat + strong env reflection
+            obj.material = new THREE.MeshPhysicalMaterial({
+              map: mat.map,
+              color: 0xffffff,
+              roughness: 0.05,
+              metalness: 0.0,
+              clearcoat: 1.0,
+              clearcoatRoughness: 0.03,
+              envMapIntensity: 2.6,
+            });
+          } else if (mName === 'eyelash') {
+            mat.roughness = 0.55;
+            mat.envMapIntensity = 0.5;
+            mat.needsUpdate = true;
+          } else if (mName === 'teeth' && objName.includes('tongue')) {
+            obj.material = new THREE.MeshPhysicalMaterial({
+              map: mat.map,
+              color: 0xc4736a,
+              roughness: 0.32,
+              clearcoat: 0.35,
+              clearcoatRoughness: 0.3,
+              envMapIntensity: 0.6,
+            });
+          } else if (mName === 'teeth') {
+            obj.material = new THREE.MeshPhysicalMaterial({
+              map: mat.map,
+              color: 0xf6f2ea,
+              roughness: 0.2,
+              clearcoat: 0.55,
+              clearcoatRoughness: 0.25,
+              envMapIntensity: 0.9,
+            });
           } else if (mName === 'head' || mName === 'body') {
+            // Body skin gets a gentle warm tint so the neck/chest tone matches
+            // the face (kills the jawline seam between Head and Body meshes).
+            const isBody = mName === 'body';
             const phys = new THREE.MeshPhysicalMaterial({
               map: mat.map,
               normalMap: mat.normalMap,
               roughnessMap: mat.roughnessMap,
-              roughness: 0.52,
+              color: isBody ? 0xffdcc8 : 0xffffff,
+              roughness: 0.4,
               metalness: 0.0,
-              sheen: 0.34,
-              sheenRoughness: 0.62,
-              sheenColor: new THREE.Color(0xd99a82),
-              clearcoat: 0.05,
-              clearcoatRoughness: 0.5,
+              sheen: 0.55,
+              sheenRoughness: 0.55,
+              sheenColor: new THREE.Color(0xd98a76),
+              clearcoat: 0.08,
+              clearcoatRoughness: 0.38,
               ior: 1.38,
-              specularIntensity: 0.52,
+              specularIntensity: 0.75,
+              envMapIntensity: 0.55,
+              emissive: new THREE.Color(0x0e0704), // faint warm scatter bleed in the shadow side
             });
             // Pore-level specular breakup so skin never reads as airbrushed wax
             phys.normalMap = microNormalSkin;
-            phys.normalScale = new THREE.Vector2(0.3, 0.3);
+            phys.normalScale = new THREE.Vector2(isBody ? 0.34 : 0.5, isBody ? 0.34 : 0.5);
             obj.material = phys;
           }
         }
@@ -267,6 +359,12 @@ export class JarvisCharacterController {
     }
 
     this._fadeToAction('idle', 0.01);
+
+    // Capture the right-arm bind orientation for the pointing aim-solver
+    // (before any animation ticks — this is the parent-space rest direction).
+    if (this.bones.RightArm) {
+      this._rightArmRestQuat = this.bones.RightArm.quaternion.clone();
+    }
     this.loaded = true;
   }
 
@@ -279,13 +377,22 @@ export class JarvisCharacterController {
     const c = document.createElement('canvas');
     c.width = c.height = 64;
     const ctx = c.getContext('2d');
-    const g = ctx.createRadialGradient(32, 32, 2, 32, 32, 30);
-    g.addColorStop(0, 'rgba(255,255,255,0.98)');
-    g.addColorStop(0.25, 'rgba(235,250,255,0.85)');
-    g.addColorStop(0.6, 'rgba(190,235,248,0.22)');
-    g.addColorStop(1, 'rgba(160,225,240,0)');
-    ctx.fillStyle = g;
+    // Hard corneal glint core + faint ambient halo — the two-part catchlight
+    // that real wet eyes have (a hard key glint + a soft broad reflection).
+    const halo = ctx.createRadialGradient(32, 32, 2, 32, 32, 30);
+    halo.addColorStop(0, 'rgba(235,250,255,0.34)');
+    halo.addColorStop(0.4, 'rgba(190,235,248,0.1)');
+    halo.addColorStop(1, 'rgba(160,225,240,0)');
+    ctx.fillStyle = halo;
     ctx.fillRect(0, 0, 64, 64);
+    ctx.fillStyle = 'rgba(255,255,255,1)';
+    ctx.beginPath();
+    ctx.arc(25, 25, 8.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(245,253,255,0.92)';
+    ctx.beginPath();
+    ctx.arc(40, 37, 3.6, 0, Math.PI * 2);
+    ctx.fill();
     const tex = new THREE.CanvasTexture(c);
 
     const head = this.bones.Head;
@@ -295,16 +402,29 @@ export class JarvisCharacterController {
       const mat = new THREE.SpriteMaterial({
         map: tex,
         transparent: true,
-        opacity: sideSign < 0 ? 0.92 : 0.72, // asymmetric — the far eye catches less key
+        opacity: sideSign < 0 ? 1.0 : 0.82, // asymmetric — the far eye catches less key
         depthWrite: false,
       });
       const sp = new THREE.Sprite(mat);
-      sp.scale.setScalar(sideSign < 0 ? 0.018 : 0.014);
-      sp.position.set(sideSign * 0.031, 0.047, 0.093);
+      sp.scale.setScalar(sideSign < 0 ? 0.038 : 0.03);
+      sp.position.set(sideSign * 0.031, 0.052, 0.093);
       head.add(sp);
       this.catchlights.push(sp);
       this._catchlightBase = this._catchlightBase || [];
       this._catchlightBase.push(sp.scale.x);
+
+      // Lower-lid tear-film glint — a thin wet streak under each eye. The
+      // classic VFX tell of moist, living eyes.
+      const wetMat = new THREE.SpriteMaterial({
+        map: tex,
+        transparent: true,
+        opacity: sideSign < 0 ? 0.55 : 0.4,
+        depthWrite: false,
+      });
+      const wet = new THREE.Sprite(wetMat);
+      wet.scale.set(sideSign < 0 ? 0.026 : 0.02, 0.0065, 1);
+      wet.position.set(sideSign * 0.031, 0.036, 0.093);
+      head.add(wet);
     }
   }
 
@@ -313,7 +433,7 @@ export class JarvisCharacterController {
     const accentMat = new THREE.MeshBasicMaterial({
       color: 0x62e6f2,
       transparent: true,
-      opacity: 0.85,
+      opacity: 0.6, // restrained — her FACE owns the exposure hierarchy, not her cuffs
     });
     const attachments = [
       { bone: 'LeftHand', geo: new THREE.TorusGeometry(0.045, 0.0075, 8, 24) },
@@ -348,12 +468,40 @@ export class JarvisCharacterController {
     if (side.lengthSq() < 1e-4) side.set(1, 0, 0);
     side.normalize();
 
-    this.keyLight.position.copy(head).addScaledVector(toCam, 1.45).addScaledVector(side, 0.6);
-    this.keyLight.position.y += 0.85;
+    this.keyLight.position.copy(head).addScaledVector(toCam, 1.45).addScaledVector(side, 1.35);
+    this.keyLight.position.y += 1.0;
     this.keyTarget.position.copy(head);
 
-    this.rimLight.position.copy(head).addScaledVector(toCam, -1.3);
-    this.rimLight.position.y += 0.55;
+    // Camera-distance light compensation: a fixed intensity that flatters the
+    // wide shot clips to pure white in a 65mm closeup. Map the key & face lights
+    // down as the camera approaches so skin always lands in the filmic rolloff.
+    // (Distance is measured BEFORE toCam is normalized below.)
+    const camDist = cameraWorldPos.distanceTo(head);
+    this.keyLight.intensity = THREE.MathUtils.clamp(
+      THREE.MathUtils.mapLinear(THREE.MathUtils.clamp(camDist, 1.4, 6.5), 1.4, 6.5, 4.8, 7.8),
+      4.8, 7.8
+    );
+    this.faceLight.intensity = THREE.MathUtils.clamp(
+      THREE.MathUtils.mapLinear(THREE.MathUtils.clamp(camDist, 1.4, 6.5), 1.4, 6.5, 0.7, 2.0),
+      0.7, 2.0
+    );
+    // Face light leans to the KEY side (never frontal) so it lifts without
+    // flattening the sculpt.
+    this.faceLight.position.copy(head).addScaledVector(toCam, 0.62).addScaledVector(side, 0.4);
+    this.faceLight.position.y += 0.18;
+
+    // Warm kicker: low, key-opposite — carves her body's dark edge.
+    this.kickerLight.position.copy(head).addScaledVector(toCam, 1.2).addScaledVector(side, -1.35);
+    this.kickerLight.position.y -= 0.75;
+    this.kickerLight.intensity = THREE.MathUtils.clamp(
+      THREE.MathUtils.mapLinear(THREE.MathUtils.clamp(camDist, 1.4, 6.5), 1.4, 6.5, 0.9, 1.9),
+      0.9, 1.9
+    );
+
+    // Crossed backlight rim: opposite the key side so it CARVES the silhouette
+    // instead of flattening it with a uniform teal halo.
+    this.rimLight.position.copy(head).addScaledVector(toCam, -1.35).addScaledVector(side, -0.85);
+    this.rimLight.position.y += 0.6;
 
     this.fillLight.position.copy(head).addScaledVector(toCam, 1.1).addScaledVector(side, -0.6);
     this.fillLight.position.y -= 0.55;
@@ -533,40 +681,107 @@ export class JarvisCharacterController {
     this.onSpeechEndCallback = onEnd || null;
     if (onStart) onStart();
 
-    // Primary: server-synthesized NEXUS voice (base64 WAV) with elastic viseme scaling
+    // Primary: server voice decoded through a WebAudio AnalyserNode — the mouth
+    // is driven by the REAL waveform (true sync incl. pauses & emphasis), and the
+    // viseme clock starts the instant the buffer starts playing (zero drift).
     if (audio && audio.data) {
-      try {
-        const snd = new Audio(`data:${audio.mime || 'audio/wav'};base64,${audio.data}`);
-        this.activeAudioEl = snd;
-        const lastEndMs = timeline.length ? timeline[timeline.length - 1].endMs : 1;
-        snd.onloadedmetadata = () => {
-          const durMs = (snd.duration || 0) * 1000;
-          if (durMs > 400 && lastEndMs > 0) {
-            const factor = durMs / lastEndMs;
-            for (const seg of this.speechTimeline) {
-              seg.startMs *= factor;
-              seg.endMs *= factor;
-            }
-          }
-        };
-        snd.onended = () => {
-          this.activeAudioEl = null;
-          this.isSpeaking = false;
-          this._clearVisemes();
-          if (this.onSpeechEndCallback) {
-            const cb = this.onSpeechEndCallback;
-            this.onSpeechEndCallback = null;
-            cb();
-          }
-        };
-        snd.play().catch(() => this._browserTtsFallback(clean));
-        return;
-      } catch {
-        this.activeAudioEl = null;
-      }
+      this._playVoiceThroughAnalyser(audio).then((ok) => {
+        if (!ok) this._playVoiceElement(audio, clean);
+      });
+      return;
     }
 
     this._browserTtsFallback(clean);
+  }
+
+  _ensureAudioCtx() {
+    if (!this._audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      this._audioCtx = new AC();
+    }
+    return this._audioCtx;
+  }
+
+  /** Decode + play her voice through an AnalyserNode so lip-sync reads the actual
+   *  audio. The phoneme timeline is elastically rescaled to the real duration and
+   *  started together with the source. Falls back to <audio> if decode fails. */
+  async _playVoiceThroughAnalyser({ data, mime }) {
+    try {
+      const ctx = this._ensureAudioCtx();
+      if (!ctx) return false;
+      if (ctx.state === 'suspended') await ctx.resume();
+      const bin = atob(data);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const audioBuf = await ctx.decodeAudioData(bytes.buffer);
+
+      const lastEndMs = timeline_lastEnd(this.speechTimeline);
+      const durMs = audioBuf.duration * 1000;
+      if (durMs > 400 && lastEndMs > 0) {
+        const factor = durMs / lastEndMs;
+        for (const seg of this.speechTimeline) {
+          seg.startMs *= factor;
+          seg.endMs *= factor;
+        }
+      }
+
+      const src = ctx.createBufferSource();
+      src.buffer = audioBuf;
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 1024;
+      analyser.smoothingTimeConstant = 0.45;
+      src.connect(analyser);
+      analyser.connect(ctx.destination);
+      this.voiceAnalyser = analyser;
+      this._freqBins = new Uint8Array(analyser.frequencyBinCount);
+      this._timeSamples = new Float32Array(analyser.fftSize);
+      this.activeAudioSource = src;
+      this.speechStartPerf = performance.now(); // mouth clock starts WITH the sound
+      src.onended = () => this._onVoiceSourceEnded();
+      src.start();
+      return true;
+    } catch {
+      this.voiceAnalyser = null;
+      this.activeAudioSource = null;
+      return false;
+    }
+  }
+
+  _onVoiceSourceEnded() {
+    if (this.activeAudioSource === null) return; // already handled by interrupt
+    this.activeAudioSource = null;
+    this.voiceAnalyser = null;
+    this.isSpeaking = false;
+    this._clearVisemes();
+    if (this.onSpeechEndCallback) {
+      const cb = this.onSpeechEndCallback;
+      this.onSpeechEndCallback = null;
+      cb();
+    }
+  }
+
+  /** Legacy <audio> element path (only if WebAudio decode fails). The viseme
+   *  clock now starts on the real 'playing' event, killing start drift. */
+  _playVoiceElement({ data, mime }, clean) {
+    try {
+      const snd = new Audio(`data:${mime || 'audio/wav'};base64,${data}`);
+      this.activeAudioEl = snd;
+      snd.addEventListener('playing', () => { this.speechStartPerf = performance.now(); });
+      snd.onended = () => {
+        this.activeAudioEl = null;
+        this.isSpeaking = false;
+        this._clearVisemes();
+        if (this.onSpeechEndCallback) {
+          const cb = this.onSpeechEndCallback;
+          this.onSpeechEndCallback = null;
+          cb();
+        }
+      };
+      snd.play().catch(() => this._browserTtsFallback(clean));
+    } catch {
+      this._browserTtsFallback(clean);
+    }
   }
 
   _browserTtsFallback(clean) {
@@ -596,6 +811,14 @@ export class JarvisCharacterController {
   }
 
   interruptSpeech() {
+    if (this.activeAudioSource) {
+      try {
+        this.activeAudioSource.onended = null;
+        this.activeAudioSource.stop();
+      } catch { /* noop */ }
+      this.activeAudioSource = null;
+      this.voiceAnalyser = null;
+    }
     if (this.activeAudioEl) {
       try { this.activeAudioEl.pause(); } catch { /* noop */ }
       this.activeAudioEl = null;
@@ -629,6 +852,7 @@ export class JarvisCharacterController {
       this._setMorph(v, 0, 1.0);
     }
     this._setMorph('jawOpen', 0, 1.0);
+    this._setMorph('mouthOpen', 0, 1.0);
   }
 
   getHeadWorldPosition(target = new THREE.Vector3()) {
@@ -645,6 +869,15 @@ export class JarvisCharacterController {
     this.breathClock += clampedDt;
 
     // 1. Grounded Waypoint Locomotion (zero foot-skating!)
+    // In conversational focus she turns her WHOLE BODY toward you — natural
+    // posture for a face-to-face, and the head never tracks at its limits.
+    if (this.focusCamera && this.postureMode === 'conversational_focus' && this.waypoints.length === 0) {
+      const dx = cameraWorldPos.x - this.root.position.x;
+      const dz = cameraWorldPos.z - this.root.position.z;
+      if (Math.hypot(dx, dz) > 0.35) {
+        this.targetYaw = Math.atan2(dx, dz);
+      }
+    }
     if (this.waypoints.length > 0) {
       const wp = this.waypoints[0];
       const dx = wp.x - this.root.position.x;
@@ -689,6 +922,10 @@ export class JarvisCharacterController {
     if (this.waypoints.length === 0 && !reducedMotion) {
       this._applyPostureLayer();
     }
+
+    // 3b. Procedural pointing at holographic evidence + living fingers
+    this._updateArmAim();
+    this._updateFingerLife(reducedMotion);
 
     // 4. Head & Eye Gaze Tracking (rotates eyes/head naturally rather than spinning whole body!)
     const gazeTarget = this.focusCamera ? cameraWorldPos : this.lookWorldTarget;
@@ -743,15 +980,97 @@ export class JarvisCharacterController {
       lArm.rotation.x -= 0.48;
       lFore.rotation.x -= 0.52;
     } else if (this.postureMode === 'scenario_direct' || this.postureMode === 'video_present') {
-      //Measured explanatory presentation gesture toward 3D evidence
-      rArm.rotation.x -= 0.54;
-      rArm.rotation.y += 0.22;
-      rFore.rotation.x -= 0.38;
+      // Measured explanatory presentation gesture toward 3D evidence
+      // (skipped when the aim-solver owns the arm — she POINTS at the hologram)
+      if (!this.gestureWorldTarget) {
+        rArm.rotation.x -= 0.54;
+        rArm.rotation.y += 0.22;
+        rFore.rotation.x -= 0.38;
+      }
     } else if (this.isSpeaking) {
       // Restrained conversational gesture (not on every word!)
       const env = Math.max(0, Math.sin(t * 0.85));
       rArm.rotation.x -= 0.22 * env;
       rFore.rotation.x -= 0.38 * env;
+    }
+  }
+
+  /**
+   * Procedural right-arm aiming: during scenario_direct / video_present she
+   * POINTS at the live holographic evidence (gestureWorldTarget, world space).
+   * A quaternion slerp layered over the mixer output; ramps in/out smoothly.
+   */
+  _updateArmAim() {
+    const arm = this.bones.RightArm;
+    if (!arm || !this._rightArmRestQuat) return;
+    // Cache the last valid target so the ramp-down keeps a direction after the
+    // scenario clears gestureWorldTarget (prevents a null deref mid-blend).
+    if (this.gestureWorldTarget) {
+      (this._lastGestureTarget || (this._lastGestureTarget = new THREE.Vector3())).copy(this.gestureWorldTarget);
+    }
+    const target = this.gestureWorldTarget || this._lastGestureTarget;
+    const aiming = (this.postureMode === 'scenario_direct' || this.postureMode === 'video_present')
+      && target;
+    this._armAimWeight = aiming
+      ? Math.min(1, this._armAimWeight + 0.035)
+      : Math.max(0, this._armAimWeight - 0.05);
+    const w = this._armAimWeight;
+    if (w <= 0.001 || !target) return;
+
+    arm.updateWorldMatrix(true, false);
+    const shoulderW = arm.getWorldPosition(this._aimP || (this._aimP = new THREE.Vector3()));
+    const dir = this._aimD || (this._aimD = new THREE.Vector3());
+    // Gentle living sway so the pointing never reads as a frozen laser beam
+    const sway = Math.sin(this.breathClock * 1.1) * 0.035;
+    dir.copy(target);
+    dir.y += sway;
+    dir.sub(shoulderW).normalize();
+
+    const parentQ = this._aimQ0 || (this._aimQ0 = new THREE.Quaternion());
+    arm.parent.getWorldQuaternion(parentQ);
+    const invParentQ = this._aimQInv || (this._aimQInv = new THREE.Quaternion());
+    invParentQ.copy(parentQ).invert();
+    const localDir = this._aimL || (this._aimL = new THREE.Vector3());
+    localDir.copy(dir).applyQuaternion(invParentQ).normalize();
+
+    const restDir = this._aimR || (this._aimR = new THREE.Vector3(0, 1, 0).applyQuaternion(this._rightArmRestQuat).normalize());
+    const aimQuat = this._aimQ1 || (this._aimQ1 = new THREE.Quaternion());
+    aimQuat.setFromUnitVectors(restDir, localDir).multiply(this._rightArmRestQuat);
+    arm.quaternion.slerp(aimQuat, w * 0.22);
+
+    if (this.bones.RightForeArm) {
+      this.bones.RightForeArm.rotation.x -= 0.1 * w;
+    }
+
+    // Presenting hand: index extended, remaining fingers softly curled
+    this._curlFingers('Right', ['Index'], -0.02, w);
+    this._curlFingers('Right', ['Middle', 'Ring', 'Pinky'], 0.42, w);
+  }
+
+  _curlFingers(side, names, curl, w) {
+    for (const n of names) {
+      for (const j of [1, 2, 3]) {
+        const b = this.bones[`${side}Hand${n}${j}`];
+        if (b) b.rotation.x += curl * w * (j === 1 ? 0.7 : 1.0);
+      }
+    }
+  }
+
+  /** Micro finger motion so her hands never read as frozen mannequin mitts. */
+  _updateFingerLife(reducedMotion) {
+    if (reducedMotion || !this.loaded) return;
+    if (this._armAimWeight > 0.2) return; // pointing hand stays clean
+    const t = this.breathClock;
+    const base = this.waypoints.length === 0 ? 1 : 0.4;
+    const names = ['Index', 'Middle', 'Ring', 'Pinky'];
+    for (const side of ['Left', 'Right']) {
+      for (let f = 0; f < names.length; f++) {
+        const b = this.bones[`${side}Hand${names[f]}1`];
+        if (b) {
+          const phase = side === 'Left' ? 0 : 2.2;
+          b.rotation.x += (0.09 + Math.sin(t * 0.9 + f * 1.4 + phase) * 0.05) * base * 0.5;
+        }
+      }
     }
   }
 
@@ -766,7 +1085,7 @@ export class JarvisCharacterController {
 
     this.bones.Neck.rotation.y += yaw * 0.32;
     this.bones.Neck.rotation.x += pitch * 0.28;
-    this.bones.Head.rotation.y += yaw * 0.45;
+    this.bones.Head.rotation.y += yaw * 0.52;
     this.bones.Head.rotation.x += pitch * 0.42;
 
     // Subtle ocular look morphs
@@ -827,15 +1146,71 @@ export class JarvisCharacterController {
 
   _updateLipSync() {
     if (!this.isSpeaking || this.speechTimeline.length === 0) {
-      for (const v of VISEME_NAMES) this._setMorph(v, 0, 0.25);
-      this._setMorph('jawOpen', 0, 0.25);
+      for (const v of VISEME_NAMES) this._setMorph(v, 0, 0.28);
+      this._setMorph('jawOpen', 0, 0.3);
+      this._setMorph('mouthOpen', 0, 0.3);
       return;
     }
 
     const elapsed = performance.now() - this.speechStartPerf;
-    const lastEnd = this.speechTimeline[this.speechTimeline.length - 1].endMs;
+    const lastEnd = timeline_lastEnd(this.speechTimeline);
 
-    if (elapsed > lastEnd + 180) {
+    // --- Layer 1: phoneme timeline ("which sound") ---
+    let timelineV = 'viseme_sil';
+    for (const seg of this.speechTimeline) {
+      if (elapsed >= seg.startMs && elapsed <= seg.endMs) {
+        timelineV = seg.viseme;
+        break;
+      }
+    }
+
+    // --- Layer 2: live waveform analysis ("how open, which shape") ---
+    let audioJaw = null;
+    let audioV = null;
+    if (this.voiceAnalyser && this.activeAudioSource) {
+      this.voiceAnalyser.getFloatTimeDomainData(this._timeSamples);
+      this.voiceAnalyser.getByteFrequencyData(this._freqBins);
+      let sum = 0;
+      for (let i = 0; i < this._timeSamples.length; i++) {
+        sum += this._timeSamples[i] * this._timeSamples[i];
+      }
+      const rms = Math.sqrt(sum / this._timeSamples.length);
+      audioJaw = Math.min(0.72, rms * 3.6);
+      // Crude formant estimate: spectral centroid bucket → vowel shape
+      let weighted = 0;
+      let total = 0;
+      for (let i = 2; i < this._freqBins.length; i++) {
+        const mag = this._freqBins[i] / 255;
+        weighted += mag * i;
+        total += mag;
+      }
+      if (rms < 0.018) {
+        audioV = 'viseme_sil';
+      } else {
+        const centroid = total > 0.4 ? weighted / total : 30;
+        audioV = centroid < 18 ? 'viseme_U'
+          : centroid < 34 ? 'viseme_aa'
+          : centroid < 70 ? 'viseme_DD'
+          : 'viseme_E';
+      }
+    }
+
+    const activeV = audioV && audioV !== 'viseme_sil' ? audioV : timelineV;
+    const peak = audioV && audioV !== 'viseme_sil' ? 0.95 : 0.6;
+    for (const v of VISEME_NAMES) {
+      this._setMorph(v, v === activeV ? peak : 0.0, 0.5);
+    }
+
+    let jaw = timelineV === 'viseme_sil' ? 0
+      : (['viseme_aa', 'viseme_O', 'viseme_E'].includes(timelineV) ? 0.3 : 0.12);
+    if (audioJaw !== null) jaw = Math.max(jaw, audioJaw);
+    this._setMorph('jawOpen', jaw, 0.55);
+    // Extra lip aperture so articulation reads at conversational distance
+    this._setMorph('mouthOpen', jaw * 0.55, 0.5);
+
+    // End-of-speech detection (element / browser-TTS paths; WebAudio ends via onended)
+    if (this.activeAudioSource) return;
+    if (elapsed > lastEnd + 260) {
       const audioStillPlaying = this.activeAudioEl && !this.activeAudioEl.paused;
       if (!audioStillPlaying && (!('speechSynthesis' in window) || !window.speechSynthesis.speaking)) {
         this.isSpeaking = false;
@@ -846,22 +1221,7 @@ export class JarvisCharacterController {
           cb();
         }
       }
-      return;
     }
-
-    let activeV = 'viseme_sil';
-    for (const seg of this.speechTimeline) {
-      if (elapsed >= seg.startMs && elapsed <= seg.endMs) {
-        activeV = seg.viseme;
-        break;
-      }
-    }
-
-    for (const v of VISEME_NAMES) {
-      this._setMorph(v, v === activeV ? 0.68 : 0.0, 0.42);
-    }
-    const openWeight = ['viseme_aa', 'viseme_O', 'viseme_E'].includes(activeV) ? 0.26 : 0.08;
-    this._setMorph('jawOpen', activeV === 'viseme_sil' ? 0.0 : openWeight, 0.38);
   }
 
   _lerpAngle(a, b, t) {
