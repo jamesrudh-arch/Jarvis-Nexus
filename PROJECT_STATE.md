@@ -18,7 +18,7 @@
 - **End-to-end AI provider chain**: `conversations/send` → provider registry → z-ai cloud → directive (reply + emotion + zone + scenario + memory_writes) + WAV voice audio. `inference_source: zai_cloud_route`
 - TTS route returns WAV; ASR route wired through the registry
 - Scenario system: branch evaluation with full boolean logic (`and`/`or`/`not`, parentheses) — Media Wall feed, stage math, and UI banner all use ONE evaluator (unit + integration tested)
-- Rendering: composer runs at device-pixel resolution on all paths incl. pyramid mode (zoom-blur root cause eliminated); adaptive DPR steps down AND recovers with cooldown + dead band
+- Rendering: composer runs at device-pixel resolution on all paths incl. pyramid mode (zoom-blur root cause eliminated); adaptive DPR steps down AND recovers with cooldown + dead band; resize re-baselines to native DPR (ratchet removed) + matchMedia watcher catches eventless DPR changes. **Verified in headless Chromium**: desktop DPR1 (1600×900 buffer), fresh mobile DPR3 load (780×1688 buffer = clamp 2.0), mid-session DPR switch (watcher fires; adaptive loop correctly steps down under SwiftShader software rendering — on real GPUs it holds 2.0). Evidence: download/screenshots/p0_verification_*.png
 - 9/9 unit tests pass (`npm test`); `npm run typecheck` passes
 
 ## Incomplete (known, next phases)

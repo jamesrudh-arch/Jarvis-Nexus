@@ -7,6 +7,8 @@ Format: date — change — why. Newest first. Full diffs: git log.
 **Rendering (NexusSanctuaryScene.js, JarvisCharacterController.js)**
 - Composer render targets now run at device-pixel resolution at init, on resize, and in the adaptive DPR loop (B1/B2/B5) — the zoom-blur root cause
 - Adaptive DPR: steps down AND recovers; 22–38 ms dead band; 1.5 s cooldown; composer follows the renderer
+- Resize re-baselines to the NATIVE device DPR — removed the `min(dpr, previous)` ratchet that permanently trapped a window at its boot-time DPR (the B5 real-world core, caught live by the headless DPR-switch test)
+- matchMedia `(resolution: Xdppx)` watcher catches DPR changes that fire no resize event (emulation, some zoom/monitor transitions); re-arms after each change
 - Pyramid hologram mode renders through the composer (bloom/vignette/tonemap parity, B11)
 - Vision board: 30 fps upload cap + LOCKED-state restore when the camera turns off (B7); previously froze on the last video frame
 - Spatial anchors: innerHTML/className written only on change (B8)
