@@ -18,8 +18,18 @@ export const metadata: Metadata = {
     "A persistent, owner-controlled intelligence embodied as a living adult female NPC inside a real-time 3D operational sanctuary: natural locomotion, room-scale volumetric scenario reconstruction, typed epistemic memory, and hardware-grade owner switches.",
   keywords: ["JARVIS", "NEXUS", "FRIDAY", "Iron Man", "3D assistant", "embodied AI", "Three.js", "scenario reconstruction"],
   authors: [{ name: "JARVIS NEXUS" }],
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "JARVIS NEXUS",
+  },
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
 };
 

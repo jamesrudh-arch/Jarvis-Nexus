@@ -1,0 +1,32 @@
+{
+  "EngineAssociation": "5.5",
+  "Category": "Project",
+  "Description": "JARVIS NEXUS — Unreal Engine 5 world & MetaHuman embodiment runtime. Communicates with JARVIS CORE (Next.js) over the in-engine HTTP bridge.",
+  "Modules": [
+    {
+      "Name": "JarvisNexus",
+      "Type": "Runtime",
+      "LoadingPhase": "Default"
+    }
+  ],
+  "Plugins": [
+    {
+      "Name": "PythonScriptPlugin",
+      "Enabled": true
+    },
+    {
+      "Name": "EditorScriptingUtilities",
+      "Enabled": true
+    },
+    {
+      "Name": "MetaHumanPlugin",
+      "Enabled": true,
+      "MarketplaceURL": "com.epicgames.launcher://apps/UE_5.5"
+    },
+    {
+      "Name": "JarvisNexusEOS",
+      "Enabled": true
+    }
+  ],
+  "TargetPlatforms": ["Windows", "Linux"]
+}

@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { NexusSanctuaryScene } from './world/NexusSanctuaryScene.js';
 import { SpeechSequencer, splitSentences } from './vendor/speechStream.mjs';
+import { WakeWordEngine, type WakeState } from './wakeWord';
 
 export interface WorldSnapshot {
   owner_name: string;
@@ -104,17 +105,20 @@ export interface NexusSnapshot {
   telemetry: Telemetry | null;
   holoLayout: string;
   speaking: boolean;
+  /** Wake-word engine state: standby (local VAD only) | active | unavailable. */
+  wakeState: WakeState;
+  wakeDetail: string | null;
 }
 
 type SnapshotListener = (snap: NexusSnapshot) => void;
 
 // Minimal Web Speech API controller typings (the result types already exist in
 // TS's DOM lib, but the SpeechRecognition controller interface does not).
-interface SpeechRecognitionEvent extends Event {
+export interface SpeechRecognitionEvent extends Event {
   readonly resultIndex: number;
   readonly results: SpeechRecognitionResultList;
 }
-interface SpeechRecognition extends EventTarget {
+export interface SpeechRecognition extends EventTarget {
   lang: string;
   interimResults: boolean;
   continuous: boolean;
@@ -179,6 +183,11 @@ export class NexusClient {
   /** Sentence-chunked TTS player: chunk i speaks while i+1 synthesizes. */
   private speechSequencer: SpeechSequencer | null = null;
   private conversationEmotion = 'neutral';
+  /** Wake-word engine (§wake-word): intelligent standby + activation + barge-in. */
+  private wakeEngine: WakeWordEngine | null = null;
+  private wakeState: WakeState = 'unavailable';
+  private wakeDetail: string | null = null;
+  private wakePermissionDenied = false;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -235,6 +244,41 @@ export class NexusClient {
         this.emit();
       },
     });
+
+    // Wake-word engine: standby keeps ALL intelligence off — the mic is
+    // analysed locally (AnalyserNode RMS) and a recognition burst opens only
+    // on speech energy. "Hey JARVIS" activates; voice energy while she is
+    // speaking is an instant barge-in (cancel speech, capture instruction).
+    this.wakeEngine = new WakeWordEngine({
+      isSpeaking: () => this.speaking,
+      onWake: () => {
+        const jarvis = this.sanctuary?.jarvis;
+        if (jarvis) {
+          jarvis.postureMode = 'conversational_focus';
+          jarvis.focusCamera = true;
+          jarvis.emotionalState = 'listening';
+        }
+      },
+      onUtterance: (text) => { void this.sendConversation(text, 'voice'); },
+      onBargeIn: () => { void this.interruptSpeech(); },
+      onStateChange: (state, detail) => {
+        this.wakeState = state;
+        this.wakeDetail = detail ?? null;
+        this.emit();
+      },
+    });
+
+    // Native iOS shell bridge (ios/JarvisNexus): utterances + barge-in from
+    // the on-device Speech framework arrive as window events — the SAME
+    // callbacks the in-page wake engine uses, so both transports share one
+    // behaviour contract (wake → active, voice during speech → interrupt).
+    if (typeof window !== 'undefined') {
+      window.addEventListener('jarvis-utterance', (ev) => {
+        const detail = (ev as CustomEvent<string>).detail;
+        if (detail && detail.length > 1) void this.sendConversation(detail, 'voice');
+      });
+      window.addEventListener('jarvis-barge-in', () => { void this.interruptSpeech(); });
+    }
   }
 
   emit() {
@@ -255,6 +299,8 @@ export class NexusClient {
       telemetry: this.telemetry,
       holoLayout: this.holoLayout,
       speaking: this.speaking,
+      wakeState: this.wakeState,
+      wakeDetail: this.wakeDetail,
     });
   }
 
@@ -336,6 +382,7 @@ export class NexusClient {
   dispose() {
     this.disposed = true;
     this.speechSequencer?.stop(true);
+    this.wakeEngine?.destroy();
     if (this.telemetryTimer) clearInterval(this.telemetryTimer);
     this.sanctuary?.renderer.setAnimationLoop(null);
   }
@@ -795,6 +842,18 @@ export class NexusClient {
         this.micStream.getTracks().forEach((t) => t.stop());
         this.micStream = null;
       }
+      // Wake-word engine obeys the MIC + MASTER switches instantly — no
+      // microphone track survives either switch going off.
+      if (this.wakeEngine && this.wakeEngine.currentState !== 'unavailable') {
+        this.wakeEngine.stop();
+      }
+    } else if (
+      this.wakeEngine && this.wakeState === 'unavailable' && !this.wakePermissionDenied
+    ) {
+      // First-open permission flow: the MIC switch ON moment is the owner's
+      // explicit authorisation — the engine requests microphone access once.
+      const ok = await this.wakeEngine.start();
+      if (!ok) this.wakePermissionDenied = true;
     }
 
     if (!sw.camera || !sw.master) {
@@ -837,13 +896,13 @@ export class NexusClient {
       ?? (window as unknown as { webkitSpeechRecognition?: new () => SpeechRecognition }).webkitSpeechRecognition;
 
     if (SR) {
-      const rec = new SR();
+      const rec: SpeechRecognition = new SR();
       rec.lang = 'en-US';
       rec.interimResults = false;
       this.micState = 'listening';
       this.emit();
       rec.onresult = async (ev: SpeechRecognitionEvent) => {
-        const transcript = ev.results[0][0].transcript;
+        const transcript = ev.results[ev.results.length - 1][0].transcript;
         this.micState = 'processing';
         this.emit();
         await this.sendConversation(transcript, 'voice');
@@ -924,6 +983,23 @@ export class NexusClient {
     if (this._pendingRecorder && this._pendingRecorder.state === 'recording') {
       this._pendingRecorder.stop();
     }
+  }
+
+  /** UI pill action: arm/disarm the wake-word standby engine. */
+  toggleWakeEngine() {
+    if (!this.wakeEngine) return;
+    if (this.wakeState === 'unavailable') {
+      void this.wakeEngine.start().then((ok) => {
+        if (!ok) this.wakePermissionDenied = true;
+      });
+    } else {
+      this.wakeEngine.stop();
+    }
+  }
+
+  /** Force standby from the UI ("sleep now" button equivalent). */
+  wakeStandby() {
+    this.wakeEngine?.sleep('owner');
   }
 
   async visionSnapshot() {

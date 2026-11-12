@@ -27,6 +27,18 @@ export default function DialogueDock({ snap, client }: { snap: NexusSnapshot; cl
     : world?.switches.camera ? 'CAM READY'
     : 'CAM OFF';
 
+  const wakeLabel =
+    snap.wakeState === 'active' ? 'AWAKE'
+    : snap.wakeState === 'standby' ? 'STANDBY · "HEY JARVIS"'
+    : snap.wakeDetail?.includes('denied') ? 'WAKE DENIED'
+    : 'WAKE OFF';
+  const wakeTitle =
+    snap.wakeState === 'standby'
+      ? 'Intelligent standby: microphone is analysed locally only. Say "Hey JARVIS" to activate her.'
+      : snap.wakeState === 'active'
+        ? 'Active conversation: she hears your utterances and can be interrupted mid-speech. Say "go to sleep" or "stand by" to return to standby.'
+        : 'Arm the wake-word engine (requests microphone permission once, only when the Microphone switch is ON).';
+
   return (
     <footer id="dialogue-dock">
       {snap.subtitle && (
@@ -65,6 +77,15 @@ export default function DialogueDock({ snap, client }: { snap: NexusSnapshot; cl
           onClick={() => void client?.visionSnapshot()}
         >
           <span id="cam-state-label">{camLabel}</span>
+        </button>
+        <button
+          type="button"
+          id="btn-wake-standby"
+          className={`dock-btn ${snap.wakeState === 'active' ? 'btn-cyan-outline' : snap.wakeState === 'standby' ? 'btn-warn' : ''}`}
+          title={wakeTitle}
+          onClick={() => client?.toggleWakeEngine()}
+        >
+          <span id="wake-state-label">{wakeLabel}</span>
         </button>
         <input
           type="text"

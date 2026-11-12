@@ -22,6 +22,23 @@ interface ScenarioRow {
 }
 interface SecurityEvent { severity: string; category: string; message: string; created_at: string }
 
+/** Shape of GET /api/v1/integrations (live connection checks). */
+interface IntegrationSnap {
+  checkedAt: number;
+  github: { configured: boolean; connected: boolean; repo: string; defaultBranch: string | null; latestCommit: string | null; detail: string };
+  kaggle: {
+    accounts: Array<{ index: number; userName: string | null; configured: boolean; connected: boolean; lastError: string | null; lastVerifiedAt: number | null; usageCount: number }>;
+    connectedCount: number;
+    configuredCount: number;
+  };
+  cloudflare: { configured: boolean; accountAccess: boolean; r2Enabled: boolean; buckets: string[]; s3Credentials: boolean; bucketName: string | null; detail: string };
+  supabase: { managementConfigured: boolean; dataConfigured: boolean; connected: boolean; detail: string };
+  railway: { configured: boolean; authenticated: boolean; projects: number; detail: string };
+  eos: { configured: boolean; complete: boolean; missing: string[]; detail: string; consumer: string };
+  unreal: { configured: boolean; reachable: boolean; engineVersion: string | null; detail: string };
+  blender: { configured: boolean; reachable: boolean; blenderVersion: string | null; detail: string };
+}
+
 async function jget<T>(url: string): Promise<T> {
   const res = await fetch(url);
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || `HTTP ${res.status}`);
@@ -56,6 +73,7 @@ export default function InspectorDrawer({
   const [agents, setAgents] = useState<AgentRow[]>([]);
   const [telemetry, setTelemetry] = useState<Telemetry | null>(null);
   const [securityEvents, setSecurityEvents] = useState<SecurityEvent[]>([]);
+  const [integrations, setIntegrations] = useState<IntegrationSnap | null>(null);
 
   const [memForm, setMemForm] = useState({ category: 'owner_fact', epistemic_status: 'owner_stated', title: '', content: '' });
   const [goalForm, setGoalForm] = useState({ title: '', description: '', priority: '2' });
@@ -74,6 +92,8 @@ export default function InspectorDrawer({
       } else if (t === 'agents') {
         const res = await jget<{ agents: AgentRow[] }>('/api/v1/agents');
         setAgents(res.agents || []);
+      } else if (t === 'compute') {
+        setIntegrations(await jget<IntegrationSnap>('/api/v1/integrations'));
       } else if (t === 'diagnostics') {
         const [tel, sec] = await Promise.all([
           jget<Telemetry>('/api/v1/telemetry'),
@@ -100,7 +120,7 @@ export default function InspectorDrawer({
     ['memory', 'Memory'],
     ['goals', 'Goals'],
     ['agents', 'Agents & Tools'],
-    ['compute', 'Kaggle / GPU'],
+    ['compute', 'Connections'],
     ['diagnostics', 'Diagnostics'],
   ];
 
@@ -368,25 +388,109 @@ export default function InspectorDrawer({
         {tab === 'compute' && (
           <>
             <div className="panel-card">
-              <h4>Private Inference Routing</h4>
-              <table className="kv-table">
-                <tbody>
-                  <tr><td>Active Backend</td><td>nexus_cloud_route (z-ai SDK, server-side only)</td></tr>
-                  <tr><td>Local 4-bit CUDA Worker</td><td>Not connected — reported truthfully</td></tr>
-                  <tr><td>Kaggle GPU Workers</td><td>0 connected — 6 encrypted slots standby</td></tr>
-                  <tr><td>Public Ports Exposed</td><td>0 (Zero-Trust outbound only)</td></tr>
-                </tbody>
-              </table>
-              <p style={{ marginTop: 6 }}>
-                Reasoning currently runs on the private NEXUS cloud route. Attach a local Qwen2.5-14B 4-bit worker
-                or a Kaggle dual-T4 session later for fully offline inference — CORE never fabricates worker status.
+              <h4>Live Service Connections</h4>
+              <p className="drawer-sub">
+                Real authenticated checks against every connected service — no decorative indicators.
+                Last checked: {integrations ? new Date(integrations.checkedAt).toLocaleTimeString() : '…'}
               </p>
+              {integrations && (
+                <table className="kv-table">
+                  <tbody>
+                    <tr>
+                      <td>GitHub ({integrations.github.repo})</td>
+                      <td style={{ color: integrations.github.connected ? 'var(--cyan)' : 'var(--red)' }}>
+                        {integrations.github.connected ? `CONNECTED · ${integrations.github.detail}` : integrations.github.detail}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Cloudflare R2</td>
+                      <td style={{ color: integrations.cloudflare.r2Enabled ? 'var(--cyan)' : 'var(--amber)' }}>
+                        {integrations.cloudflare.detail}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Supabase</td>
+                      <td style={{ color: integrations.supabase.connected ? 'var(--cyan)' : 'var(--amber)' }}>
+                        {integrations.supabase.detail}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Railway</td>
+                      <td style={{ color: integrations.railway.authenticated ? 'var(--cyan)' : 'var(--red)' }}>
+                        {integrations.railway.detail}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Epic Online Services</td>
+                      <td style={{ color: integrations.eos.complete ? 'var(--cyan)' : 'var(--amber)' }}>
+                        {integrations.eos.detail}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Unreal Engine 5 Bridge</td>
+                      <td style={{ color: integrations.unreal.reachable ? 'var(--cyan)' : 'var(--amber)' }}>
+                        {integrations.unreal.detail}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Blender (bpy) Bridge</td>
+                      <td style={{ color: integrations.blender.reachable ? 'var(--cyan)' : 'var(--amber)' }}>
+                        {integrations.blender.detail}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              )}
+              <button
+                className="dock-btn btn-cyan-outline"
+                style={{ marginTop: 10 }}
+                onClick={() => {
+                  void (async () => {
+                    setBusy(true);
+                    try {
+                      const res = await fetch('/api/v1/integrations', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'verify' }),
+                      });
+                      setIntegrations(await res.json());
+                    } catch (err) {
+                      setNotice((err as Error).message);
+                    } finally {
+                      setBusy(false);
+                    }
+                  })();
+                }}
+              >
+                Re-verify all services
+              </button>
             </div>
             <div className="panel-card">
-              <h4>Kaggle GPU Profile Slots (Encrypted, Server-Side)</h4>
-              <p>
-                Six encrypted profile slots remain reserved. Credentials are stored server-side only; workers dial
-                outbound with <code>JARVIS_WORKER_TOKEN</code> — zero public ports.
+              <h4>Kaggle Accounts ({integrations?.kaggle.connectedCount ?? 0}/{integrations?.kaggle.configuredCount ?? 6} verified)</h4>
+              {integrations ? (
+                <table className="kv-table">
+                  <tbody>
+                    {integrations.kaggle.accounts.map((a) => (
+                      <tr key={a.index}>
+                        <td>Account {a.index}</td>
+                        <td style={{ color: a.connected ? 'var(--cyan)' : a.configured ? 'var(--red)' : 'var(--muted)' }}>
+                          {a.connected
+                            ? `${a.userName} · authenticated · ${a.usageCount} workload(s) routed`
+                            : a.configured
+                              ? `verification failed (${a.lastError ?? 'unknown'})`
+                              : 'not configured'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p className="drawer-sub">Contacting the Kaggle API…</p>
+              )}
+              <p style={{ marginTop: 6 }}>
+                Six accounts are managed individually — no pooled-compute illusion. Quotas are enforced by the
+                Kaggle platform and reported honestly. GPU workloads are submitted as private kernels via the
+                authenticated API.
               </p>
             </div>
           </>

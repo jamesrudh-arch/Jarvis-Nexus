@@ -62,3 +62,6 @@ server.log
 /ref_jarvis_repo/
 /repo-ref/
 /tool-results/
+
+# EOS runtime credentials (generated per-host, never committed)
+unreal/Plugins/JarvisNexusEOS/jarvis_nexus_eos.json
