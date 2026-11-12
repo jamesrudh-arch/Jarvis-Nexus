@@ -23,6 +23,7 @@
 - **Cloudflare**: token account-verified; R2 RETIRED per directive (no R2 calls; R2 vars deleted from Railway — verified none remain).
 - **Railway**: 16 vars upserted + 3 deleted (37 total, zero R2 leftovers); live deployment healthy.
 - **Honest verifier updated**: `scripts/verify_integrations.py` → 17/18 OK (only EOS secret fails, honestly).
+- **Production tool loop (session 6b)**: on Railway the z-ai LLM provider credential does not exist (sandbox-ambient) — `think()` falls back honestly, but the tool layer stays fully functional: store-intent guard force-executes storage.put and `composeToolReply` templates the spoken reply from ACTUAL results. Production-proven: store → "Done, Boss. stored 53 bytes at notes/prod-proof2.txt (readback verified)." with exact independent readback; delete → 404. Production LLM/TTS conversational activation = owner adds a genuinely free provider credential to Railway (D6 registry; documented in docs/INTEGRATIONS.md).
 
 ## What works (verified in session 5 — still true)
 

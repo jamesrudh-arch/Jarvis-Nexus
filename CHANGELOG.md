@@ -24,7 +24,16 @@ Format: date — change — why. Newest first. Full diffs: git log.
 - Cloudflare token account-verified (GET /accounts 200, id match); R2 retirement reflected in the status surface
 - Railway env aligned: 16 variables upserted + 3 R2 vars deleted = 37 production variables; live deployment healthy throughout
 
-**Verification**: 44/44 unit tests (+7: storage-key sanitization, tool-call coercion, implicit-intent guard), tsc --noEmit clean, production build clean, live server E2E (health, integrations snapshot, storage guards/CRUD, conversation tool scenarios), honest verifier 17/18 OK (the one FAIL is the genuinely missing EOS secret — reported, not hidden)
+**Verification**: 46/46 unit tests (+9 session 6 total: storage-key sanitization, tool-call coercion, implicit-intent guard incl. store/delete-priority, deterministic result-speak), tsc --noEmit clean, production build clean, live server E2E (health, integrations snapshot, storage guards/CRUD, conversation tool scenarios), honest verifier 17/18 OK (the one FAIL is the genuinely missing EOS secret — reported, not hidden)
+
+## 2026-11-13 (session 6b) — Tool loop production-proof
+
+**Problem found in production verification**: on Railway the z-ai SDK's ambient credentials do not exist → `think()` falls back honestly, so an owner "store this note" request produced the degraded message with NO tool execution (locally the LLM emitted tool_calls correctly). The delete request still worked only because the honesty guard force-executed it.
+
+**Fix (two layers, both deterministic and honest)**
+- `composeToolReply(results)`: when the speak-back LLM turn is unavailable (or the main turn fell back), the spoken reply is templated from the ACTUAL tool results — never claiming what did not happen. Production proof: store → `"Done, Boss. stored 53 bytes at notes/prod-proof2.txt (readback verified)."` + independent readback matched the exact content + delete → 404.
+- Store-intent guard: `store/save … at <key>: <text>` force-executes storage.put when the LLM emits no tool call (delete wins over store when both verbs appear; no explicit text after the key → not forced). Unit-tested (+2 → 46/46)
+- Documented the production LLM provider limitation honestly (docs/INTEGRATIONS.md): the provider chain is provider-independent (D6); the owner can activate a free-tier LLM provider credential on Railway without code changes beyond a registry entry
 
 ## 2026-11-12 (session 5) — Credential integration completed: real operations, production deployment live
 

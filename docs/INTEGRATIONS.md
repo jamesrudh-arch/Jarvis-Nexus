@@ -31,30 +31,44 @@ exercises the integration).
 | Production | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ACCESS_TOKEN`, `NEXUS_STORAGE_BUCKET` on Railway; `/api/v1/storage` (owner-key-guarded HTTP surface) + §6 tool layer (below) exercise the backend end-to-end |
 | Quota guardrails | 1 GiB free-tier budget enforced: uploads rejected past 920 MiB estimated usage; per-file cap 10 MiB; usage surfaced in `/api/v1/integrations` + `/api/v1/storage` |
 
-## §6 Tool execution — REAL OPERATIONS VERIFIED (agent-grade)
+## §6 Tool execution — REAL OPERATIONS VERIFIED (production verified)
 
 The brain's directive contract now carries `tool_calls`; the server executes
 them against live services and a follow-up LLM turn speaks the ACTUAL results
 (`src/lib/nexus/tools.ts` + `toolContract.ts`, `conversations/send` route).
-Verified end-to-end on 2026-11-13 (local production build, live services):
+Verified end-to-end 2026-11-13 BOTH locally (LLM present) and ON PRODUCTION
+(Railway, where the LLM provider is unavailable — see the note below):
 
-- **storage.put**: owner asked to store a note → real Supabase write, 60 bytes,
-  readback verified; reply spoken from the actual tool result; independent
-  readback via `/api/v1/storage` returned the exact content.
+- **storage.put**: owner asked to store a note → real Supabase write,
+  readback verified; reply spoken from the actual tool result (locally via
+  LLM, on production via the deterministic `composeToolReply` template);
+  independent readback via `/api/v1/storage` returned the exact content both
+  places.
 - **storage.delete + honesty guard**: first attempt exposed a REAL defect — the
   LLM claimed "deleted" without executing (object still present). Fixed with
   MANDATORY tool rules + a deterministic server-side guard
   (`detectImplicitStorageTool`: explicit verb + file key → force-execute).
-  Re-test: tool executed, `tool_results ok:true`, independent verification
-  HTTP 404 (really gone).
+  Re-test local + production: tool executed, `tool_results ok:true`, independent
+  verification HTTP 404 (really gone).
 - **kaggle.datasets**: "search Kaggle for datasets about wind turbine blade" →
   16 REAL dataset refs returned and spoken (e.g.
   `mohammadshekaramiz/small-wind-turbine-blade-dataset-cai-swtb`). Bug found
   and fixed en route: `datasets/list?maxSize=` is a BYTE filter (returned 0);
   the correct parameter is `pageSize`.
 - **storage.get / storage.list**: covered by the same guard + unit tests
-  (44/44); retrieval now force-executes on explicit "read back <key>" phrasing
+  (46/46); retrieval force-executes on explicit "read back <key>" phrasing
   instead of quoting dialogue history.
+
+**Production LLM provider note (honest limitation):** the `zai_cloud_route`
+provider authenticates via the z-ai SDK's ambient credentials, which exist in
+the development sandbox but NOT on the Railway deployment. On production,
+`think()` therefore falls back honestly ("inference route degraded…"), TTS
+falls back to the client's browser voice, and the deterministic tool layer
+keeps storage operations fully functional (proven above). The provider chain
+is provider-independent (D6): the owner can activate conversational LLM on
+production by adding any genuinely free provider credential (e.g. a free-tier
+LLM API key) to the Railway env and registering it in
+`src/lib/nexus/providers/registry.ts`.
 
 ## GitHub — PRODUCTION VERIFIED
 
