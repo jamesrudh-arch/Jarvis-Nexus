@@ -174,6 +174,22 @@ export class NexusSanctuaryScene {
     this.embodimentEnabled = true;
 
     window.addEventListener('resize', () => this.onResize());
+    // B5 completeness: DPR can change WITHOUT any window resize event (device
+    // emulation, some zoom/monitor transitions). Watch the current resolution
+    // via matchMedia and re-baseline when it flips.
+    this._onDprChange = () => this.onResize();
+    this._dprMql = null;
+    this._armDprWatcher();
+  }
+
+  _armDprWatcher() {
+    try {
+      if (this._dprMql) this._dprMql.removeEventListener('change', this._onDprChange);
+      this._dprMql = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+      this._dprMql.addEventListener('change', this._onDprChange);
+    } catch {
+      /* matchMedia resolution queries unsupported: resize events still cover the common paths */
+    }
   }
 
   async initCharacter(onProgress) {
@@ -1015,7 +1031,12 @@ export class NexusSanctuaryScene {
   onResize() {
     const w = window.innerWidth;
     const h = window.innerHeight;
-    this._qualityDpr = Math.min(window.devicePixelRatio || 1, this._qualityDpr ? Math.min(this._qualityDpr, 2.0) : 2.0);
+    // B5 fix (resize ratchet): re-baseline to the device's NATIVE DPR (clamped
+    // to 2). The previous formula min(dpr, min(previous, 2)) could only ever
+    // ratchet DOWN — a window initialized on a DPR-1 display stayed at DPR 1
+    // forever after moving to a retina display or browser zoom change. The
+    // adaptive loop re-tunes downward if the new resolution is too heavy.
+    this._qualityDpr = Math.min(window.devicePixelRatio || 1, 2.0);
     this.renderer.setPixelRatio(this._qualityDpr);
     this.renderer.setSize(w, h);
     // B1 fix (resize path): keep the composer's pixel ratio in sync so its
@@ -1025,6 +1046,7 @@ export class NexusSanctuaryScene {
     this.composer.setSize(w, h);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
+    this._armDprWatcher(); // re-arm the watcher for the new dppx value
   }
 
   renderFrame(dt, opticalVideoEl, cameraSwitchOn) {
