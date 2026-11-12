@@ -57,3 +57,8 @@ tool-results/
 *.log
 dev.log
 server.log
+
+# local-only duplicate reference copies + session artifacts
+/ref_jarvis_repo/
+/repo-ref/
+/tool-results/
