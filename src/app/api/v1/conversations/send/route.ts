@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { synthesizeVoice, think } from '@/lib/nexus/brain';
-import { executeTool, detectImplicitStorageTool, type ToolResult } from '@/lib/nexus/tools';
+import { executeTool, detectImplicitStorageTool, composeToolReply, type ToolResult } from '@/lib/nexus/tools';
 import { runLlm } from '@/lib/nexus/providers/registry';
 import { splitSentences } from '@/nexus/vendor/speechStream.mjs';
 import {
@@ -80,6 +80,11 @@ export async function POST(req: NextRequest) {
       for (const call of directive.tool_calls) {
         toolResults.push(await executeTool(call));
       }
+      // Speak the ACTUAL results: LLM turn first; deterministic template
+      // from the real results when the LLM is unavailable (production may
+      // run without an LLM provider credential — tools still execute and
+      // the reply must never claim something that did not happen).
+      let spoken = '';
       try {
         const speak = await runLlm({
           messages: [
@@ -99,9 +104,15 @@ Tool results: ${JSON.stringify(toolResults)}`,
             },
           ],
         });
-        if (speak?.content?.trim()) directive.reply = speak.content.trim().slice(0, 600);
+        spoken = speak?.content?.trim() ?? '';
       } catch {
-        // Keep the LLM's own reply; tool_results still surface honestly below.
+        // fall through to deterministic reply
+      }
+      const deterministic = composeToolReply(toolResults);
+      if (spoken && inferenceSource !== 'fallback_local') {
+        directive.reply = spoken.slice(0, 600);
+      } else if (deterministic) {
+        directive.reply = deterministic.slice(0, 600);
       }
     }
 

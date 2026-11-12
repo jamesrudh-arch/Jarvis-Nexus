@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 // Node 24 native type-stripping loads the PURE tool contract (no runtime
 // imports — safe for the typeless resolver).
 import {
+  composeToolReply,
   sanitizeStorageKey,
   coerceToolCalls,
   detectImplicitStorageTool,
@@ -100,4 +101,31 @@ test('detectImplicitStorageTool: explicit kaggle search requests', () => {
   // non-kaggle searches are NOT forced
   assert.equal(detectImplicitStorageTool('search the web for turbine datasets'), null);
   assert.equal(detectImplicitStorageTool('find kaggle datasets'), null); // no topic → no forced call
+});
+
+test('detectImplicitStorageTool: store intent with explicit text after key', () => {
+  const p = detectImplicitStorageTool('JARVIS, store this note in my cloud storage at notes/prod-proof.txt: Production storage verified.');
+  assert.deepEqual(p, { tool: 'storage.put', args: { key: 'notes/prod-proof.txt', text: 'Production storage verified' } });
+
+  const q = detectImplicitStorageTool('save this as logs/friday.md saying the manifold holds at 4.1 bar');
+  assert.deepEqual(q, { tool: 'storage.put', args: { key: 'logs/friday.md', text: 'the manifold holds at 4.1 bar' } });
+
+  // store verb + key but NO explicit text → ambiguous, not forced
+  assert.equal(detectImplicitStorageTool('store something at notes/x.txt when you can'), null);
+  // delete wins over store when both verbs appear
+  const d = detectImplicitStorageTool('delete the stored file notes/old.txt: it was stored yesterday');
+  assert.equal(d.tool, 'storage.delete');
+});
+
+test('composeToolReply: deterministic replies from actual results', () => {
+  assert.equal(composeToolReply([]), '');
+  const ok = composeToolReply([{ tool: 'storage.put', ok: true, detail: 'stored 60 bytes at notes/a.txt (readback verified)' }]);
+  assert.equal(ok, 'Done, Boss. stored 60 bytes at notes/a.txt (readback verified).');
+  const fail = composeToolReply([{ tool: 'storage.delete', ok: false, detail: 'no object at notes/b.txt (GET HTTP 400)' }]);
+  assert.match(fail, /^Partially, Boss — delete failed — no object at notes\/b\.txt/);
+  const mixed = composeToolReply([
+    { tool: 'storage.put', ok: true, detail: 'stored 1 bytes' },
+    { tool: 'kaggle.datasets', ok: false, detail: 'missing search term' },
+  ]);
+  assert.match(mixed, /^Partially, Boss — stored 1 bytes; kaggle\.datasets failed — missing search term\.$/);
 });

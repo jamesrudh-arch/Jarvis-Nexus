@@ -21,6 +21,7 @@ export {
   sanitizeStorageKey,
   coerceToolCalls,
   detectImplicitStorageTool,
+  composeToolReply,
   MAX_TOOL_CALLS_PER_TURN,
   TOOL_MAX_TEXT_BYTES,
   TOOL_GET_PREVIEW_BYTES,

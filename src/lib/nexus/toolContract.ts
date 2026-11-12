@@ -81,6 +81,23 @@ const KEY_RE = /\b(?:[A-Za-z0-9_.-]+\/)*[A-Za-z0-9_.-]+\.(?:txt|md|json|csv|log|
 const DELETE_VERBS = /\b(delet\w*|remov\w*|erase\w*|destroy\w*)\b/i;
 const GET_VERBS = /\b(retriev\w*|read\b|read back|fetch\w*|open\w*|show me|what('| i)?s in|contents? of)\b/i;
 const LIST_VERBS = /\b(list|inventory|what files|which files|how many files)\b/i;
+const PUT_VERBS = /\b(store|save|keep|put|record|write|file)\b/i;
+
+/**
+ * Deterministic spoken reply built from ACTUAL tool results — used when the
+ * speak-back LLM turn is unavailable (e.g. production without an LLM
+ * provider credential). Templates only real outcomes; never fabricates.
+ */
+export function composeToolReply(results: ToolResult[]): string {
+  if (results.length === 0) return '';
+  const parts = results.map((r) =>
+    r.ok ? r.detail : `${r.tool.replace('storage.', '')} failed — ${r.detail}`);
+  const allOk = results.every((r) => r.ok);
+  const joined = parts.join('; ');
+  return allOk
+    ? `Done, Boss. ${joined}.`
+    : `Partially, Boss — ${joined}.`;
+}
 
 /**
  * Detect an unambiguous storage operation the owner explicitly requested
@@ -111,5 +128,13 @@ export function detectImplicitStorageTool(content: string): ToolCall | null {
   if (!key) return null;
   if (DELETE_VERBS.test(text)) return { tool: 'storage.delete', args: { key } };
   if (GET_VERBS.test(text)) return { tool: 'storage.get', args: { key } };
+  // Store intent: "store/save … at <key>: <text>" — requires explicit text
+  // after the key so nothing ambiguous is force-written.
+  if (PUT_VERBS.test(text)) {
+    const after = text.slice((keyMatch.index ?? 0) + keyMatch[0].length);
+    const textMatch = after.match(/^\s*(?::|saying|with|containing|-)\s*(.+?)\s*\.?\s*$/i);
+    const body = (textMatch?.[1] ?? '').trim();
+    if (body) return { tool: 'storage.put', args: { key, text: body } };
+  }
   return null;
 }
