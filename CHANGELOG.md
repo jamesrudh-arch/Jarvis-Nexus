@@ -108,3 +108,14 @@ Format: date — change — why. Newest first. Full diffs: git log.
 - tsc --noEmit (strict): 0 errors; next build: 0 errors (23 routes); node --test: 9/9
 - Standalone server boot: /, /api/v1/health, /api/v1/world, /api/v1/telemetry OK
 - Live end-to-end: conversations/send → reply + emotion + WAV audio via zai_cloud_route; voice/tts OK
+
+## Session 4 — 2026-11-12
+
+- Absorbed reference/Jarvis (gitlinks removed) as canonical tracked copy; duplicates local-only.
+- GitHub source of truth established: jamesrudh-arch/Jarvis-Nexus main @ 2656f3b (verified pushes; secrets audit clean each time).
+- Live credential verification: GitHub OK (jamesrudh-arch, push), Kaggle 6/6 (jimcreat, wikeyoung, deyoungsltd, bittrexminingltd, wikeyoung5, youngwilly), Cloudflare account OK (R2 = real 10042 enable-required state), Railway read-auth OK (mutations 403), Supabase sb_secret_ = project-scoped (management wants sbp_).
+- Integrations layer + GET/POST /api/v1/integrations (live checks, 30 s cache, no secrets in responses); InspectorDrawer Connections tab replaces the decorative static panel.
+- Wake-word/standby/barge-in engine (web + iOS event contract); VAD-gated standby = zero network while silent; MIC/MASTER enforcement; first-open permission at MIC-switch-ON.
+- unreal/ (bridge + EOS plugin), blender/ (bpy addon + MCP-style server), ios/ (SwiftUI + Speech + AVAudioSession) — code complete with exact bring-up READMEs; docs/INTEGRATIONS.md audit register.
+- Production Dockerfile (+persistent volume), .dockerignore; PWA manifest + icons; mobile companion touch targets + safe areas.
+- Verified: 37/37 tests, typecheck clean, build clean, standalone boot + health + live integrations check.
