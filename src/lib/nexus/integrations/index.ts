@@ -45,23 +45,55 @@ async function railwayStatus(): Promise<IntegrationSnapshot['railway']> {
     const res = await fetch('https://backboard.railway.app/graphql/v2', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: '{ projects { edges { node { id } } } }' }),
+      body: JSON.stringify({ query: '{ projects { edges { node { id name } } } }' }),
       signal: controller.signal,
       cache: 'no-store',
     });
     const data = (await res.json().catch(() => null)) as {
-      data?: { projects?: { edges?: Array<{ node: { id: string } }> } };
+      data?: { projects?: { edges?: Array<{ node: { id: string; name: string } }> } };
     } | null;
     const edges = data?.data?.projects?.edges ?? [];
+    if (!res.ok || !data?.data) {
+      return {
+        configured: true,
+        authenticated: false,
+        projects: 0,
+        detail: `Railway GraphQL HTTP ${res.status}`,
+      };
+    }
+    // Live deployment state (write-verified 2026-11-12: variableUpsert/
+    // variableDelete/volumeCreate mutations confirmed; service deployed from
+    // GitHub jamesrudh-arch/Jarvis-Nexus main via repo trigger).
+    let detail = `Workspace token authenticated — ${edges.length} project(s).`;
+    const first = edges[0]?.node;
+    if (first) {
+      const dep = await fetch('https://backboard.railway.app/graphql/v2', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: `query($id: String!) { project(id: $id) { deployments(first: 1) `
+            + `{ edges { node { status staticUrl meta } } } } }`,
+          variables: { id: first.id },
+        }),
+        signal: controller.signal,
+        cache: 'no-store',
+      }).then((r) => r.json().catch(() => null)) as {
+        data?: { project?: { deployments?: { edges?: Array<{ node: {
+          status: string; staticUrl: string | null; meta?: { repo?: string; branch?: string };
+        } }> } } };
+      } | null;
+      const node = dep?.data?.project?.deployments?.edges?.[0]?.node;
+      if (node) {
+        const src = node.meta?.repo ? ` (${node.meta.repo}@${node.meta.branch ?? 'main'})` : '';
+        detail = `Project ${first.name}: latest deployment ${node.status}${src}`
+          + (node.staticUrl ? ` — live at https://${node.staticUrl}` : '');
+      }
+    }
     return {
       configured: true,
-      authenticated: res.ok && Boolean(data?.data),
+      authenticated: true,
       projects: edges.length,
-      detail: res.ok
-        ? `Workspace token authenticated — ${edges.length} project(s). `
-          + 'Write-scoped token or dashboard project creation required to deploy '
-          + '(Dockerfile + railway healthcheck path /api/v1/health are prepared).'
-        : `GraphQL HTTP ${res.status}`,
+      detail,
     };
   } catch {
     return { configured: true, authenticated: false, projects: 0, detail: 'Railway API unreachable' };

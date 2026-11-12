@@ -179,9 +179,15 @@ export class CloudflareR2Client {
       out.detail = `R2 active — ${out.buckets.length} bucket(s)`;
     } else if (data?.errors?.some((e) => e.code === 10042)) {
       out.accountAccess = true;
-      out.detail = 'Token authenticated, but R2 is not enabled on the account yet '
-        + '(Cloudflare Dashboard → R2 → Enable). S3 data-plane credentials '
-        + '(R2_ACCESS_KEY_ID/R2_SECRET_ACCESS_KEY) are also required for uploads.';
+      out.detail = out.s3Credentials
+        ? 'Token authenticated + S3 credentials configured (created via Cloudflare '
+          + 'account-token API 2026-11-12). R2 itself is not enabled on the account '
+          + 'yet — Cloudflare API error 10042 explicitly requires enabling R2 in the '
+          + 'dashboard (billing action, not possible via API token). Uploads activate '
+          + 'automatically once enabled — zero code changes.'
+        : 'Token authenticated, but R2 is not enabled on the account yet '
+          + '(Cloudflare Dashboard → R2 → Enable). S3 data-plane credentials '
+          + '(R2_ACCESS_KEY_ID/R2_SECRET_ACCESS_KEY) are also required for uploads.';
     } else {
       out.detail = `R2 API HTTP ${status}: ${data?.errors?.[0]?.message ?? 'unknown error'}`;
     }
