@@ -88,6 +88,19 @@ export async function executeTool(call: ToolCall): Promise<ToolResult> {
       case 'storage.delete': {
         const key = sanitizeStorageKey(call.args.key);
         if (!key) return { tool: call.tool, ok: false, detail: 'invalid key' };
+        // Honesty guard (session 7): Supabase deletes are idempotent — a
+        // missing object ALSO answers success. Verify existence via a prefix
+        // listing (no body download) so the spoken result can never claim a
+        // deletion that deleted nothing. A failed/unconfigured listing (null)
+        // falls through to the actual delete, which reports its own error.
+        const listing = await supabase.listObjects(key, 100);
+        if (Array.isArray(listing) && !listing.some((o) => o.name === key)) {
+          return {
+            tool: call.tool,
+            ok: false,
+            detail: `not found: ${key} (nothing was deleted — it was already gone)`,
+          };
+        }
         const res = await supabase.deleteObject(key);
         return { tool: call.tool, ok: res.ok, detail: res.ok ? `deleted ${key}` : `delete failed: ${res.detail}` };
       }

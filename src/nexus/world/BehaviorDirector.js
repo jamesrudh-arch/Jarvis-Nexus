@@ -37,6 +37,16 @@ const POIS = [
 
 const HOME = { stand: [1.45, 0.95], yaw: -0.42, look: [0, 1.62, 0.5] };
 
+/** Yaw (radians) to face a POI's look target from its stand spot.
+ *  Session-7 fix: POI.stand is [x, z] — this used to read stand[2] (undefined
+ *  on the 2-element array), producing atan2(finite, NaN) = NaN which poisoned
+ *  targetYaw → root.rotation.y → camera → a permanently black scene. */
+export function computeInspectYaw(poi) {
+  return Math.atan2(poi.look[0] - poi.stand[0], poi.look[2] - poi.stand[1]);
+}
+
+export { POIS };
+
 export class BehaviorDirector {
   constructor(jarvis) {
     this.jarvis = jarvis;
@@ -85,7 +95,7 @@ export class BehaviorDirector {
       if (idx === this._lastPoi) idx = (idx + 1) % POIS.length;
       this._lastPoi = idx;
       const poi = POIS[idx];
-      const yaw = Math.atan2(poi.look[0] - poi.stand[0], poi.look[2] - poi.stand[2]);
+      const yaw = computeInspectYaw(poi);
       j.lookWorldTarget.set(poi.look[0], poi.look[1], poi.look[2]);
       j.focusCamera = false;
       j.emotionalState = 'focused';

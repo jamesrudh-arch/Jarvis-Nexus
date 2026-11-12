@@ -49,6 +49,32 @@ function normalize(text: string): string {
   return text.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5 ]+/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+/** Pure decision core for one recognized transcript (exported for unit tests).
+ *  STANDBY: only a wake phrase activates (tail instruction optional).
+ *  ACTIVE: sleep phrases stand down; anything else is an instruction (a
+ *  leading wake phrase is stripped). */
+export function classifyTranscript(
+  raw: string,
+  state: WakeState
+): { action: 'wake' | 'sleep' | 'utterance' | 'ignore'; payload?: string } {
+  const text = raw.trim();
+  if (!text) return { action: 'ignore' };
+  const norm = normalize(text);
+
+  const isSleep = SLEEP_PHRASES.some((p) => norm === p || norm.startsWith(p));
+  if (state === 'active') {
+    if (isSleep) return { action: 'sleep' };
+    const wakePrefix = WAKE_PHRASES.find((p) => norm.startsWith(p + ' '));
+    const payload = wakePrefix ? text.slice(wakePrefix.length).trim() : text;
+    return payload ? { action: 'utterance', payload } : { action: 'ignore' };
+  }
+  if (WAKE_PHRASES.some((p) => norm.includes(p))) {
+    const tail = text.slice(text.toLowerCase().indexOf('jarvis') + 6).trim();
+    return { action: 'wake', payload: tail.length > 2 ? tail : undefined };
+  }
+  return { action: 'ignore' };
+}
+
 export class WakeWordEngine {
   private opts: WakeWordOptions;
   private state: WakeState = 'unavailable';
@@ -253,31 +279,25 @@ export class WakeWordEngine {
   }
 
   private _handleTranscript(raw: string) {
-    const text = raw.trim();
-    if (!text) return;
-    const norm = normalize(text);
-
-    const isSleep = SLEEP_PHRASES.some((p) => norm === p || norm.startsWith(p));
-    if (this.state === 'active') {
-      this.lastUtteranceAt = Date.now();
-      this._armInactivity();
-      if (isSleep) {
+    const decision = classifyTranscript(raw, this.state);
+    if (decision.action === 'sleep') {
+      if (this.state === 'active') {
+        this.lastUtteranceAt = Date.now();
         this._enterStandby('owner said sleep');
-        return;
       }
-      // Strip a leading wake phrase from the instruction
-      const wakePrefix = WAKE_PHRASES.find((p) => norm.startsWith(p + ' '));
-      const payload = wakePrefix ? text.slice(wakePrefix.length).trim() : text;
-      if (payload) this.opts.onUtterance?.(payload);
       return;
     }
-
-    // STANDBY: only the wake phrase activates; everything else is ignored
-    if (WAKE_PHRASES.some((p) => norm.includes(p))) {
-      this._enterActive();
-      const tail = text.slice(text.toLowerCase().indexOf('jarvis') + 6).trim();
-      if (tail.length > 2) this.opts.onUtterance?.(tail);
+    if (decision.action === 'utterance') {
+      this.lastUtteranceAt = Date.now();
+      this._armInactivity();
+      this.opts.onUtterance?.(decision.payload || '');
+      return;
     }
+    if (decision.action === 'wake') {
+      this._enterActive();
+      if (decision.payload) this.opts.onUtterance?.(decision.payload);
+    }
+    // 'ignore': non-wake speech in STANDBY stays local — no network, no wake.
   }
 
   private _cancelRecognition() {

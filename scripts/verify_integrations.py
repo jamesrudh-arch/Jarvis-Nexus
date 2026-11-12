@@ -189,29 +189,49 @@ if rw:
     else:
         record("railway:projects", False, f"HTTP {st} — {str(body)[:140]}")
 
-# ---- Epic EOS (real OAuth attempt) ---------------------------------------
+# ---- Epic EOS (real OAuth attempt, session-7 endpoint fix) ----------------
 import base64
 import urllib.parse
 epic_id = ENV.get("EPIC_CLIENT_ID", ENV.get("EPIC_CLIENT_CREDENTIAL", ""))
 epic_secret = ENV.get("EPIC_CLIENT_SECRET", "")
 epic_deployment = ENV.get("EPIC_DEPLOYMENT_ID", "")
-if epic_id and epic_secret and epic_deployment:
+epic_product = ENV.get("EPIC_PRODUCT_ID", "")
+epic_sandbox = ENV.get("EPIC_SANDBOX_IDS", "")
+if epic_id and epic_secret:
+    # EOS Game-Services client access tokens: /auth/v1/oauth/token (the
+    # /epic/oauth/v2 EAS surface rejects client-credentials with
+    # `client_missing_application_id` — live-verified 2026-11-13).
     basic = base64.b64encode(f"{epic_id}:{epic_secret}".encode()).decode()
-    form = urllib.parse.urlencode({"grant_type": "client_credentials",
-                                   "deployment_id": epic_deployment,
-                                   "scope": "basic"}).encode()
-    st, body = req("POST", "https://api.epicgames.dev/epic/oauth/v2/token",
+    form = urllib.parse.urlencode(
+        {"grant_type": "client_credentials", **({"deployment_id": epic_deployment} if epic_deployment else {})}
+    ).encode()
+    st, body = req("POST", "https://api.epicgames.dev/auth/v1/oauth/token",
                    {"Authorization": f"Basic {basic}",
                     "Content-Type": "application/x-www-form-urlencoded"}, raw_body=form)
     ok = st == 200 and isinstance(body, dict) and body.get("access_token")
-    record("eos:oauth", ok,
-           f"HTTP {st} — {'token obtained' if ok else body.get('errorCode', '?') if isinstance(body, dict) else 'failed'}")
+    detail = f"HTTP {st} — {'token obtained' if ok else body.get('errorCode', '?') if isinstance(body, dict) else 'failed'}"
+    if ok and epic_deployment:
+        # verify identifier associations inside the JWT claims
+        try:
+            payload = body["access_token"].split(".")[1]
+            payload += "=" * (-len(payload) % 4)
+            claims = json.loads(base64.urlsafe_b64decode(payload))
+            assoc = (claims.get("clientId") == epic_id
+                     and claims.get("deploymentId") == epic_deployment
+                     and (not epic_product or claims.get("productId") == epic_product)
+                     and (not epic_sandbox or epic_sandbox.split(",")[0].strip() == claims.get("sandboxId")))
+            feats = claims.get("features") or []
+            detail += (f"; claims: clientId/deploymentId/productId/sandboxId "
+                       f"{'ALL MATCH' if assoc else 'MISMATCH'} (env={claims.get('env')}, "
+                       f"{len(feats)} features, tokenType={claims.get('tokenType')})")
+            ok = ok and assoc
+        except Exception as e:
+            detail += f"; claims decode failed: {e}"
+    record("eos:oauth", ok, detail)
 elif epic_id:
     have = [k for k in ("EPIC_PRODUCT_ID", "EPIC_CLIENT_ID", "EPIC_DEPLOYMENT_ID", "EPIC_SANDBOX_IDS") if ENV.get(k)]
     record("eos:oauth", False,
-           f"IDs configured ({len(have)}/4: {', '.join(have)}) but EPIC_CLIENT_SECRET "
-           "missing — live sweep 2026-11-13: all 12 client/secret permutations of "
-           "supplied values answered 400 invalid_client_credentials")
+           f"IDs configured ({len(have)}/4: {', '.join(have)}) but EPIC_CLIENT_SECRET missing")
 else:
     record("eos:oauth", False, "EPIC_CLIENT_ID missing")
 

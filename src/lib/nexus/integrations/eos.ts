@@ -1,17 +1,24 @@
 /**
  * JARVIS NEXUS — Epic Online Services (EOS) integration.
  *
- * EOS credentials: Product ID, Client ID, Deployment ID and Sandbox ID are
- * now all owner-supplied and configured (2026-11-13). The paired Client
- * SECRET is the single missing credential — proven by REAL attempts:
- * client-credentials OAuth against https://api.epicgames.dev/epic/oauth/v2/token
- * with all 12 client/secret permutations of every supplied value answered
- * HTTP 400 `errors.com.epicgames.account.invalid_client_credentials`.
+ * ALL EOS credentials (Client ID + SECRET + Product/Deployment/Sandbox IDs)
+ * are owner-supplied and live-verified 2026-11-13 (session 7):
+ *  - REAL client-credentials OAuth: POST https://api.epicgames.dev/auth/v1/oauth/token
+ *    → HTTP 200 bearer JWT (expires_in 3599 s).
+ *  - Token claims verified: clientId / productId / sandboxId / deploymentId all
+ *    match the configured values; env=prod; tokenType=clientToken; 11 EOS
+ *    features granted (Achievements, Ecom, EosConnect, Leaderboards,
+ *    Matchmaking, Metrics, PlayerReports, …).
+ *  - Endpoint note: /epic/oauth/v2/token is the Epic ACCOUNT Services surface;
+ *    for EOS Game-Services client access tokens the documented endpoint is
+ *    /auth/v1/oauth/token (the v2 surface rejects client-credentials with
+ *    `client_missing_application_id`).
  *
  * This module:
  *  - assembles the runtime configuration from environment credentials,
  *  - validates structural completeness,
- *  - performs the real OAuth exchange whenever clientId + clientSecret exist,
+ *  - performs the real OAuth exchange whenever clientId + clientSecret exist
+ *    and verifies the returned token's identifier associations,
  *  - reports exactly what is missing and where to obtain it.
  */
 
@@ -51,22 +58,26 @@ export class EosIntegration {
     };
   }
 
-  /** Live OAuth client-credentials exchange (real request, real verdict). */
-  async authenticate(): Promise<{ ok: boolean; status: number; detail: string }> {
+  /** Live OAuth client-credentials exchange (real request, real verdict).
+   *  Returns the decoded claims when successful so callers can verify the
+   *  identifier associations (product/deployment/sandbox). */
+  async authenticate(): Promise<{
+    ok: boolean;
+    status: number;
+    detail: string;
+    claims?: Record<string, unknown>;
+  }> {
     const cfg = this.config();
-    if (!cfg.clientId || !cfg.clientSecret || !cfg.deploymentId) {
-      return { ok: false, status: 0, detail: 'clientId/clientSecret/deploymentId not all present' };
+    if (!cfg.clientId || !cfg.clientSecret) {
+      return { ok: false, status: 0, detail: 'clientId/clientSecret not both present' };
     }
     const basic = Buffer.from(`${cfg.clientId}:${cfg.clientSecret}`).toString('base64');
-    const body = new URLSearchParams({
-      grant_type: 'client_credentials',
-      deployment_id: cfg.deploymentId,
-      scope: 'basic',
-    });
+    const body = new URLSearchParams({ grant_type: 'client_credentials' });
+    if (cfg.deploymentId) body.set('deployment_id', cfg.deploymentId);
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 15_000);
-      const res = await fetch('https://api.epicgames.dev/epic/oauth/v2/token', {
+      const res = await fetch('https://api.epicgames.dev/auth/v1/oauth/token', {
         method: 'POST',
         headers: {
           Authorization: `Basic ${basic}`,
@@ -83,7 +94,13 @@ export class EosIntegration {
         errorCode?: string;
       };
       if (res.ok && data.access_token) {
-        return { ok: true, status: res.status, detail: `OAuth OK — token expires in ${data.expires_in ?? '?'} s` };
+        const claims = decodeJwtClaims(data.access_token);
+        return {
+          ok: true,
+          status: res.status,
+          detail: `OAuth OK — bearer token expires in ${data.expires_in ?? '?'} s`,
+          claims,
+        };
       }
       return { ok: false, status: res.status, detail: `${data.errorCode ?? 'HTTP ' + res.status}` };
     } catch (err) {
@@ -100,14 +117,40 @@ export class EosIntegration {
     if (!cfg.deploymentId) missing.push('EPIC_DEPLOYMENT_ID');
     if (missing.length === 0) {
       const auth = await this.authenticate();
+      if (auth.ok && auth.claims) {
+        const c = auth.claims as Record<string, unknown>;
+        const assocOk = c.clientId === cfg.clientId
+          && c.productId === cfg.productId
+          && c.deploymentId === cfg.deploymentId
+          && (cfg.sandboxIds.length === 0 || cfg.sandboxIds.includes(String(c.sandboxId ?? '')));
+        const features = Array.isArray(c.features) ? (c.features as string[]) : [];
+        return {
+          configured: true,
+          complete: true,
+          authenticated: true,
+          missing: [],
+          detail: `Live OAuth verified: ${auth.detail}. Token claims associate clientId + productId `
+            + `+ deploymentId + sandboxId with this deployment ${assocOk ? '(all match)' : '(MISMATCH detected)'}. `
+            + `env=${String(c.env)}, tokenType=${String(c.tokenType)}, ${features.length} EOS features.`,
+          consumer: 'unreal/JarvisNexusEOS (EOS SDK at engine runtime) + ios/JarvisNexus (EOS native on device)',
+        };
+      }
+      if (auth.ok && !auth.claims) {
+        return {
+          configured: true,
+          complete: true,
+          authenticated: true,
+          missing: [],
+          detail: `Live OAuth verified: ${auth.detail} (token claims not decodable).`,
+          consumer: 'unreal/JarvisNexusEOS (EOS SDK at engine runtime) + ios/JarvisNexus (EOS native on device)',
+        };
+      }
       return {
         configured: true,
         complete: true,
-        authenticated: auth.ok,
+        authenticated: false,
         missing: [],
-        detail: auth.ok
-          ? `Live OAuth verified: ${auth.detail}. SDK runtime consumer: ${'unreal/JarvisNexusEOS'}.`
-          : `All credentials present but live OAuth failed: ${auth.detail}`,
+        detail: `All credentials present but live OAuth failed: ${auth.detail}`,
         consumer: 'unreal/JarvisNexusEOS (EOS SDK at engine runtime) + ios/JarvisNexus (EOS native on device)',
       };
     }
@@ -116,11 +159,23 @@ export class EosIntegration {
       complete: false,
       authenticated: false,
       missing,
-      detail: `Partial — Product/Client/Deployment/Sandbox IDs configured; missing: ${missing.join(', ')}. `
-        + 'Live sweep 2026-11-13: all 12 client/secret permutations of the supplied values answered '
-        + '400 invalid_client_credentials — the Client Secret is a distinct value from the EOS '
-        + 'Developer Portal (your product → Clients).',
+      detail: `Partial — missing: ${missing.join(', ')}. Client ID + Secret live-verified 2026-11-13 `
+        + `(client-credentials OAuth against https://api.epicgames.dev/auth/v1/oauth/token → HTTP 200 `
+        + 'bearer JWT; claims associate product/deployment/sandbox). Obtain values from the EOS '
+        + 'Developer Portal (your product → Clients / General Settings).',
       consumer: 'unreal/JarvisNexusEOS (EOS SDK at engine runtime) + ios/JarvisNexus (EOS native on device)',
     };
+  }
+}
+
+/** Decode a JWT payload without verifying the signature (claims inspection). */
+function decodeJwtClaims(token: string): Record<string, unknown> | undefined {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return undefined;
+    const payload = Buffer.from(parts[1], 'base64').toString('utf8');
+    return JSON.parse(payload) as Record<string, unknown>;
+  } catch {
+    return undefined;
   }
 }

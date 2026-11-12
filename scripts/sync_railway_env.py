@@ -3,8 +3,9 @@
 JARVIS NEXUS — session 6: align Railway production env with the completed
 credential integrations.
 
-Adds: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, EPIC_PRODUCT_ID,
-      EPIC_DEPLOYMENT_ID, EPIC_SANDBOX_IDS, OWNER_KEY, NEXUS_STORAGE_BUCKET
+Adds: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, EPIC_CLIENT_ID,
+      EPIC_CLIENT_SECRET, EPIC_PRODUCT_ID, EPIC_DEPLOYMENT_ID,
+      EPIC_SANDBOX_IDS, OWNER_KEY, NEXUS_STORAGE_BUCKET
 Retires (deletes): R2_BUCKET, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY
       (R2 retired by owner directive — storage backend is Supabase)
 
@@ -24,6 +25,7 @@ SERVICE_ID = "8f8a9401-5e27-4449-a1cb-01271906b8f7"
 
 UPSERT = [
     "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY",
+    "EPIC_CLIENT_ID", "EPIC_CLIENT_SECRET",
     "EPIC_PRODUCT_ID", "EPIC_DEPLOYMENT_ID", "EPIC_SANDBOX_IDS",
     "OWNER_KEY", "NEXUS_STORAGE_BUCKET",
     # refresh these too (same values the owner re-supplied today)

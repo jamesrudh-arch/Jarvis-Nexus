@@ -34,15 +34,26 @@ export async function POST(req: NextRequest) {
 
     const switches = await db.ownerSwitch.findMany();
     const switchMap = Object.fromEntries(switches.map((s) => [s.switchKey, s.enabled]));
-    if (modality === 'voice' && !switchMap.microphone) {
+    // MASTER is the global hardware kill: with it OFF no sensor modality is
+    // accepted server-side either (session-7 fix — the client tears down
+    // capture tracks, the API must agree, not just the UI).
+    if (modality === 'voice' && (!switchMap.microphone || !switchMap.master)) {
       return NextResponse.json(
-        { detail: 'Microphone switch is OFF. Enable MIC capture to send voice input.' },
+        {
+          detail: !switchMap.master
+            ? 'MASTER switch is OFF. No sensor input is accepted while the master kill is down.'
+            : 'Microphone switch is OFF. Enable MIC capture to send voice input.',
+        },
         { status: 403 }
       );
     }
-    if (modality === 'vision' && !switchMap.camera) {
+    if (modality === 'vision' && (!switchMap.camera || !switchMap.master)) {
       return NextResponse.json(
-        { detail: 'Camera switch is OFF. Enable optical capture to send live vision input.' },
+        {
+          detail: !switchMap.master
+            ? 'MASTER switch is OFF. No sensor input is accepted while the master kill is down.'
+            : 'Camera switch is OFF. Enable optical capture to send live vision input.',
+        },
         { status: 403 }
       );
     }

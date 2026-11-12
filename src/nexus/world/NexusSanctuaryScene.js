@@ -206,6 +206,32 @@ export class NexusSanctuaryScene {
           morphDump,
           timelineEndMs: j.speechTimeline.length ? Math.round(j.speechTimeline[j.speechTimeline.length - 1].endMs) : 0,
           rArmRotX: j.bones.RightArm ? Number(j.bones.RightArm.rotation.x.toFixed(3)) : null,
+          camera: {
+            pos: this.camera.position.toArray().map((v) => Number(v.toFixed(2))),
+            quat: [Number(this.camera.quaternion.x.toFixed(3)), Number(this.camera.quaternion.y.toFixed(3)),
+                   Number(this.camera.quaternion.z.toFixed(3)), Number(this.camera.quaternion.w.toFixed(3))],
+            target: this.cameraDirector ? this.cameraDirector._lastTarget : null,
+            desiredPos: this.cameraDirector ? this.cameraDirector.desiredPos.toArray().map((v) => Number(v.toFixed(2))) : null,
+            desiredTarget: this.cameraDirector ? this.cameraDirector.desiredTarget.toArray().map((v) => Number(v.toFixed(2))) : null,
+            controlsTarget: this.cameraDirector ? this.cameraDirector.controls.target.toArray().map((v) => Number(v.toFixed(2))) : null,
+            activePreset: this.cameraDirector ? this.cameraDirector.activePreset : null,
+            mode: this.cameraDirector ? this.cameraDirector.mode : null,
+            manualHold: this.cameraDirector ? Number(this.cameraDirector.manualUserHoldSec.toFixed(2)) : null,
+            jarvisPos: this.jarvis && this.jarvis.root ? this.jarvis.root.position.toArray().map((v) => Number(v.toFixed(2))) : null,
+            jYaw: this.jarvis && this.jarvis.root ? Number(this.jarvis.root.rotation.y.toFixed(3)) : null,
+            jTargetYaw: this.jarvis ? Number(this.jarvis.targetYaw.toFixed(3)) : null,
+            jFocusCam: this.jarvis ? Boolean(this.jarvis.focusCamera) : null,
+            jPosture: this.jarvis ? this.jarvis.postureMode : null,
+          },
+          render: {
+            calls: this.renderer.info.render.calls,
+            triangles: this.renderer.info.render.triangles,
+            hologramMode: Boolean(this.hologramMode),
+            hologramLayout: this.hologramLayout,
+            sceneChildren: this.scene.children.length,
+            archVisible: this.architectureGroup ? this.architectureGroup.visible : null,
+            charVisible: j.root ? j.root.visible : null,
+          },
         };
       };
     }
@@ -1074,6 +1100,12 @@ export class NexusSanctuaryScene {
     this.architectureGroup.visible = !enabled; // Pure optical black background for Pepper's Ghost reflection
     this.scene.background.setHex(enabled ? 0x000000 : 0x02070b);
     document.body.classList.toggle('holo-mirror-active', enabled && layout === 'peppers_ghost');
+  }
+
+  /** Reset View (session 7): re-frame the camera on the active preset and
+   *  clear any manual orbit offset or NaN-corrupted camera state. */
+  resetView() {
+    this.cameraDirector.resetView(this.jarvis);
   }
 
   onResize() {

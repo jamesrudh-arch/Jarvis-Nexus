@@ -59,16 +59,24 @@ Verified end-to-end 2026-11-13 BOTH locally (LLM present) and ON PRODUCTION
   (46/46); retrieval force-executes on explicit "read back <key>" phrasing
   instead of quoting dialogue history.
 
-**Production LLM provider note (honest limitation):** the `zai_cloud_route`
+**Production LLM provider note (RESOLVED session 7):** the `zai_cloud_route`
 provider authenticates via the z-ai SDK's ambient credentials, which exist in
-the development sandbox but NOT on the Railway deployment. On production,
-`think()` therefore falls back honestly ("inference route degraded…"), TTS
-falls back to the client's browser voice, and the deterministic tool layer
-keeps storage operations fully functional (proven above). The provider chain
-is provider-independent (D6): the owner can activate conversational LLM on
-production by adding any genuinely free provider credential (e.g. a free-tier
-LLM API key) to the Railway env and registering it in
-`src/lib/nexus/providers/registry.ts`.
+the development sandbox but NOT on the Railway deployment — and provably
+CANNOT: `internal-api.z.ai` resolves to a private address (172.25.x.x,
+verified 2026-11-13), so no credential could ever make it serve production.
+The D6 resolution shipped in session 7: the default LLM chain is now
+`cloudflare_workers_ai -> zai_cloud_route`.
+
+| Provider | Config | Free tier (verified sources) | Activation |
+|---|---|---|---|
+| `cloudflare_workers_ai` | self-configured from the EXISTING `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN` (or `CF_AI_API_TOKEN`), model `NEXUS_CF_AI_MODEL` (default `@cf/meta/llama-3.1-8b-instruct`) | Workers AI: 10,000 Neurons/day free, no card, no subscription; beyond the allocation requests are REJECTED, not billed (developers.cloudflare.com/workers-ai/platform/pricing; /configuration/open-ai-compatibility) | automatic on the next deploy — zero new env vars; in-process daily request budget (`NEXUS_CF_AI_DAILY_REQUESTS`, default 300) |
+| `openai_compatible` | `LLM_OPENAI_COMPAT_URL` + `LLM_OPENAI_COMPAT_KEY` + `LLM_OPENAI_COMPAT_MODEL` | whatever engine the owner points it at (local Ollama/LM Studio/vLLM = free on own hardware; or any free-tier cloud) | set the three env vars |
+
+Verified in session 7: 9/9 module E2E (incl. two REAL z-ai turns in-sandbox
+with multi-turn recall) + 6/6 HTTP E2E through the real conversation route
+(context retention: the turn-2 provider request carries turn-1 content in
+the 8.2k-char history-carrying system prompt; tool calling with honest
+`tool_results`; provider killed → honest degraded reply, no crash).
 
 ## GitHub — PRODUCTION VERIFIED
 
@@ -113,14 +121,16 @@ LLM API key) to the Railway env and registering it in
 | Real operations | Project `reasonable-heart`, service **Jarvis-Nexus** (GitHub repo trigger, persistent volume `/data`): 37 production variables now include SUPABASE_URL / SERVICE_ROLE_KEY / EPIC_* IDs / OWNER_KEY / NEXUS_STORAGE_BUCKET; zero R2 leftovers |
 | Production | **Live at `https://jarvis-nexus-production.up.railway.app`** — `/api/v1/health` 200 (core online); post-push deployment re-verified |
 
-## Epic Online Services — IDS CONFIGURED; CLIENT SECRET IS THE SINGLE MISSING CREDENTIAL
+## Epic Online Services — REAL OAUTH VERIFIED (session 7; the final credential supplied)
 
 | State | Evidence |
 |---|---|
-| Discovered | Owner-supplied 2026-11-13: Product `Jarvis nexus` (`EPIC_PRODUCT_ID`), `EPIC_CLIENT_ID` (xyza7891… format), `EPIC_DEPLOYMENT_ID`, `EPIC_SANDBOX_IDS` |
-| Configured | `.env.local` + Railway; consumed by `unreal/Plugins/JarvisNexusEOS` (C++: EOS_Platform_Create + client-credentials login) via `src/lib/nexus/integrations/eos.ts` |
-| Authenticated (attempt) | **Real OAuth attempts** against `api.epicgames.dev/epic/oauth/v2/token`: all **12 client/secret permutations** of every supplied value (client ID, product ID, deployment ID, sandbox ID) → `400 errors.com.epicgames.account.invalid_client_credentials`. Established by attempt: the Client Secret is a distinct credential and is not among the supplied values |
-| Missing value | `EPIC_CLIENT_SECRET` — EOS Developer Portal → your product → Clients → Client Secret. This is the ONLY missing integration credential in the project. Everything else is wired: once supplied, `eos.ts` performs the live exchange automatically and the UE5 plugin config is complete |
+| Discovered | Owner-supplied 2026-11-13: Product `Jarvis nexus` (`EPIC_PRODUCT_ID`), `EPIC_CLIENT_ID` (xyza7891… format), `EPIC_CLIENT_SECRET` (supplied session 7), `EPIC_DEPLOYMENT_ID`, `EPIC_SANDBOX_IDS`; Sandbox Type live, Deployment Name live |
+| Configured | `.env.local` (values never printed; sandbox copy rebuilt after the recycle). Railway: ships with `scripts/sync_railway_env.py` (UPSERT list includes EPIC_CLIENT_ID + EPIC_CLIENT_SECRET). Unreal plugin: template `jarvis_nexus_eos.example.json` + generator `scripts/write_eos_plugin_config.py` (real file gitignored, mode 600) |
+| Authenticated (REAL) | Client-credentials OAuth against the documented EOS Game-Services endpoint `https://api.epicgames.dev/auth/v1/oauth/token` → **HTTP 200 bearer JWT**, `expires_in 3599 s`, repeatable deployment-scoped + product-level grants. (Root cause of the session-6 400s: the EAS surface `/epic/oauth/v2/token` rejects client-credentials with `client_missing_application_id` — wrong endpoint, not wrong credentials.) |
+| Identifier associations | JWT claims decoded (never the secret): `clientId` == EPIC_CLIENT_ID, `productId` == EPIC_PRODUCT_ID, `sandboxId` == EPIC_SANDBOX_IDS, `deploymentId` == EPIC_DEPLOYMENT_ID — **ALL MATCH**; `env=prod`, `tokenType=clientToken`, 11 EOS features granted (Achievements, Ecom, EosConnect, Leaderboards, Matchmaking, Metrics, PlayerReports, …) |
+| Verification scripts | `scripts/verify_eos_oauth.py` (8-step protocol: locate → configure → real auth → claims → repeat grants → verify → record); `src/lib/nexus/integrations/eos.ts` performs the live exchange + claims checks (reports `authenticated: true` when the secret is present); `scripts/verify_integrations.py` `eos:oauth` row does the real exchange |
+| Exposure audit | Secret sha256[:12]=d4223dc3e5a7 — 0 hits in 436 tracked files, 0 in all 954 git-history objects, 0 in the local build output, 0 in the 8 live production JS bundles |
 | Runtime consumer | unreal/JarvisNexusEOS (EOS SDK at engine runtime) + ios/JarvisNexus |
 
 ## /api/v1/storage — REAL OPERATIONS VERIFIED (owner HTTP surface)

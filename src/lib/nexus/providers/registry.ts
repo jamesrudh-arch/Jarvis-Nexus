@@ -2,9 +2,18 @@
  * JARVIS NEXUS — Inference provider registry (D6).
  *
  * Ordered fallback chains per capability, configurable via environment:
- *   NEXUS_LLM_PROVIDERS="zai_cloud_route"        (comma-separated, first wins)
+ *   NEXUS_LLM_PROVIDERS="cloudflare_workers_ai,zai_cloud_route"  (comma-separated, first wins)
  *   NEXUS_TTS_PROVIDERS="zai_cloud_route"
  *   NEXUS_ASR_PROVIDERS="zai_cloud_route"
+ *
+ * Session-7 default LLM chain: `cloudflare_workers_ai -> zai_cloud_route`.
+ * Rationale: the z-ai platform API resolves to a PRIVATE address
+ * (internal-api.z.ai → 172.25.x.x, verified 2026-11-13) so it can never serve
+ * the Railway deployment, while the owner's Cloudflare credentials are
+ * already in the production env — Workers AI's free 10,000 Neurons/day
+ * (no card, no subscription, hard-stops instead of billing beyond the
+ * allocation) activates the production LLM with ZERO new env vars. In the
+ * dev sandbox (no Cloudflare token) the chain falls through to z-ai as before.
  *
  * Adding a provider: implement the interfaces in ./types, register the id in
  * the resolvers below, add it to a chain via env. Nothing else changes —
@@ -47,7 +56,7 @@ export function parseProviderChain(raw: string | undefined, fallback: string[]):
 
 export function getInferenceConfig(): InferenceConfig {
   return {
-    llm: parseProviderChain(process.env.NEXUS_LLM_PROVIDERS, ['zai_cloud_route']),
+    llm: parseProviderChain(process.env.NEXUS_LLM_PROVIDERS, DEFAULT_CHAIN),
     tts: parseProviderChain(process.env.NEXUS_TTS_PROVIDERS, ['zai_cloud_route']),
     asr: parseProviderChain(process.env.NEXUS_ASR_PROVIDERS, ['zai_cloud_route']),
     face: parseProviderChain(process.env.NEXUS_FACE_PROVIDERS, ['audio2face_local']),
@@ -60,11 +69,17 @@ export function describeInferenceRoute(): string {
   return `${cfg.llm.join(' -> ')} (fallback chain)`;
 }
 
-const DEFAULT_CHAIN = ['zai_cloud_route'];
+const DEFAULT_CHAIN = ['cloudflare_workers_ai', 'zai_cloud_route'];
 
 async function resolveLlm(id: string): Promise<LlmProvider | null> {
   if (id === 'zai_cloud_route') {
     return (await import('./zaiCloud')).zaiLlm;
+  }
+  if (id === 'cloudflare_workers_ai') {
+    return (await import('./openaiCompatible')).cfWorkersAiLlm;
+  }
+  if (id === 'openai_compatible') {
+    return (await import('./openaiCompatible')).openaiCompatLlm;
   }
   return null;
 }

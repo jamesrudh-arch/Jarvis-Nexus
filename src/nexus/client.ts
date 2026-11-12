@@ -420,17 +420,22 @@ export class NexusClient {
     );
 
     if (initialSnap) {
-      sanctuary.jarvis.root.position.set(pos.x, 0, pos.z);
-      sanctuary.jarvis.root.rotation.y = pos.yaw;
-      sanctuary.jarvis.targetYaw = pos.yaw;
+      // NaN armor (session 7): never inject non-finite server values into the
+      // scene graph — a single NaN would brick camera + character permanently.
+      const safeX = Number.isFinite(pos.x) ? pos.x : 1.45;
+      const safeZ = Number.isFinite(pos.z) ? pos.z : 0.95;
+      const safeYaw = Number.isFinite(pos.yaw) ? pos.yaw : -0.42;
+      sanctuary.jarvis.root.position.set(safeX, 0, safeZ);
+      sanctuary.jarvis.root.rotation.y = safeYaw;
+      sanctuary.jarvis.targetYaw = safeYaw;
       sanctuary.jarvis.postureMode = posture;
       sanctuary.jarvis.emotionalState = snap.emotional_state;
     } else {
       // Presenter's mark: while a scenario plays she stands BESIDE the hologram
       // (never inside the emitter volume), framed with the evidence she directs.
-      let navX = pos.x;
-      let navZ = pos.z;
-      let navYaw = pos.yaw;
+      let navX = Number.isFinite(pos.x) ? pos.x : 1.45;
+      let navZ = Number.isFinite(pos.z) ? pos.z : 0.95;
+      let navYaw = Number.isFinite(pos.yaw) ? pos.yaw : -0.42;
       if (snap.active_scenario && snap.current_zone === 'simulation_stage') {
         navX = 1.9;
         navZ = 2.9;
@@ -602,6 +607,12 @@ export class NexusClient {
         j.focusCamera = true;
       }
     }
+  }
+
+  /** Reset View (session 7): re-frame the camera on the active preset and
+   *  clear manual orbit offsets or any NaN-corrupted camera state. */
+  resetView() {
+    this.sanctuary?.resetView();
   }
 
   async completeOnboarding(action: 'dismiss' | 'compute' | 'scenario') {

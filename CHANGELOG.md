@@ -2,6 +2,46 @@
 
 Format: date — change — why. Newest first. Full diffs: git log.
 
+## 2026-11-13 (session 7) — EOS OAuth REAL-verified, avatar black-screen root-caused+fixed, genuinely-free production LLM, voice round-trip, mobile fixes, security re-audit
+
+**EOS authentication complete (the final credential)**
+- Owner supplied the Client Secret → REAL client-credentials OAuth now answers **HTTP 200 bearer JWT** against the DOCUMENTED EOS Game-Services endpoint `https://api.epicgames.dev/auth/v1/oauth/token` (root-cause of the old 400s: the previously used `/epic/oauth/v2` Epic-Account-Services surface rejects client-credentials with `client_missing_application_credentials`/`client_missing_application_id` — wrong endpoint, not wrong credentials)
+- JWT claims verified: clientId/productId/sandboxId/deploymentId ALL associate with this deployment, `env=prod`, `tokenType=clientToken`, 11 EOS features granted, `expires_in 3599 s`, grants repeatable (deployment-scoped + product-level) — `scripts/verify_eos_oauth.py` (8-step protocol, values never printed)
+- `eos.ts` switched to the correct endpoint + claims-based association checks (`authenticated: true` with the secret present); `verify_integrations.py` EOS row does the real exchange + claims check; `sync_railway_env.py` ready to ship EPIC_CLIENT_ID/EPIC_CLIENT_SECRET; Unreal plugin gets a credential template + `scripts/write_eos_plugin_config.py` (real JSON gitignored, mode 600)
+
+**The "missing avatar" root-caused and fixed (black-screen bug)**
+- Reproduced on production AND local: viewport a bare radial gradient, character loaded but invisible, zero console errors. Instrumented chase (NaN probes → `targetYaw` setter trap → raw-argument capture) proved the chain: BehaviorDirector inspect branch read `poi.stand[2]` (undefined — stand arrays are `[x, z]`) → `atan2(finite, NaN)` = NaN yaw → `navigateTo(NaN)` → NaN `root.rotation.y` → camera composition NaN → **permanently black scene** (NaN never recovers through lerp; fires on the ~30% of entries where the random behavior roll picks "inspect" — hence intermittent)
+- Fix: index `[1]` + extracted `computeInspectYaw` (unit-tested) + NaN-recovery armor at FOUR layers (`_lerpAngle` finite-guard, `navigateTo` rejects non-finite yaw/coords, `jarvis.update` entry sanitization, `CameraDirector._sanitize()` every frame) + `applyWorldState` sanitizes server values
+- **RESET VIEW (new owner-facing control)**: `resetView()` through scene/client + HUD button — re-frames on the active preset and clears orbit offsets / stuck holds / NaN state. Live-verified
+- Verified: repeated fresh entries render the digital human + full room (VLM evidence; pixel std-dev 41-45 vs 2-6 broken), camera always finite on desktop AND mobile viewports
+
+**Genuinely-free production LLM (the D6 resolution)**
+- Hard evidence the z-ai platform API can never serve Railway: `internal-api.z.ai` resolves to a PRIVATE address (172.25.x.x) — sandbox-only
+- NEW `cloudflare_workers_ai` provider: OpenAI-compatible `/ai/v1/chat/completions`, self-configured from the EXISTING `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN` (already in production env) — Workers AI free tier is 10,000 Neurons/day, no card, no subscription, requests beyond the allocation are REJECTED (not billed) — genuinely free, zero new credentials, in-process daily request budget (`NEXUS_CF_AI_DAILY_REQUESTS`, default 300) as an additional guardrail
+- NEW `openai_compatible` provider (env-configured URL/key/model — Ollama, LM Studio, vLLM, or any free cloud engine the owner chooses)
+- Default LLM chain now `cloudflare_workers_ai -> zai_cloud_route`: **the next Railway deploy alone activates the production LLM** (sandbox keeps z-ai)
+- E2E: 9/9 module checks (real z-ai turns incl. multi-turn recall + stub provider) + 6/6 HTTP checks through the real route (context retention proven in the 8.2k-char history-carrying prompt; tool calling with honest results; provider-kill → honest degraded reply)
+
+**Voice: REAL round-trip + server-side MASTER gate (new fix)**
+- REAL TTS→ASR round-trip: reply audio is a genuine 4.20 s WAV (201,936 bytes, RIFF) → posted to `/api/v1/asr` → transcript "Sanctuary Turbine Diagnostics Nominal" (100% word overlap)
+- Switch gates server-enforced and E2E-verified: MIC OFF→403/ON→200, CAM OFF→403, **MASTER OFF→voice 403 even with MIC ON (session-7 fix: the master kill previously only tore down client capture — the API now agrees)**; text unaffected; restore verified
+- Wake-word decision core extracted to pure `classifyTranscript` + 6 unit tests (EN+ZH wake/sleep phrases, prefix stripping, standby ignores non-wake speech)
+
+**Storage-delete honesty guard (production-caught defect)**
+- Production E2E exposed `storage.delete` claiming success for an object that never existed (Supabase deletes are idempotent). Fixed: prefix-listing existence check → honest `not found: <key> (nothing was deleted — it was already gone)`; unconfigured/failed listings fall through to the real error. Lands with the next deploy
+
+**Mobile layout fixed (emulated iPhone 14 Pro, before/after evidence)**
+- BEFORE: right control cluster ran 55px past the 393px viewport (AUTO/TOOLS/BODY + HOLO/INSPECT clipped), dock chips overlapped, 9 controls below touch-target size
+- AFTER: cluster wraps (scrollable switch strip + camera-bar row), ≥40px header targets, dock wraps: 0 clipped/unreachable elements, 0 undersized targets, camera finite. Screenshots: `download/screenshots/mobile_iphone_{before,after}.png` (VLM-compared)
+
+**Security re-audit (3/3 deep + surface probes)**
+- Full git history (954 objects) scanned across all credential patterns — clean; the exact EOS secret (sha256[:12]=d4223dc3e5a7) absent from tracked files, history, and build output; 8 live production JS bundles downloaded and scanned — no credential patterns
+- Production surface: storage GET/PUT/DELETE without X-Owner-Key → 403; public endpoints leak no secret substrings
+
+**Verification totals**: 64/64 unit tests (+18 new), typecheck clean, production build clean, EOS 8/8, LLM 15/15, voice 8/8, mobile 3/3 after, security 3/3 + probes, production E2E 7/7 (real Supabase tool loop live), scene render + reset view verified with VLM evidence
+
+**Blockers (new)**: the sandbox recycle destroyed the GITHUB_TOKEN + RAILWAY_API_TOKEN — session-7 commits are local-only and the EOS secret awaits one `sync_railway_env.py` run; exact owner runbook in PROJECT_STATE.md §Blocked.
+
 ## 2026-11-13 (session 6) — Storage backend live (Supabase), §6 real tool execution, honesty guard, EOS IDs complete
 
 **Credential integration finished with REAL operations** (final master directive: use them, verify them, demonstrate — audit register rewritten: docs/INTEGRATIONS.md)

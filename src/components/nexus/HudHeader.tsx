@@ -91,6 +91,14 @@ export default function HudHeader({
             ))}
           </select>
           <button
+            id="btn-reset-view"
+            className="hud-icon-btn"
+            title="Reset View — re-frame the camera on the current preset and recover from any stuck/framed-out state"
+            onClick={() => client?.resetView()}
+          >
+            RESET VIEW
+          </button>
+          <button
             id="btn-hologram-toggle"
             className="hud-icon-btn"
             title="Physical Holographic Projection Output (Pepper's Ghost / 4-Face)"

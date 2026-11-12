@@ -623,7 +623,14 @@ export class JarvisCharacterController {
     this.urgentRun = Boolean(urgent);
     this.postureMode = posture;
     this.emotionalState = emotion;
-    this.targetYaw = targetYaw;
+    // NaN armor (session 7): a non-finite targetYaw would poison
+    // root.rotation.y via _lerpAngle and, through the camera composition
+    // math, brick the whole scene to a black screen. Keep the previous yaw
+    // instead of accepting garbage.
+    if (Number.isFinite(targetYaw)) {
+      this.targetYaw = targetYaw;
+    }
+    if (!Number.isFinite(targetX) || !Number.isFinite(targetZ)) return;
 
     const start = new THREE.Vector2(this.root.position.x, this.root.position.z);
     const goal = new THREE.Vector2(targetX, targetZ);
@@ -949,6 +956,19 @@ export class JarvisCharacterController {
 
   update(dt, cameraWorldPos, reducedMotion = false) {
     if (!this.loaded) return;
+    // NaN armor (session 7): if any upstream writer ever poisons the yaw
+    // state, recover to a safe facing instead of lerping NaN forever (the
+    // original black-screen cascade was exactly this, see BehaviorDirector).
+    if (!Number.isFinite(this.root.rotation.y)) this.root.rotation.y = this.targetYaw;
+    if (!Number.isFinite(this.targetYaw)) this.targetYaw = this.root.rotation.y;
+    if (!Number.isFinite(this.targetYaw) || !Number.isFinite(this.root.rotation.y)) {
+      this.targetYaw = -0.42;
+      this.root.rotation.y = -0.42;
+    }
+    if (!Number.isFinite(this.root.position.x) || !Number.isFinite(this.root.position.z)) {
+      this.root.position.set(1.45, 0, 0.95);
+      this.waypoints = [];
+    }
     // Real-time integration clock. At low frame rates (weak iGPUs, throttled
     // tabs, headless/software rendering) a hard dt clamp would put her in
     // slow motion — legs frozen, root crawling, waypoints never clearing.
@@ -1496,6 +1516,10 @@ export class JarvisCharacterController {
   }
 
   _lerpAngle(a, b, t) {
+    // NaN armor (session 7): never propagate a non-finite angle — fall back
+    // to whichever endpoint is finite (b preferred, the commanded target).
+    if (!Number.isFinite(b)) return Number.isFinite(a) ? a : 0;
+    if (!Number.isFinite(a)) return b;
     let diff = b - a;
     while (diff > Math.PI) diff -= Math.PI * 2;
     while (diff < -Math.PI) diff += Math.PI * 2;

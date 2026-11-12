@@ -53,6 +53,58 @@ export class CameraDirector {
     }
   }
 
+  /**
+   * Reset View (session 7, owner directive): snap the camera back to the
+   * active preset's calibrated framing, clearing any manual orbit offset,
+   * stuck manual-hold, or NaN-corrupted state. Safe to call any time —
+   * every field is re-derived from the preset table, so a poisoned camera
+   * position / target / fov always lands back on a valid composition.
+   */
+  resetView(jarvis) {
+    this.manualUserHoldSec = 0;
+    this.scenarioFocus = null;
+    this.mode = 'auto';
+    if (!Number.isFinite(this.desiredPos.x) || !Number.isFinite(this.desiredPos.y)
+      || !Number.isFinite(this.desiredPos.z)
+      || !Number.isFinite(this.desiredTarget.x) || !Number.isFinite(this.desiredTarget.y)
+      || !Number.isFinite(this.desiredTarget.z)) {
+      this.desiredPos.set(2.55, 1.58, 3.85);
+      this.desiredTarget.set(0.85, 1.42, 0.65);
+      this.desiredFov = focalLengthToVerticalFov(40);
+    }
+    this._computeComposition(jarvis);
+    this._sanitize();
+    this._snapImmediately();
+  }
+
+  /** NaN armor (session 7): recover any non-finite camera state to the last
+   *  valid desired composition. Called every update — cheap (six isFinite
+   *  checks) and the difference between a one-frame glitch and a scene that
+   *  stays black forever. */
+  _sanitize() {
+    if (!Number.isFinite(this.camera.position.x) || !Number.isFinite(this.camera.position.y)
+      || !Number.isFinite(this.camera.position.z)) {
+      this.camera.position.copy(this.desiredPos);
+    }
+    if (!Number.isFinite(this.controls.target.x) || !Number.isFinite(this.controls.target.y)
+      || !Number.isFinite(this.controls.target.z)) {
+      this.controls.target.copy(this.desiredTarget);
+    }
+    if (!Number.isFinite(this.camera.fov)) {
+      this.camera.fov = this.desiredFov;
+      this.camera.updateProjectionMatrix();
+    }
+    if (!Number.isFinite(this.desiredPos.x) || !Number.isFinite(this.desiredPos.y)
+      || !Number.isFinite(this.desiredPos.z)) {
+      this.desiredPos.set(2.55, 1.58, 3.85);
+    }
+    if (!Number.isFinite(this.desiredTarget.x) || !Number.isFinite(this.desiredTarget.y)
+      || !Number.isFinite(this.desiredTarget.z)) {
+      this.desiredTarget.set(0.85, 1.42, 0.65);
+    }
+    if (!Number.isFinite(this.desiredFov)) this.desiredFov = focalLengthToVerticalFov(40);
+  }
+
   setManualSelect(value, reducedMotion = false) {
     this.mode = value;
     this.scenarioFocus = null;
@@ -96,7 +148,17 @@ export class CameraDirector {
 
   _computeComposition(jarvis) {
     const jPos = jarvis.root.position;
-    const jYaw = jarvis.root.rotation.y;
+    // NaN armor (session 7): a poisoned character yaw used to flow straight
+    // into the camera composition and brick the render. Treat non-finite
+    // yaw as forward-facing and non-finite position as the home mark.
+    let jYaw = jarvis.root.rotation.y;
+    if (!Number.isFinite(jYaw)) {
+      jYaw = Number.isFinite(jarvis.targetYaw) ? jarvis.targetYaw : -0.42;
+    }
+    if (!Number.isFinite(jPos.x) || !Number.isFinite(jPos.z)) {
+      jPos.x = 1.45;
+      jPos.z = 0.95;
+    }
     const fwd = new THREE.Vector3(Math.sin(jYaw), 0, Math.cos(jYaw));
     const right = new THREE.Vector3(Math.cos(jYaw), 0, -Math.sin(jYaw));
     const preset = this.mode === 'auto' ? this.activePreset : this.mode;
@@ -254,7 +316,9 @@ export class CameraDirector {
   }
 
   update(dt, jarvis, reducedMotion = false) {
+    this._sanitize();
     this._computeComposition(jarvis);
+    this._sanitize();
 
     if (this.manualUserHoldSec > 0) {
       this.manualUserHoldSec -= dt;
