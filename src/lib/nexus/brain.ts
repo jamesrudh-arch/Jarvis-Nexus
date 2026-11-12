@@ -15,6 +15,10 @@
 import { db } from '@/lib/db';
 import { OPERATIONAL_MODES, SPATIAL_ZONES } from './seed';
 import { serializeWorld } from './worldHub';
+import { runLlm, runTts, runAsr } from './providers/registry';
+
+/** D3: Tongtong is the locked voice identity; configurable for engine A/B tests. */
+const VOICE_IDENTITY = process.env.NEXUS_VOICE_IDENTITY || 'tongtong';
 
 export interface BrainDirective {
   reply: string;
@@ -214,30 +218,19 @@ export interface BrainResult {
 export async function think(userContent: string): Promise<BrainResult> {
   const systemPrompt = await buildSystemPrompt();
   let raw = '';
-  let source = 'nexus_cloud_route';
+  let source = 'fallback_local';
 
-  try {
-    const ZAI = (await import('z-ai-web-dev-sdk')).default as unknown as {
-      create: () => Promise<{
-        chat: {
-          completions: {
-            create: (args: unknown) => Promise<{ choices: Array<{ message: { content: string } }> }>;
-          };
-        };
-      }>;
-    };
-    const zai = await ZAI.create();
-    const completion = await zai.chat.completions.create({
-      messages: [
-        { role: 'assistant', content: systemPrompt },
-        { role: 'user', content: userContent },
-      ],
-      thinking: { type: 'disabled' },
-    });
-    raw = completion.choices[0]?.message?.content || '';
-  } catch {
-    raw = '';
-    source = 'fallback_local';
+  // D6: provider-independent route — the registry walks the configured
+  // fallback chain (NEXUS_LLM_PROVIDERS) and never leaks provider details here.
+  const outcome = await runLlm({
+    messages: [
+      { role: 'assistant', content: systemPrompt },
+      { role: 'user', content: userContent },
+    ],
+  });
+  if (outcome) {
+    raw = outcome.content;
+    source = outcome.source;
   }
 
   if (!raw) {
@@ -259,55 +252,21 @@ export async function think(userContent: string): Promise<BrainResult> {
   return { directive: coerceDirective(parsed, raw), inferenceSource: source };
 }
 
-/** Synthesize her voice. Returns base64 WAV audio, or null on failure (client falls back to browser TTS). */
+/** Synthesize her voice via the TTS provider chain. Returns base64 WAV audio,
+ *  or null on failure (client falls back to browser TTS). */
 export async function synthesizeVoice(
   text: string,
   emotion: string
 ): Promise<{ audio: string; mime: string } | null> {
-  try {
-    const clean = text.replace(/\[.*?\]/g, '').trim();
-    if (!clean || clean.length > 1000) return null;
-    const ZAI = (await import('z-ai-web-dev-sdk')).default as unknown as {
-      create: () => Promise<{
-        audio: {
-          tts: {
-            create: (args: {
-              input: string;
-              voice: string;
-              speed: number;
-              response_format: string;
-              stream: boolean;
-            }) => Promise<Response>;
-          };
-        };
-      }>;
-    };
-    const zai = await ZAI.create();
-    const speed = emotion === 'urgent' ? 1.12 : emotion === 'concerned' ? 0.96 : 1.0;
-    const response = await zai.audio.tts.create({
-      input: clean,
-      voice: 'tongtong',
-      speed,
-      response_format: 'wav',
-      stream: false,
-    });
-    const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(new Uint8Array(arrayBuffer));
-    if (buffer.length < 2000) return null;
-    return { audio: buffer.toString('base64'), mime: 'audio/wav' };
-  } catch {
-    return null;
-  }
+  const clean = text.replace(/\[.*?\]/g, '').trim();
+  if (!clean || clean.length > 1000) return null;
+  const speed = emotion === 'urgent' ? 1.12 : emotion === 'concerned' ? 0.96 : 1.0;
+  const result = await runTts({ text: clean, voice: VOICE_IDENTITY, speed, format: 'wav' });
+  if (!result || result.audio.length < 2000) return null;
+  return { audio: result.audio.toString('base64'), mime: result.mime };
 }
 
-/** Transcribe owner speech (base64 audio) to text. */
+/** Transcribe owner speech (base64 audio) via the ASR provider chain. */
 export async function transcribeAudio(base64: string): Promise<string> {
-  const ZAI = (await import('z-ai-web-dev-sdk')).default as unknown as {
-    create: () => Promise<{
-      audio: { asr: { create: (args: { file_base64: string }) => Promise<{ text: string }> } };
-    }>;
-  };
-  const zai = await ZAI.create();
-  const response = await zai.audio.asr.create({ file_base64: base64 });
-  return response.text || '';
+  return runAsr({ audioBase64: base64 });
 }

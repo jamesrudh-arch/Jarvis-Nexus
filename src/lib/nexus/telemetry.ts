@@ -2,6 +2,7 @@
 import os from 'os';
 import { db } from '@/lib/db';
 import { bootTime } from './worldHub';
+import { describeInferenceRoute } from './providers/registry';
 
 export async function gatherTelemetry() {
   const load = os.loadavg()[0];
@@ -27,7 +28,7 @@ export async function gatherTelemetry() {
     database_records: { memories, goals, scenarios, switches },
     embodiment_clients: 1,
     inference: {
-      active_backend: 'nexus_cloud_route (z-ai SDK)',
+      active_backend: describeInferenceRoute(),
       connected_workers: 0,
     },
   };

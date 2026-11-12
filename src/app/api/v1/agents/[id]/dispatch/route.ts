@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { ensureSeed } from '@/lib/nexus/worldHub';
+import { runLlm } from '@/lib/nexus/providers/registry';
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
@@ -25,13 +26,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     // Real bounded analysis via the NEXUS inference route (no fabricated outputs)
     let output = '';
     try {
-      const ZAI = (await import('z-ai-web-dev-sdk')).default as unknown as {
-        create: () => Promise<{
-          chat: { completions: { create: (args: unknown) => Promise<{ choices: Array<{ message: { content: string } }> }> } };
-        }>;
-      };
-      const zai = await ZAI.create();
-      const completion = await zai.chat.completions.create({
+      const outcome = await runLlm({
         messages: [
           {
             role: 'assistant',
@@ -39,9 +34,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
           },
           { role: 'user', content: objective },
         ],
-        thinking: { type: 'disabled' },
       });
-      output = completion.choices[0]?.message?.content || '';
+      output = outcome?.content || '';
     } catch {
       output = 'Inference route unavailable for this dispatch — reporting honestly rather than fabricating a result.';
     }
