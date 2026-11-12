@@ -161,6 +161,54 @@ export class NexusSanctuaryScene {
     // Living Character & Scenario Director
     this.jarvis = new JarvisCharacterController(this.scene);
     this.behaviorDirector = new BehaviorDirector(this.jarvis);
+
+    // Dev-only diagnosability hook: exposes the live character state so
+    // lip-sync / gesture work can be verified from the console or automation
+    // without reaching into the module graph. No-op in production bundles.
+    if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+      window.__NEXUS_DEBUG__ = () => {
+        const j = this.jarvis;
+        const mouth = {};
+        const morphDump = {};
+        for (let mi = 0; mi < j.morphMeshes.length; mi++) {
+          const m = j.morphMeshes[mi];
+          const d = m.morphTargetDictionary;
+          if (d && d.jawOpen !== undefined) {
+            morphDump[m.name || `mesh_${mi}`] = Number(m.morphTargetInfluences[d.jawOpen].toFixed(3));
+          }
+        }
+        const faceMesh = j.morphMeshes.find((m) => m.morphTargetDictionary && m.morphTargetDictionary.jawOpen !== undefined);
+        if (faceMesh) {
+          const dict = faceMesh.morphTargetDictionary;
+          const infl = faceMesh.morphTargetInfluences;
+          for (const k of ['jawOpen', 'mouthOpen', 'viseme_aa', 'viseme_I', 'viseme_U', 'viseme_O', 'viseme_E', 'viseme_PP', 'eyeBlinkLeft']) {
+            if (dict[k] !== undefined) mouth[k] = Number(infl[dict[k]].toFixed(3));
+          }
+        }
+        return {
+          loaded: j.loaded,
+          isSpeaking: j.isSpeaking,
+          hasAnalyser: Boolean(j.voiceAnalyser),
+          audioCtxState: j._audioCtx ? j._audioCtx.state : 'none',
+          speechEnergy: Number((j._speechEnergy || 0).toFixed(3)),
+          headAccent: Number((j._headAccent || 0).toFixed(3)),
+          beatSide: j._beatSide,
+          timelineLen: j.speechTimeline.length,
+          elapsedMs: j.speechStartPerf ? Math.round(performance.now() - j.speechStartPerf) : 0,
+          postureMode: j.postureMode,
+          emotion: j.emotionalState,
+          focusCamera: j.focusCamera,
+          waypoints: j.waypoints.length,
+          rootPos: j.root ? [Number(j.root.position.x.toFixed(2)), Number(j.root.position.z.toFixed(2))] : null,
+          wpTarget: j.waypoints.length ? [Number(j.waypoints[0].x.toFixed(2)), Number(j.waypoints[0].y.toFixed(2))] : null,
+          currentSpeed: Number(j.currentSpeed.toFixed(2)),
+          mouth,
+          morphDump,
+          timelineEndMs: j.speechTimeline.length ? Math.round(j.speechTimeline[j.speechTimeline.length - 1].endMs) : 0,
+          rArmRotX: j.bones.RightArm ? Number(j.bones.RightArm.rotation.x.toFixed(3)) : null,
+        };
+      };
+    }
     this.behaviorDirector.enabled = true;
     this.scenarioDirector = new ScenarioDirector3D(this.scene);
     this.scenarioDirector.attachCameraDirector(this.cameraDirector);

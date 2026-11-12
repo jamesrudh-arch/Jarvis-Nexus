@@ -1,9 +1,20 @@
 /**
- * JARVIS NEXUS — Autonomous Behavior Director.
+ * JARVIS NEXUS — Autonomous Behavior Director v2.
  *
  * Gives NEXUS a life of her own between server commands: she works the central
  * holo-table, strolls to perimeter stations to inspect them, returns to her
- * post, and periodically GLANCES AT YOU — social presence, not a mannequin.
+ * post, pauses to THINK (hand to chin, eyes drifting to a recall position),
+ * steps back to SURVEY the whole room, and periodically GLANCES AT YOU —
+ * social presence, not a mannequin.
+ *
+ * v2 changes vs the 111-line screensaver:
+ *  - new reflect state (thinking pose + recall gaze — the biggest "she is
+ *    alive" tell between utterances)
+ *  - new survey state (steps back from the console, pans attention across
+ *    the sanctuary like an operator on shift)
+ *  - emotional state varies with the behavior (not 'focused' on everything)
+ *  - arrival gaze settling is damped by distance so POI inspections read
+ *    as deliberate, not snap-turned
  *
  * Yield rules (she never fights higher-priority intent):
  *  - pauses instantly while she is speaking or walking (server-driven)
@@ -35,6 +46,7 @@ export class BehaviorDirector {
     this._stateTime = 5 + Math.random() * 5;
     this._lastPoi = -1;
     this._arrivedLook = null;
+    this._mode = 'settle';
   }
 
   /** The client grants permission (autonomy switch ON + ambient mode + no scenario). */
@@ -65,8 +77,9 @@ export class BehaviorDirector {
     if (this._stateTime > 0) return;
 
     const roll = Math.random();
+    this._mode = 'settle';
 
-    if (roll < 0.40) {
+    if (roll < 0.30) {
       // Wander to a new point of interest and inspect it
       let idx = Math.floor(Math.random() * POIS.length);
       if (idx === this._lastPoi) idx = (idx + 1) % POIS.length;
@@ -80,8 +93,9 @@ export class BehaviorDirector {
         posture: poi.posture,
         emotion: 'focused',
       });
+      this._mode = 'inspect';
       this._stateTime = 9 + Math.random() * 8; // inspection time after arrival
-    } else if (roll < 0.66) {
+    } else if (roll < 0.50) {
       // Notice the viewer — turn and hold eye contact for a few seconds
       const dx = cameraWorldPos.x - j.root.position.x;
       const dz = cameraWorldPos.z - j.root.position.z;
@@ -89,8 +103,41 @@ export class BehaviorDirector {
       j.focusCamera = true;
       j.postureMode = 'conversational_focus';
       j.emotionalState = 'attentive';
+      this._mode = 'notice';
       this._stateTime = 4 + Math.random() * 4;
-    } else if (roll < 0.84) {
+    } else if (roll < 0.66) {
+      // Reflect: hand to chin, gaze drifts up to a recall position — she is
+      // visibly THINKING between tasks (the strongest "alive" tell).
+      j.focusCamera = Math.random() < 0.25; // occasionally thinks while facing you
+      j.postureMode = 'reflect';
+      j.emotionalState = 'focused';
+      const side = Math.random() < 0.5 ? -1 : 1;
+      j.lookWorldTarget.set(
+        j.root.position.x + side * 1.4,
+        2.5 + Math.random() * 0.5,
+        j.root.position.z - 1.1
+      );
+      this._mode = 'reflect';
+      this._stateTime = 6 + Math.random() * 5;
+    } else if (roll < 0.78) {
+      // Survey: step back ~1m and pan attention across the sanctuary like an
+      // operator checking their boards mid-shift.
+      const away = new THREE.Vector2(j.root.position.x, j.root.position.z);
+      if (away.lengthSq() < 0.01) away.set(1, 0);
+      away.normalize();
+      const bx = THREE.MathUtils.clamp(j.root.position.x + away.x * 1.0, -6.5, 6.5);
+      const bz = THREE.MathUtils.clamp(j.root.position.z + away.y * 1.0, -6.5, 6.5);
+      const yaw = Math.atan2(-away.x, -away.y); // face back toward the table/room
+      j.lookWorldTarget.set(0, 2.4, 0); // the pyramid above the holo-table
+      j.focusCamera = false;
+      j.emotionalState = 'neutral';
+      j.navigateTo(bx, bz, yaw, {
+        posture: 'standby',
+        emotion: 'neutral',
+      });
+      this._mode = 'survey';
+      this._stateTime = 5 + Math.random() * 4;
+    } else if (roll < 0.90) {
       // Return to the central operations post (her home base)
       j.lookWorldTarget.set(HOME.look[0], HOME.look[1], HOME.look[2]);
       j.focusCamera = false;
@@ -98,6 +145,7 @@ export class BehaviorDirector {
         posture: 'console_interaction',
         emotion: 'focused',
       });
+      this._mode = 'home';
       this._stateTime = 10 + Math.random() * 8;
     } else {
       // Stay put, shift focus around the room (gaze wander — no locomotion)
@@ -105,6 +153,7 @@ export class BehaviorDirector {
       j.lookWorldTarget.set(poi.look[0], poi.look[1], poi.look[2]);
       j.focusCamera = Math.random() < 0.35;
       j.emotionalState = 'neutral';
+      this._mode = 'wander-gaze';
       this._stateTime = 5 + Math.random() * 5;
     }
   }

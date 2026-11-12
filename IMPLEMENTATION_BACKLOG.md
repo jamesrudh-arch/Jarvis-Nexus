@@ -31,16 +31,17 @@ Status legend: [done] verified this session · [next] dependency-ready · [plann
 
 ## Phase 2 — Alive (voice, lips, animation, behavior)
 
-1. Streaming TTS: evaluate Qwen3-TTS (~97 ms first chunk) / Orpheus / CosyVoice 2 vs z-ai — same reference scripts + audio (D3); SSE/WS transport; kill base64-in-JSON (+33%); target mouth-open < 400 ms
-2. Viseme engine v2: crossfade 50–80 ms, coarticulation, CHINESE phoneme map (current rules are EN-only — the perceived 无口型), timeline-aligned with streaming audio; build against ARKit/viseme standard so a model swap carries the work over (D2 hedge)
-3. Barge-in: cancel audio + viseme timeline + brain turn cleanly; listening pose
-4. Locomotion blendspace idle↔walk↔run; retarget config instead of ARM_CARRY constants
-5. Two-arm IK, foot planting, look-at chain (eyes→head→spine); turn-in-place
-6. Micro-motion layer (breath, weight shifts, emotion-modulated blink, saccades)
-7. BehaviorDirector v2 (micro-motion / idle / reactive / social layers)
-8. Wire BrainDirective end-to-end: emotion→face presets + posture, activity/zone→locomotion targets, urgent→camera
-9. Gesture/emote clip set via existing retarget pipeline
-10. Voice identity A/B per D3 (NEXUS_VOICE_IDENTITY already parameterized)
+1. [partial] Streaming TTS transport: sentence-chunked streaming LANDED (server pre-synthesizes chunk 0, client prefetches chunk i+1; 3.5 s round-trip, 1.6 s per-sentence hidden under playback). Remaining: true streaming engine A/B (Qwen3-TTS ~97 ms first chunk / Orpheus / CosyVoice 2 vs z-ai per D3), SSE/WS transport to also kill base64-in-JSON (+33%), target mouth-open < 400 ms
+2. [partial] Viseme engine v2: CHINESE pinyin→viseme engine LANDED (initial/final/tone, tone-scaled durations, punctuation pauses, mixed zh/en runs, F1/F2 formant jaw drive, zh-CN browser-TTS fallback). Remaining: crossfade tuning 50–80 ms, coarticulation, timeline alignment with true streaming audio; already ARKit/viseme-standard so a model swap carries the work (D2 hedge)
+3. [next] Barge-in: cancel audio + viseme timeline + brain turn cleanly; listening pose (sequencer abort infrastructure is in place — ED-14)
+4. [next] Locomotion blendspace idle↔walk↔run; retarget config instead of ARM_CARRY constants
+5. [next] Two-arm IK, foot planting, look-at chain (eyes→head→spine); turn-in-place
+6. [done] Micro-motion layer: breath + weight shifts (session 1), PLUS speech-energy envelope → beat gestures/head accents, living elbows/wrists, eye saccades (session 2)
+7. [done→extend] BehaviorDirector v2 seed: reflect/survey/notice/wander-gaze states + conversational facing (session 2); remaining: full four-layer architecture (micro-motion / idle / reactive / social) + brain-schema-driven behaviors
+8. [done] Locomotion real-time clock (slow-motion bug fixed — ED-16)
+9. [next] Wire BrainDirective end-to-end: emotion→face presets + posture, activity/zone→locomotion targets, urgent→camera
+10. [next] Gesture/emote clip set via existing retarget pipeline
+11. [next] Voice identity A/B per D3 (NEXUS_VOICE_IDENTITY already parameterized)
 
 ## Phase 3 — The Stage (holograms, world, memory)
 

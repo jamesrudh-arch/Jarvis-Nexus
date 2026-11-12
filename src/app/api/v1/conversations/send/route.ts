@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { synthesizeVoice, think } from '@/lib/nexus/brain';
+import { splitSentences } from '@/nexus/vendor/speechStream.mjs';
 import {
   commandMoveToZone,
   ensureSeed,
@@ -139,8 +140,12 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Server-side voice synthesis (client falls back to browser TTS if null)
-    const voice = await synthesizeVoice(directive.reply, directive.emotion);
+    // Server-side voice synthesis — FIRST SENTENCE ONLY (D-workflow latency
+    // kill): the client starts speaking this chunk immediately while fetching
+    // the remaining sentences from /voice/tts as she talks. audio_text tells
+    // the client exactly which chunk the audio covers.
+    const firstChunk = splitSentences(directive.reply)[0] || directive.reply;
+    const voice = await synthesizeVoice(firstChunk, directive.emotion);
 
     return NextResponse.json({
       user_message: { id: userMsg.id, content: userMsg.content, modality: userMsg.modality },
@@ -153,6 +158,7 @@ export async function POST(req: NextRequest) {
         created_at: jarvisMsg.createdAt.toISOString(),
         audio: voice ? voice.audio : null,
         audio_mime: voice ? voice.mime : null,
+        audio_text: voice ? firstChunk : null,
       },
       world,
       activated_scenario: world.active_scenario,

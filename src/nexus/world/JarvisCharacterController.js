@@ -15,6 +15,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { retarget } from '../vendor/retargeter.mjs';
 import { LipsyncEn } from '../vendor/lipsync-en.mjs';
+import { LipsyncZh, hasCJK } from '../vendor/lipsync-zh.mjs';
 import {
   tailorSuitAlbedoTexture,
   createMicroNormalTexture,
@@ -138,18 +139,34 @@ export class JarvisCharacterController {
     this.blinkPhase = -1;
     this.breathClock = 0;
 
-    // Lip-sync & Speech Engine
+    // Lip-sync & Speech Engine (mixed-language: En rule engine + Zh pinyin engine)
     this.lipsync = new LipsyncEn();
+    this.lipsyncZh = new LipsyncZh();
     this.isSpeaking = false;
     this.speechTimeline = []; // [{ viseme, startMs, endMs }]
     this.speechStartPerf = 0;
     this.activeUtterance = null;
     this.onSpeechEndCallback = null;
 
+    // Aliveness layer: speech energy envelope, beat-gesture clock, eye saccades.
+    // (This is what separates "present person" from "rendered mannequin".)
+    this._speechEnergy = 0;        // smoothed RMS 0..1
+    this._speechEnergyPeak = 0;     // decaying peak for onset detection
+    this._beatPhase = 0;            // beat-gesture oscillator
+    this._beatSide = 1;             // alternating gesture side
+    this._headAccent = 0;           // impulsive nod on speech stress onsets
+    this._saccadeTimer = 1.0;
+    this._saccadeOffset = new THREE.Vector3();
+    this._saccadeTarget = new THREE.Vector3();
+
     this.loaded = false;
   }
 
   async load(onProgress) {
+    // Warm the Mandarin lipsync engine (lazy pinyin chunk) alongside assets so
+    // the first Chinese utterance never waits on a cold dynamic import.
+    this.lipsyncZh.init().catch(() => {});
+
     const gltfLoader = new GLTFLoader();
     const fbxLoader = new FBXLoader();
 
@@ -640,33 +657,56 @@ export class JarvisCharacterController {
     const clean = text.replace(/\[.*?\]/g, '').trim();
     if (!clean) return;
 
-    // Build phoneme/viseme schedule using LipsyncEn
-    const words = clean.split(/\s+/);
+    // Build the phoneme/viseme schedule — mixed-language aware:
+    // CJK runs go through the Mandarin pinyin engine (syllable → initial +
+    // final + tone), latin runs through the English rule engine, and
+    // punctuation between runs becomes breathing pauses.
     const timeline = [];
     let cursorMs = 60;
+    const runs = clean.split(/([\u4e00-\u9fff\u3400-\u4dbf]+)/).filter(Boolean);
 
-    for (const rawWord of words) {
-      const upper = this.lipsync.preProcessText(rawWord);
-      const oculusSeq = this.lipsync.wordsToVisemes(upper);
-      const wordDurMs = Math.max(150, Math.min(540, rawWord.length * 58));
+    for (const run of runs) {
+      if (hasCJK(run)) {
+        const { segments } = this.lipsyncZh.buildTimeline(run, cursorMs);
+        if (segments.length) {
+          for (const seg of segments) {
+            timeline.push({ viseme: seg.viseme, startMs: seg.startMs, endMs: seg.endMs });
+          }
+          cursorMs = segments[segments.length - 1].endMs + 24;
+        }
+      } else if (/[A-Za-z]/.test(run)) {
+        for (const rawWord of run.split(/\s+/).filter(Boolean)) {
+          const upper = this.lipsync.preProcessText(rawWord);
+          const oculusSeq = this.lipsync.wordsToVisemes(upper);
+          const wordDurMs = Math.max(150, Math.min(540, rawWord.length * 58));
 
-      if (oculusSeq && oculusSeq.visemes && oculusSeq.visemes.length > 0) {
-        const totalRel = oculusSeq.durations.reduce((a, b) => a + b, 0) || 1;
-        for (let i = 0; i < oculusSeq.visemes.length; i++) {
-          const vCode = oculusSeq.visemes[i];
-          const segMs = (oculusSeq.durations[i] / totalRel) * wordDurMs;
-          timeline.push({
-            viseme: `viseme_${vCode}`,
-            startMs: cursorMs,
-            endMs: cursorMs + segMs,
-          });
-          cursorMs += segMs;
+          if (oculusSeq && oculusSeq.visemes && oculusSeq.visemes.length > 0) {
+            const totalRel = oculusSeq.durations.reduce((a, b) => a + b, 0) || 1;
+            for (let i = 0; i < oculusSeq.visemes.length; i++) {
+              const vCode = oculusSeq.visemes[i];
+              const segMs = (oculusSeq.durations[i] / totalRel) * wordDurMs;
+              timeline.push({
+                viseme: `viseme_${vCode}`,
+                startMs: cursorMs,
+                endMs: cursorMs + segMs,
+              });
+              cursorMs += segMs;
+            }
+          } else {
+            timeline.push({ viseme: 'viseme_aa', startMs: cursorMs, endMs: cursorMs + wordDurMs * 0.7 });
+            cursorMs += wordDurMs;
+          }
+          cursorMs += 42;
         }
       } else {
-        timeline.push({ viseme: 'viseme_aa', startMs: cursorMs, endMs: cursorMs + wordDurMs * 0.7 });
-        cursorMs += wordDurMs;
+        // pure punctuation / whitespace between language runs
+        for (const ch of run) {
+          if ('。！？；!?;…'.includes(ch)) cursorMs += 400;
+          else if ('，、,：:'.includes(ch)) cursorMs += 210;
+          else if (/\S/.test(ch)) cursorMs += 60;
+          else cursorMs += 30;
+        }
       }
-      cursorMs += 42;
     }
 
     this.speechTimeline = timeline;
@@ -730,6 +770,7 @@ export class JarvisCharacterController {
       this.voiceAnalyser = analyser;
       this._freqBins = new Uint8Array(analyser.frequencyBinCount);
       this._timeSamples = new Float32Array(analyser.fftSize);
+      this._binHz = ctx.sampleRate / analyser.fftSize; // for formant band mapping
       this.activeAudioSource = src;
       this.speechStartPerf = performance.now(); // mouth clock starts WITH the sound
       src.onended = () => this._onVoiceSourceEnded();
@@ -785,11 +826,18 @@ export class JarvisCharacterController {
         window.speechSynthesis.cancel();
         const utt = new SpeechSynthesisUtterance(clean);
         const voices = window.speechSynthesis.getVoices();
-        const femaleVoice = voices.find((v) =>
-          /en/i.test(v.lang) && /samantha|victoria|kate|serena|sonia|aria|jenny|female|uk/i.test(v.name)
-        ) || voices.find((v) => /en-GB|en-US/i.test(v.lang));
+        // Language-aware voice pick: Mandarin replies must never be read by an
+        // English voice (the old /en/ pick garbled or silenced every 中文 reply).
+        const isZh = hasCJK(clean);
+        const femaleVoice = isZh
+          ? voices.find((v) => /zh[-_]CN/i.test(v.lang) && /female|xiaoxiao|yaoyao|huihui|tingting|meijia|yunyi/i.test(v.name))
+            || voices.find((v) => /zh/i.test(v.lang))
+          : voices.find((v) =>
+            /en/i.test(v.lang) && /samantha|victoria|kate|serena|sonia|aria|jenny|female|uk/i.test(v.name)
+          ) || voices.find((v) => /en-GB|en-US/i.test(v.lang));
         if (femaleVoice) utt.voice = femaleVoice;
-        utt.rate = 1.02;
+        utt.lang = isZh ? 'zh-CN' : (femaleVoice ? femaleVoice.lang : undefined);
+        utt.rate = isZh ? 0.96 : 1.02;
         utt.pitch = 0.96;
         utt.onend = () => {
           this.isSpeaking = false;
@@ -859,8 +907,19 @@ export class JarvisCharacterController {
 
   update(dt, cameraWorldPos, reducedMotion = false) {
     if (!this.loaded) return;
-    const clampedDt = Math.min(dt, 0.05);
-    this.breathClock += clampedDt;
+    // Real-time integration clock. At low frame rates (weak iGPUs, throttled
+    // tabs, headless/software rendering) a hard dt clamp would put her in
+    // slow motion — legs frozen, root crawling, waypoints never clearing.
+    // Locomotion, the mixer, and blink/gaze integrate REAL elapsed time
+    // (capped at 0.5s to avoid teleporting after tab switches); only the
+    // facial morph lerps use the tight clamped dt for smoothing.
+    const nowMs = performance.now();
+    const realDt = this._lastUpdateMs !== undefined
+      ? Math.min(0.5, (nowMs - this._lastUpdateMs) / 1000)
+      : Math.min(dt, 0.05);
+    this._lastUpdateMs = nowMs;
+    const animDt = Math.min(realDt, 0.1); // mixer: near-real-time, jump-safe
+    this.breathClock += realDt;
 
     // 1. Grounded Waypoint Locomotion (zero foot-skating!)
     // In conversational focus she turns her WHOLE BODY toward you — natural
@@ -882,14 +941,14 @@ export class JarvisCharacterController {
         this.waypoints.shift();
       } else {
         const desiredYaw = Math.atan2(dx, dz);
-        this.root.rotation.y = this._lerpAngle(this.root.rotation.y, desiredYaw, clampedDt * 7.5);
+        this.root.rotation.y = this._lerpAngle(this.root.rotation.y, desiredYaw, realDt * 7.5);
 
         const maxSpeed = this.urgentRun ? 3.25 : 1.32;
         const decelFactor = this.waypoints.length === 1 ? Math.min(1, dist / 0.75) : 1;
         const targetSpeed = maxSpeed * Math.max(0.32, decelFactor);
-        this.currentSpeed += (targetSpeed - this.currentSpeed) * Math.min(1, clampedDt * 8.0);
+        this.currentSpeed += (targetSpeed - this.currentSpeed) * Math.min(1, realDt * 8.0);
 
-        const step = Math.min(dist, this.currentSpeed * clampedDt);
+        const step = Math.min(dist, this.currentSpeed * realDt);
         this.root.position.x += (dx / dist) * step;
         this.root.position.z += (dz / dist) * step;
 
@@ -901,13 +960,13 @@ export class JarvisCharacterController {
         }
       }
     } else {
-      this.currentSpeed *= Math.max(0, 1 - clampedDt * 10);
+      this.currentSpeed *= Math.max(0, 1 - realDt * 10);
       this._fadeToAction('idle', 0.35);
-      this.root.rotation.y = this._lerpAngle(this.root.rotation.y, this.targetYaw, clampedDt * 5.0);
+      this.root.rotation.y = this._lerpAngle(this.root.rotation.y, this.targetYaw, realDt * 5.0);
     }
 
     // 2. Advance skeletal mixer
-    this.mixer.update(clampedDt);
+    this.mixer.update(animDt);
 
     // 2b. Camera-relative cinematic relight (key/fill/rim around her head)
     this._updateCameraRelativeLighting(cameraWorldPos);
@@ -921,12 +980,19 @@ export class JarvisCharacterController {
     this._updateArmAim();
     this._updateFingerLife(reducedMotion);
 
+    // 3c. Aliveness layer: speech energy envelope → beat gestures & head
+    // accents; arm/wrist micro-life; eye saccades. (reducedMotion keeps a
+    // minimal saccade/energy subset so she never reads as a wax figure.)
+    this._updateSpeechEnergy(realDt);
+    if (!reducedMotion) this._applyAliveness(realDt);
+
     // 4. Head & Eye Gaze Tracking (rotates eyes/head naturally rather than spinning whole body!)
     const gazeTarget = this.focusCamera ? cameraWorldPos : this.lookWorldTarget;
+    this._updateSaccades(realDt);
     this._applyGazeTracking(gazeTarget);
 
     // 5. Asymmetric Natural Blinking
-    this._updateBlinking(clampedDt);
+    this._updateBlinking(realDt);
 
     // 6. Emotional Facial Expression Morphs
     this._updateExpressions();
@@ -967,6 +1033,14 @@ export class JarvisCharacterController {
       rArm.rotation.x -= 0.42 + Math.sin(t * 1.1) * 0.04;
       rArm.rotation.z -= 0.12;
       rFore.rotation.x -= 0.55 + Math.cos(t * 1.3) * 0.05;
+    } else if (this.postureMode === 'reflect') {
+      // Thinking pose: right hand toward the chin, weight settles, tiny
+      // contemplative sway (gaze is driven by BehaviorDirector's recall target)
+      rArm.rotation.x -= 0.74 + Math.sin(t * 0.9) * 0.018;
+      rArm.rotation.z -= 0.20;
+      rFore.rotation.x -= 1.34 + Math.cos(t * 1.05) * 0.022;
+      if (this.bones.RightHand) this.bones.RightHand.rotation.x -= 0.18;
+      if (this.bones.Head) this.bones.Head.rotation.z += 0.028; // slight tilt
     } else if (this.postureMode === 'scenario_construct') {
       // Symmetrical restrained two-hand volumetric expansion gesture
       rArm.rotation.x -= 0.48;
@@ -1068,14 +1142,118 @@ export class JarvisCharacterController {
     }
   }
 
+  /**
+   * Speech energy envelope from the live voice waveform: fast attack, slow
+   * release; stress onsets (energy jumping the recent peak floor) fire a head
+   * accent and flip the beat-gesture side. Drives everything conversational
+   * that must feel REACTIVE to her actual voice, not scripted.
+   */
+  _updateSpeechEnergy(dt) {
+    let target = 0;
+    if (this.voiceAnalyser && this.isSpeaking && this._timeSamples) {
+      this.voiceAnalyser.getFloatTimeDomainData(this._timeSamples);
+      let sum = 0;
+      for (let i = 0; i < this._timeSamples.length; i++) {
+        sum += this._timeSamples[i] * this._timeSamples[i];
+      }
+      const rms = Math.sqrt(sum / this._timeSamples.length);
+      target = Math.min(1, rms * 4.2);
+    }
+    const k = target > this._speechEnergy ? 18 : 6;
+    this._speechEnergy += (target - this._speechEnergy) * Math.min(1, dt * k);
+
+    const floor = Math.max(0.06, this._speechEnergyPeak * 0.55);
+    if (this._speechEnergy > floor + 0.15 && this._speechEnergy > 0.2) {
+      this._headAccent = Math.min(1, this._speechEnergy * 1.3);
+      this._beatSide *= -1;
+      this._speechEnergyPeak = this._speechEnergy; // re-arm after firing
+    } else {
+      this._speechEnergyPeak = Math.max(this._speechEnergy, this._speechEnergyPeak - dt * 0.5);
+    }
+    this._headAccent *= Math.max(0, 1 - dt * 6.5);
+    this._beatPhase += dt * (0.7 + this._speechEnergy * 2.4);
+  }
+
+  /**
+   * Aliveness gestures layered over the mixer output:
+   *  - living arms: continuous micro-sway + never-dead elbows/wrists
+   *  - speech beats: energy-driven forearm lifts alternating sides
+   *  - head accents: small nods on stress onsets
+   */
+  _applyAliveness(dt) {
+    const t = this.breathClock;
+
+    if (this.waypoints.length === 0 && this._armAimWeight < 0.5) {
+      for (const side of ['Left', 'Right']) {
+        const sign = side === 'Left' ? -1 : 1;
+        const arm = this.bones[`${side}Arm`];
+        const fore = this.bones[`${side}ForeArm`];
+        const hand = this.bones[`${side}Hand`];
+        const ph = sign > 0 ? 1.7 : 0;
+        if (arm) {
+          arm.rotation.z += sign * Math.sin(t * 0.42 + ph) * 0.02;
+          arm.rotation.x += Math.sin(t * 0.35 + ph) * 0.016;
+        }
+        if (fore) {
+          fore.rotation.x -= 0.05 + Math.sin(t * 0.5 + ph + 0.6) * 0.035; // elbows never lock straight
+        }
+        if (hand) {
+          hand.rotation.z += Math.sin(t * 0.44 + ph + 1.2) * 0.03;
+          hand.rotation.y += Math.sin(t * 0.31 + ph) * 0.02;
+        }
+      }
+    }
+
+    // Conversational beat gestures while speaking: restrained, energy-scaled,
+    // alternating sides on stress onsets — never a windmill robot.
+    if (this.isSpeaking && this._speechEnergy > 0.1 && this.waypoints.length === 0) {
+      const lift = this._speechEnergy * (0.55 + 0.45 * Math.sin(this._beatPhase));
+      const side = this._beatSide > 0 ? 'Right' : 'Left';
+      const sign = side === 'Left' ? -1 : 1;
+      const arm = this.bones[`${side}Arm`];
+      const fore = this.bones[`${side}ForeArm`];
+      // the scenario aim-solver owns the right arm while pointing
+      if (arm && fore && !(side === 'Right' && this._armAimWeight > 0.2)) {
+        arm.rotation.x -= lift * 0.26;
+        arm.rotation.z -= sign * lift * 0.09;
+        fore.rotation.x -= lift * 0.34;
+      }
+      // head accent: a small nod lands ON the stress
+      if (this._headAccent > 0.01 && this.bones.Head) {
+        this.bones.Head.rotation.x += this._headAccent * 0.055;
+      }
+    } else {
+      // idle listening: subtle head accent decays naturally (kept above)
+    }
+  }
+
+  /** Eye saccades: quick micro-darts around the gaze target. Humans make
+   *  2-4 per second; damped to ~1 per 0.7-2.6s here for composure, and
+   *  reduced while she speaks (she holds YOUR gaze while talking). */
+  _updateSaccades(dt) {
+    this._saccadeTimer -= dt;
+    if (this._saccadeTimer <= 0) {
+      this._saccadeTimer = 0.7 + Math.random() * 1.9;
+      const speakingScale = this.isSpeaking ? 0.35 : 1;
+      const amp = (0.018 + Math.random() * 0.04) * speakingScale;
+      const ang = Math.random() * Math.PI * 2;
+      this._saccadeTarget.set(Math.cos(ang) * amp, Math.sin(ang) * amp * 0.6, 0);
+    }
+    this._saccadeOffset.lerp(this._saccadeTarget, Math.min(1, dt * 13));
+  }
+
   _applyGazeTracking(worldTarget) {
     if (!this.bones.Head || !this.bones.Neck) return;
     const headPos = this.getHeadWorldPosition(new THREE.Vector3());
     const localDir = worldTarget.clone().sub(headPos);
     localDir.applyAxisAngle(new THREE.Vector3(0, 1, 0), -this.root.rotation.y).normalize();
 
-    const yaw = THREE.MathUtils.clamp(Math.atan2(localDir.x, localDir.z), -0.58, 0.58);
-    const pitch = THREE.MathUtils.clamp(-Math.asin(THREE.MathUtils.clamp(localDir.y, -0.8, 0.8)), -0.32, 0.32);
+    const yaw = THREE.MathUtils.clamp(
+      Math.atan2(localDir.x, localDir.z) + this._saccadeOffset.x, -0.58, 0.58
+    );
+    const pitch = THREE.MathUtils.clamp(
+      -Math.asin(THREE.MathUtils.clamp(localDir.y, -0.8, 0.8)) + this._saccadeOffset.y, -0.32, 0.32
+    );
 
     this.bones.Neck.rotation.y += yaw * 0.32;
     this.bones.Neck.rotation.x += pitch * 0.28;
@@ -1161,7 +1339,7 @@ export class JarvisCharacterController {
     // --- Layer 2: live waveform analysis ("how open, which shape") ---
     let audioJaw = null;
     let audioV = null;
-    if (this.voiceAnalyser && this.activeAudioSource) {
+    if (this.voiceAnalyser && this.activeAudioSource && this._freqBins) {
       this.voiceAnalyser.getFloatTimeDomainData(this._timeSamples);
       this.voiceAnalyser.getByteFrequencyData(this._freqBins);
       let sum = 0;
@@ -1170,27 +1348,43 @@ export class JarvisCharacterController {
       }
       const rms = Math.sqrt(sum / this._timeSamples.length);
       audioJaw = Math.min(0.72, rms * 3.6);
-      // Crude formant estimate: spectral centroid bucket → vowel shape
-      let weighted = 0;
+      // Formant-plane vowel estimate: F1 band (180-950 Hz ≈ jaw aperture) vs
+      // F2 band (950-2900 Hz ≈ tongue fronting) — far more accurate than a
+      // raw spectral centroid for both Mandarin and English vowels.
+      let f1 = 0;
+      let f2 = 0;
       let total = 0;
+      const binHz = this._binHz || 46.9;
+      const i1 = Math.max(2, Math.floor(180 / binHz));
+      const i2 = Math.floor(950 / binHz);
+      const i3 = Math.floor(2900 / binHz);
       for (let i = 2; i < this._freqBins.length; i++) {
         const mag = this._freqBins[i] / 255;
-        weighted += mag * i;
         total += mag;
+        if (i >= i1 && i < i2) f1 += mag;
+        else if (i >= i2 && i < i3) f2 += mag;
       }
       if (rms < 0.018) {
         audioV = 'viseme_sil';
       } else {
-        const centroid = total > 0.4 ? weighted / total : 30;
-        audioV = centroid < 18 ? 'viseme_U'
-          : centroid < 34 ? 'viseme_aa'
-          : centroid < 70 ? 'viseme_DD'
-          : 'viseme_E';
+        const norm = total + 1e-4;
+        const f1n = f1 / norm;
+        const f2n = f2 / norm;
+        audioV = f1n > 0.16 && f2n < 0.20 ? 'viseme_aa' // low tongue, open jaw
+          : f2n > 0.22 && f1n < 0.12 ? 'viseme_I'       // fronted tongue, closed
+          : f1n < 0.10 && f2n < 0.14 ? 'viseme_U'       // rounded, closed
+          : f1n > 0.12 && f2n > 0.16 ? 'viseme_E'       // mid-open front
+          : f1n > 0.14 ? 'viseme_O' : 'viseme_DD';
       }
     }
 
-    const activeV = audioV && audioV !== 'viseme_sil' ? audioV : timelineV;
-    const peak = audioV && audioV !== 'viseme_sil' ? 0.95 : 0.6;
+    // Text timeline is authoritative for the SHAPE (phoneme identity from
+    // pinyin / English rules); the live waveform refines the shape during
+    // timeline gaps and drives the actual jaw aperture.
+    const activeV = timelineV !== 'viseme_sil'
+      ? timelineV
+      : (audioV && audioV !== 'viseme_sil' ? audioV : timelineV);
+    const peak = 0.62 + Math.min(0.38, (audioJaw ?? 0) * 0.5);
     for (const v of VISEME_NAMES) {
       this._setMorph(v, v === activeV ? peak : 0.0, 0.5);
     }

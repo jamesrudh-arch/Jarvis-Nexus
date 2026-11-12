@@ -7,6 +7,7 @@
  */
 import * as THREE from 'three';
 import { NexusSanctuaryScene } from './world/NexusSanctuaryScene.js';
+import { SpeechSequencer, splitSentences } from './vendor/speechStream.mjs';
 
 export interface WorldSnapshot {
   owner_name: string;
@@ -60,6 +61,8 @@ export interface JarvisMessage {
   created_at: string;
   audio: string | null;
   audio_mime: string | null;
+  /** The exact text chunk the preloaded `audio` covers (first sentence). */
+  audio_text?: string | null;
 }
 
 export interface Telemetry {
@@ -164,6 +167,9 @@ export class NexusClient {
   private recordedChunks: Blob[] = [];
   private animClock = new THREE.Clock();
   private telemetryTimer: ReturnType<typeof setInterval> | null = null;
+  /** Sentence-chunked TTS player: chunk i speaks while i+1 synthesizes. */
+  private speechSequencer: SpeechSequencer | null = null;
+  private conversationEmotion = 'neutral';
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -180,6 +186,40 @@ export class NexusClient {
     // where a deferred async creation would leave an orphaned render loop
     // fighting over the same canvas (ghosted/duplicated character).
     this.sanctuary = new NexusSanctuaryScene(canvas, labelsLayer);
+
+    // Speech sequencer: plays replies sentence-by-sentence with one-chunk-ahead
+    // TTS prefetch, so time-to-first-word is one short synthesis instead of
+    // one full-paragraph synthesis. Abortable for instant owner interrupts.
+    this.speechSequencer = new SpeechSequencer({
+      fetchAudio: async (text: string, signal: AbortSignal) => {
+        try {
+          const voice = await api<{ audio?: string; mime?: string }>('/api/v1/voice/tts', {
+            method: 'POST',
+            body: JSON.stringify({ text, emotion: this.conversationEmotion }),
+            signal,
+          });
+          return voice?.audio ? { data: voice.audio, mime: voice.mime || 'audio/wav' } : null;
+        } catch {
+          return null;
+        }
+      },
+      speakChunk: (text: string, audio: { data: string; mime: string } | null, onEnd: () => void) => {
+        const jarvis = this.sanctuary?.jarvis;
+        if (!jarvis || !jarvis.loaded) { onEnd(); return; }
+        jarvis.speak(text, { audio: audio || undefined, onEnd });
+      },
+      onStart: () => {
+        this.interruptAvailable = true;
+        this.speakingState = true;
+      },
+      onDone: () => {
+        this.interruptAvailable = false;
+        this.speakingState = false;
+        this.narratingScenario = false;
+        this._drainNarrationQueue();
+        this.emit();
+      },
+    });
   }
 
   emit() {
@@ -280,6 +320,7 @@ export class NexusClient {
 
   dispose() {
     this.disposed = true;
+    this.speechSequencer?.stop(true);
     if (this.telemetryTimer) clearInterval(this.telemetryTimer);
     this.sanctuary?.renderer.setAnimationLoop(null);
   }
@@ -400,19 +441,36 @@ export class NexusClient {
     this.emit();
 
     if (this.world?.switches.embodiment !== false) {
-      this.sanctuary.jarvis.speak(jarvisMsg.content, {
-        audio: jarvisMsg.audio ? { data: jarvisMsg.audio, mime: jarvisMsg.audio_mime || 'audio/wav' } : undefined,
-        onEnd: () => {
-          this.interruptAvailable = false;
-          this.speakingState = false;
-          this._drainNarrationQueue();
-          this.emit();
-        },
-      });
+      // Conversational presence: she TURNS TO FACE the owner for her reply —
+      // speaking at a console while you address her reads as ignoring you.
+      // (Scenarios keep their own directing; this only applies when idle.)
+      const jarvis = this.sanctuary.jarvis;
+      if (!this.sanctuary.scenarioDirector.activeScenario && jarvis.loaded) {
+        jarvis.postureMode = 'conversational_focus';
+        jarvis.emotionalState = jarvisMsg.emotional_tone || 'attentive';
+        jarvis.focusCamera = true;
+      }
+
+      // Streamed speech: sentence chunks with prefetch. The server pre-
+      // synthesizes ONLY the first sentence (audio + audio_text) so playback
+      // starts immediately; the rest synthesizes as she talks.
+      this.conversationEmotion = jarvisMsg.emotional_tone || 'neutral';
+      const chunks = splitSentences(jarvisMsg.content);
+      const preloaded = jarvisMsg.audio && jarvisMsg.audio_text && chunks[0] === jarvisMsg.audio_text
+        ? { data: jarvisMsg.audio, mime: jarvisMsg.audio_mime || 'audio/wav' }
+        : null;
+      if (chunks.length > 0) {
+        this.speechSequencer?.play(jarvisMsg.content, preloaded);
+      } else {
+        this.interruptAvailable = false;
+        this.speakingState = false;
+        this.emit();
+      }
     }
   }
 
   async interruptSpeech() {
+    this.speechSequencer?.stop(true);
     this.sanctuary?.jarvis.interruptSpeech();
     this.interruptAvailable = false;
     this.speakingState = false;
@@ -689,34 +747,20 @@ export class NexusClient {
   }
 
   /** Narrate one scenario timeline cue with her real voice (server TTS) and
-   *  audio-driven viseme lip-sync. Falls back to silent-browser TTS on error. */
-  private async speakScenarioNarration(text: string) {
+   *  audio-driven viseme lip-sync. Streams through the shared sequencer
+   *  (sentence chunks + prefetch), falling back to browser TTS per chunk. */
+  private speakScenarioNarration(text: string) {
     const sanctuary = this.sanctuary;
     if (!sanctuary || !sanctuary.jarvis.loaded) return;
     if (sanctuary.jarvis.isSpeaking) {
-      // Speech started while the TTS fetch was in flight: re-queue instead of
-      // dropping the cue (it will drain on the next speech end).
+      // Speech started while this cue fired: re-queue instead of dropping it
+      // (it will drain on the next speech end).
       this.narrationQueue.unshift(text);
       return;
     }
-    try {
-      const voice = await api<{ audio?: string; mime?: string }>('/api/v1/voice/tts', {
-        method: 'POST',
-        body: JSON.stringify({ text, emotion: 'focused' }),
-      });
-      if (!sanctuary.scenarioDirector.activeScenario) return; // scenario closed mid-fetch
-      sanctuary.jarvis.speak(text, {
-        audio: voice?.audio ? { data: voice.audio, mime: voice.mime || 'audio/wav' } : undefined,
-        onEnd: () => {
-          this.narratingScenario = Boolean(sanctuary.scenarioDirector.activeScenario);
-          this._drainNarrationQueue();
-        },
-      });
-    } catch {
-      if (sanctuary.scenarioDirector.activeScenario) {
-        sanctuary.jarvis.speak(text);
-      }
-    }
+    this.conversationEmotion = 'focused';
+    this.narratingScenario = true;
+    this.speechSequencer?.play(text);
   }
 
   get scenarioDirector() {
