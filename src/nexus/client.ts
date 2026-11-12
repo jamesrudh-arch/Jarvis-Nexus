@@ -96,8 +96,27 @@ export interface NexusSnapshot {
 
 type SnapshotListener = (snap: NexusSnapshot) => void;
 
+// Minimal Web Speech API controller typings (the result types already exist in
+// TS's DOM lib, but the SpeechRecognition controller interface does not).
+interface SpeechRecognitionEvent extends Event {
+  readonly resultIndex: number;
+  readonly results: SpeechRecognitionResultList;
+}
+interface SpeechRecognition extends EventTarget {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  maxAlternatives: number;
+  onresult: ((ev: SpeechRecognitionEvent) => void) | null;
+  onerror: ((ev: Event) => void) | null;
+  onend: (() => void) | null;
+  start(): void;
+  stop(): void;
+  abort(): void;
+}
+
 async function api<T = Record<string, unknown>>(path: string, options: RequestInit = {}): Promise<T> {
-  const headers = options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' };
+  const headers: Record<string, string> = options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' };
   const res = await fetch(path, { ...options, headers: { ...headers, ...(options.headers as Record<string, string> | undefined) } });
   if (!res.ok) {
     let detail = `HTTP ${res.status}`;
@@ -137,6 +156,7 @@ export class NexusClient {
   private lastTickEmit = 0;
   private lastNarrCueIndex = -1;
   private narratingScenario = false;
+  private narrationQueue: string[] = [];
 
   private micStream: MediaStream | null = null;
   private camStream: MediaStream | null = null;
@@ -328,8 +348,9 @@ export class NexusClient {
     }
 
     if (snap.active_scenario && !sanctuary.scenarioDirector.activeScenario) {
-      const def = this.scenarios.find((s) => s.id === snap.active_scenario.scenario_id);
-      if (def) this.activateClientScenario(def, snap.active_scenario);
+      const activeScenario = snap.active_scenario;
+      const def = this.scenarios.find((s) => s.id === activeScenario.scenario_id);
+      if (def) this.activateClientScenario(def, activeScenario);
     } else if (!snap.active_scenario && sanctuary.scenarioDirector.activeScenario) {
       sanctuary.scenarioDirector.clearStage();
       this.activeScenarioDef = null;
@@ -360,8 +381,9 @@ export class NexusClient {
       this.showJarvisResponse(payload.jarvis_message);
 
       if (payload.activated_scenario) {
-        const def = this.scenarios.find((s) => s.id === payload.activated_scenario.scenario_id);
-        if (def) this.activateClientScenario(def, payload.activated_scenario);
+        const activated = payload.activated_scenario;
+        const def = this.scenarios.find((s) => s.id === activated.scenario_id);
+        if (def) this.activateClientScenario(def, activated);
       }
     } catch (err) {
       this.error = (err as Error).message;
@@ -383,6 +405,7 @@ export class NexusClient {
         onEnd: () => {
           this.interruptAvailable = false;
           this.speakingState = false;
+          this._drainNarrationQueue();
           this.emit();
         },
       });
@@ -394,6 +417,7 @@ export class NexusClient {
     this.interruptAvailable = false;
     this.speakingState = false;
     this.narratingScenario = false;
+    this.narrationQueue.length = 0;
     this.emit();
     try {
       const world = await api<WorldSnapshot>('/api/v1/world/interrupt', { method: 'POST' });
@@ -563,11 +587,18 @@ export class NexusClient {
 
   scenarioSetRate(rate: number) {
     const sd = this.sanctuary?.scenarioDirector;
-    if (sd) sd.playbackRate = rate;
+    if (sd) {
+      sd.playbackRate = rate;
+      this.emit();
+    }
   }
 
   scenarioUpdateVariable(key: string, value: number) {
     this.sanctuary?.scenarioDirector.updateVariables({ [key]: value });
+    // Emit so the controlled variable sliders re-render with the new value
+    // (updateVariables only mutates the director state; without this the
+    // slider thumb snaps back — audit bug B9).
+    this.emit();
   }
 
   toggleScenarioRecording(): boolean {
@@ -617,14 +648,19 @@ export class NexusClient {
     }
 
     // Scenario narration: when the timeline crosses into a new cue she SPEAKS
-    // the phase narration with her synthesized voice + synced mouth, pointing
-    // at the hologram. Skipped while she's already speaking (never overlaps).
+    // the phase narration with her synthesized voice + synced mouth. Cues that
+    // fire while she is already speaking are QUEUED (max 2, newest wins) and
+    // drained when the current speech ends — never silently dropped (the old
+    // `!this.speaking` gate consumed the cue index but skipped the speech,
+    // and the post-TTS isSpeaking guard lost the cue permanently).
     const cueIdx = sd.lastCueIndex;
-    if (sd.playing && cueIdx !== this.lastNarrCueIndex && !this.speaking) {
+    if (sd.playing && cueIdx !== this.lastNarrCueIndex) {
       this.lastNarrCueIndex = cueIdx;
       const cue = sd.activeScenario.timeline?.[Math.max(0, cueIdx)];
       if (cue?.narration && this.narratingScenario) {
-        void this.speakScenarioNarration(cue.narration);
+        this.narrationQueue.push(cue.narration);
+        if (this.narrationQueue.length > 2) this.narrationQueue.shift();
+        this._drainNarrationQueue();
       }
     }
 
@@ -642,12 +678,27 @@ export class NexusClient {
     this.emit();
   }
 
+  /** Speak the next queued narration cue if she is idle. Called whenever a
+   *  cue fires and whenever any speech (dialogue or narration) ends. */
+  private _drainNarrationQueue() {
+    const sanctuary = this.sanctuary;
+    if (!sanctuary || this.narrationQueue.length === 0) return;
+    if (this.speaking || sanctuary.jarvis.isSpeaking) return; // busy — the next onEnd will retry
+    const text = this.narrationQueue.shift();
+    if (text) void this.speakScenarioNarration(text);
+  }
+
   /** Narrate one scenario timeline cue with her real voice (server TTS) and
    *  audio-driven viseme lip-sync. Falls back to silent-browser TTS on error. */
   private async speakScenarioNarration(text: string) {
     const sanctuary = this.sanctuary;
     if (!sanctuary || !sanctuary.jarvis.loaded) return;
-    if (sanctuary.jarvis.isSpeaking) return;
+    if (sanctuary.jarvis.isSpeaking) {
+      // Speech started while the TTS fetch was in flight: re-queue instead of
+      // dropping the cue (it will drain on the next speech end).
+      this.narrationQueue.unshift(text);
+      return;
+    }
     try {
       const voice = await api<{ audio?: string; mime?: string }>('/api/v1/voice/tts', {
         method: 'POST',
@@ -658,6 +709,7 @@ export class NexusClient {
         audio: voice?.audio ? { data: voice.audio, mime: voice.mime || 'audio/wav' } : undefined,
         onEnd: () => {
           this.narratingScenario = Boolean(sanctuary.scenarioDirector.activeScenario);
+          this._drainNarrationQueue();
         },
       });
     } catch {

@@ -11,6 +11,7 @@
  */
 import * as THREE from 'three';
 import { MeshSurfaceSampler } from 'three/addons/math/MeshSurfaceSampler.js';
+import { evalBranchCondition } from './branchCondition.js';
 
 const CYAN = 0x62e6f2;
 const ICE = 0xddfbff;
@@ -56,25 +57,10 @@ export class HoloScanMaterial extends THREE.ShaderMaterial {
   }
 }
 
-/** Simple safe condition evaluator for branch rules ("key <= 1450" / "otherwise"). */
-function evalBranchCondition(cond, vars) {
-  if (!cond || cond === 'otherwise') return true;
-  const parts = cond.split('||');
-  for (const part of parts) {
-    const m = part.trim().match(/^(\w+)\s*(<=|>=|==|!=|<|>)\s*(-?[\d.]+)$/);
-    if (!m) continue;
-    const val = Number(vars[m[1]]);
-    const ref = Number(m[3]);
-    const op = m[2];
-    if (op === '<=') { if (val <= ref) return true; }
-    else if (op === '>=') { if (val >= ref) return true; }
-    else if (op === '==') { if (val === ref) return true; }
-    else if (op === '!=') { if (val !== ref) return true; }
-    else if (op === '<') { if (val < ref) return true; }
-    else if (op === '>') { if (val > ref) return true; }
-  }
-  return false;
-}
+// Branch conditions are evaluated by the shared boolean parser in
+// ./branchCondition.js (supports and/or/not, parentheses, comparisons).
+// Also used by ScenarioBar.tsx so the UI banner and the Media Wall feed can
+// never disagree again (single source of truth).
 
 export class ScenarioDirector3D {
   constructor(scene) {

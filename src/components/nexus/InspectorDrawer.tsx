@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import type { NexusClient } from '@/nexus/client';
+import type { NexusClient, Telemetry } from '@/nexus/client';
 
 type Tab = 'scenarios' | 'memory' | 'goals' | 'agents' | 'compute' | 'diagnostics';
 
@@ -54,7 +54,7 @@ export default function InspectorDrawer({
   const [memories, setMemories] = useState<MemoryRow[]>([]);
   const [goals, setGoals] = useState<GoalRow[]>([]);
   const [agents, setAgents] = useState<AgentRow[]>([]);
-  const [telemetry, setTelemetry] = useState<Record<string, unknown> | null>(null);
+  const [telemetry, setTelemetry] = useState<Telemetry | null>(null);
   const [securityEvents, setSecurityEvents] = useState<SecurityEvent[]>([]);
 
   const [memForm, setMemForm] = useState({ category: 'owner_fact', epistemic_status: 'owner_stated', title: '', content: '' });
@@ -76,7 +76,7 @@ export default function InspectorDrawer({
         setAgents(res.agents || []);
       } else if (t === 'diagnostics') {
         const [tel, sec] = await Promise.all([
-          jget<Record<string, unknown>>('/api/v1/telemetry'),
+          jget<Telemetry>('/api/v1/telemetry'),
           jget<{ events: SecurityEvent[] }>('/api/v1/security/events'),
         ]);
         setTelemetry(tel);
@@ -400,7 +400,7 @@ export default function InspectorDrawer({
                 <tbody>
                   <tr>
                     <td>CPU Utilisation</td>
-                    <td>{(telemetry.cpu_percent as number)?.toFixed(1)}% ({telemetry.cpu_cores} cores)</td>
+                    <td>{telemetry.cpu_percent.toFixed(1)}% ({telemetry.cpu_cores} cores)</td>
                   </tr>
                   <tr>
                     <td>RAM Used</td>
@@ -410,13 +410,13 @@ export default function InspectorDrawer({
                   <tr>
                     <td>Memories / Goals / Scenarios</td>
                     <td>
-                      {(telemetry.database_records as Record<string, number>)?.memories} /{' '}
-                      {(telemetry.database_records as Record<string, number>)?.goals} /{' '}
-                      {(telemetry.database_records as Record<string, number>)?.scenarios}
+                      {telemetry.database_records.memories} /{' '}
+                      {telemetry.database_records.goals} /{' '}
+                      {telemetry.database_records.scenarios}
                     </td>
                   </tr>
                   <tr><td>Uptime</td><td>{telemetry.uptime_sec} s</td></tr>
-                  <tr><td>Inference Route</td><td>{(telemetry.inference as Record<string, string>)?.active_backend}</td></tr>
+                  <tr><td>Inference Route</td><td>{telemetry.inference.active_backend}</td></tr>
                 </tbody>
               </table>
             </div>

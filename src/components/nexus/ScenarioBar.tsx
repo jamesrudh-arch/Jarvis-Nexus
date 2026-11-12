@@ -2,28 +2,26 @@
 
 import { useState } from 'react';
 import type { NexusClient, NexusSnapshot } from '@/nexus/client';
+import { evalBranchCondition } from '@/nexus/world/branchCondition.js';
 
 export default function ScenarioBar({ snap, client }: { snap: NexusSnapshot; client: NexusClient | null }) {
   const sd = client?.scenarioDirector;
+  // The director is a JS module (allowJs) whose `variables` infers as {} from
+  // its constructor; at runtime it is always Record<string, number>.
+  const vars = (sd?.variables ?? {}) as Record<string, number>;
   const [playing, setPlaying] = useState(Boolean(sd?.playing));
   const [recording, setRecording] = useState(snap.recording);
   const def = snap.activeScenarioDef;
   if (!def || !sd) return null;
 
   const updateBranchBanner = () => {
-    // Branch selection mirrors the reference logic
-    let chosen = def.branches?.[def.branches.length - 1];
-    if (!chosen) return { label: '', outcome: '', severity: '' };
-    const vars = sd.variables;
-    if (def.id === 'cryo_manifold_forensic') {
-      const ruptured = Number(vars.line_pressure_mpa ?? 210) >= 185 && Number(vars.relief_valve_ms ?? 125) > 70;
-      chosen = ruptured ? def.branches[0] : def.branches[1];
-    } else if (def.id === 'dual_turbine_sim') {
-      chosen = Number(vars.inlet_temp_k ?? 1320) <= 1450 ? def.branches[0] : def.branches[1];
-    } else if (def.id === 'zerotrust_compute_flow') {
-      chosen = Number(vars.expose_public_port ?? 0) === 0 ? def.branches[0] : def.branches[1];
+    // Single source of truth: the same shared evaluator the Media Wall feed uses
+    // (ScenarioDirector3D.getMediaFeedState). The old per-scenario hardcoded
+    // if-chains were a duplicate implementation that could drift out of sync.
+    for (const b of def.branches || []) {
+      if (evalBranchCondition(b.condition, vars)) return b;
     }
-    return chosen;
+    return null;
   };
   const branch = updateBranchBanner();
 
@@ -49,7 +47,7 @@ export default function ScenarioBar({ snap, client }: { snap: NexusSnapshot; cli
           </button>
           <select
             className="compact-select"
-            defaultValue="1"
+            value={String(sd.playbackRate)}
             onChange={(e) => client?.scenarioSetRate(Number(e.target.value))}
           >
             <option value="0.25">0.25×</option>
@@ -77,7 +75,7 @@ export default function ScenarioBar({ snap, client }: { snap: NexusSnapshot; cli
           min={0}
           max={def.duration_sec || 20}
           step={0.1}
-          defaultValue={sd.currentTime}
+          value={sd.currentTime}
           onInput={(e) => {
             client?.scenarioSeek(Number((e.target as HTMLInputElement).value));
             setPlaying(false);
@@ -89,14 +87,14 @@ export default function ScenarioBar({ snap, client }: { snap: NexusSnapshot; cli
         {(def.variables || []).map((v) => (
           <label className="var-control" key={v.key}>
             <span>
-              {v.label}: <strong className="tabular">{sd.variables[v.key] ?? v.default}</strong>
+              {v.label}: <strong className="tabular">{vars[v.key] ?? v.default}</strong>
             </span>
             <input
               type="range"
               min={v.min}
               max={v.max}
               step={v.step}
-              defaultValue={sd.variables[v.key] ?? v.default}
+              value={vars[v.key] ?? v.default}
               onInput={(e) => client?.scenarioUpdateVariable(v.key, Number((e.target as HTMLInputElement).value))}
             />
           </label>

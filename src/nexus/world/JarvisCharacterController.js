@@ -83,17 +83,17 @@ export class JarvisCharacterController {
     this.lightRig.add(this.keyTarget);
     this.keyLight.target = this.keyTarget;
 
-    this.fillLight = new THREE.PointLight(0xf5cbb0, 0.3, 5.5, 1.6); // LOW fill — ~4:1 key ratio sculpts the face
+    this.fillLight = new THREE.PointLight(0xf5cbb0, 0.5, 5.5, 1.6); // LOW fill — ~3.5:1 key ratio sculpts the face
     this.rimLight = new THREE.PointLight(0x62e6f2, 3.0, 5.5, 1.5);
-    // Cyan bounce from the holo-table side — the room's light kissing her front
-    // (kept subtle: cyan spill on chest/skin reads as a bad comp)
-    this.bounceLight = new THREE.PointLight(0x62e6f2, 0.6, 2.8, 1.8);
+    // (Light diet E1: the cyan holo-table bounce light was removed — at 0.6
+    // intensity it contributed little beyond shader cost, and cyan spill on
+    // chest/skin already read as a bad comp. The warm fill absorbs it.)
     // Dedicated soft warm face light — her face is ALWAYS readable, never a dark wax mask
     this.faceLight = new THREE.PointLight(0xffe9d8, 2.4, 3.4, 1.8);
     // Warm low kicker from the key-opposite side — models the dark torso so the
     // outfit keeps form instead of reading as a black cardboard cutout.
     this.kickerLight = new THREE.PointLight(0xffd9b0, 1.5, 6.5, 1.6);
-    this.lightRig.add(this.keyLight, this.fillLight, this.rimLight, this.bounceLight, this.faceLight, this.kickerLight);
+    this.lightRig.add(this.keyLight, this.fillLight, this.rimLight, this.faceLight, this.kickerLight);
     this.scene.add(this.lightRig);
 
     // Subtle ground contact shadow disc beneath feet (soft radial falloff)
@@ -505,12 +505,6 @@ export class JarvisCharacterController {
 
     this.fillLight.position.copy(head).addScaledVector(toCam, 1.1).addScaledVector(side, -0.6);
     this.fillLight.position.y -= 0.55;
-
-    // Cyan bounce: from the central holo-table toward her (fixed world motivation)
-    const tableDir = this._tmpTable || (this._tmpTable = new THREE.Vector3());
-    tableDir.set(0, 1.48, 0).sub(head).normalize();
-    this.bounceLight.position.copy(head).addScaledVector(tableDir, 1.15);
-    this.bounceLight.position.y -= 0.25;
   }
 
   _prepareMixamoClip(clip, newName, posScale = 0.01, stripXZRoot = true, srcRest = null, tgtRest = null, armCarry = null) {

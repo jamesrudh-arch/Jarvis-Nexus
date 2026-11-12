@@ -111,6 +111,12 @@ export class NexusSanctuaryScene {
       type: THREE.HalfFloatType,
     });
     this.composer = new EffectComposer(this.renderer, composerRT);
+    // B1 fix: the composer's render targets must live at DEVICE pixel resolution.
+    // EffectComposer defaults to pixelRatio 1, so without this every pass (scene
+    // render, bloom, vignette, output) ran at CSS-pixel size — half resolution on
+    // DPR>=2 devices, the "zoom blur" root cause. setPixelRatio resizes the RT
+    // to width*dpr x height*dpr internally.
+    this.composer.setPixelRatio(this._qualityDpr);
     this.renderPass = new RenderPass(this.scene, this.camera);
     this.bloomPass = new UnrealBloomPass(
       new THREE.Vector2(window.innerWidth, window.innerHeight),
@@ -406,7 +412,8 @@ export class NexusSanctuaryScene {
     // ------------------------------------------------------------------
     // 5. Motivated Architectural Lighting
     // ------------------------------------------------------------------
-    const ambient = new THREE.HemisphereLight(0x9ec5d6, 0x061017, 0.48);
+    // Ambient slightly raised to absorb the removed ceiling wall-washes (light diet E1)
+    const ambient = new THREE.HemisphereLight(0x9ec5d6, 0x061017, 0.56);
     this.architectureGroup.add(ambient);
 
     const centralDownlight = new THREE.SpotLight(0xfff0dd, 9.5, 16, Math.PI * 0.34, 0.65, 1.2);
@@ -425,24 +432,21 @@ export class NexusSanctuaryScene {
       [-5.8, -6.2, 0xd8eef5, 2.6], // Research Alcove
       [3.0, -7.2, 0x62e6f2, 2.2],  // Collaboration
       [6.2, -5.2, 0xd8eef5, 2.6],  // Media Wall
-      [7.2, 0.5, 0x9ec5d6, 2.4],   // Security Vault
+      [7.2, 0.5, 0x9ec5d6, 2.8],   // Security Vault (boosted: absorbs the removed +X dead-zone fill)
       [0.0, 6.8, 0xd8eef5, 2.4],   // Compute & Switches
       [-6.6, 4.6, 0xe7c98f, 1.6],  // warm wash, Diagnostics side
-      [8.9, -2.8, 0x9ec5d6, 2.1],  // soft fill, +X dead zone (FIXED row)
     ]) {
       const pl = new THREE.PointLight(col, intensity, 8.5, 1.5);
       pl.position.set(lx, 3.8, lz);
       this.architectureGroup.add(pl);
     }
 
-    // High wall-wash accents: three dim sources near the ceiling ring close the
-    // black voids at the top of wide compositions (readable architecture, not a
-    // character floating in nothing).
-    for (const [wx, wz] of [[7.6, -7.4], [-9.2, -4.4], [9.2, 4.6]]) {
-      const wash = new THREE.PointLight(0x7fb6c4, 1.15, 13, 1.4);
-      wash.position.set(wx, 5.3, wz);
-      this.architectureGroup.add(wash);
-    }
+    // Light diet (audit E1 first pass): the three dim ceiling wall-washes and
+    // the +X dead-zone fill are removed — three.js includes EVERY realtime
+    // light in every material's fragment shader, so 21 lights dominated the
+    // shading cost on mobile. The hemisphere bump above plus the Security
+    // Vault boost cover their visual contribution. The deeper, tiered diet
+    // lands with the quality-tier system (P1).
   }
 
   /** Cable conduits, hanging zone signage, etched floor plates. */
@@ -1011,10 +1015,13 @@ export class NexusSanctuaryScene {
   onResize() {
     const w = window.innerWidth;
     const h = window.innerHeight;
-    const isMobile = w <= 860;
     this._qualityDpr = Math.min(window.devicePixelRatio || 1, this._qualityDpr ? Math.min(this._qualityDpr, 2.0) : 2.0);
     this.renderer.setPixelRatio(this._qualityDpr);
     this.renderer.setSize(w, h);
+    // B1 fix (resize path): keep the composer's pixel ratio in sync so its
+    // targets stay at device resolution across window/DPR changes. setSize()
+    // multiplies by the composer's internal _pixelRatio.
+    this.composer.setPixelRatio(this._qualityDpr);
     this.composer.setSize(w, h);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
@@ -1041,7 +1048,20 @@ export class NexusSanctuaryScene {
       this.schlierenFeed.update(dt);
     }
     if (cameraSwitchOn && opticalVideoEl) {
-      this.updateVisionBoard(true, opticalVideoEl);
+      // B7 fix: the vision board is a 1024x640 canvas whose full texture is
+      // re-uploaded to the GPU on every redraw. Cap it at 30fps (a live video
+      // preview does not need per-frame uploads) and restore the LOCKED state
+      // once when the camera turns off (previously the last video frame just
+      // froze on screen).
+      this._visionBoardClock = (this._visionBoardClock || 0) + dt;
+      if (this._visionBoardClock >= 1 / 30) {
+        this._visionBoardClock = 0;
+        this.updateVisionBoard(true, opticalVideoEl);
+      }
+      this._visionBoardLive = true;
+    } else if (this._visionBoardLive) {
+      this.updateVisionBoard(false, null);
+      this._visionBoardLive = false;
     }
 
     const holoClock = (this.holoClock = (this.holoClock || 0) + dt);
@@ -1094,22 +1114,28 @@ export class NexusSanctuaryScene {
     this.behaviorDirector.update(dt, this.camera.position);
     this.cameraDirector.update(dt, this.jarvis, this.reducedMotion);
 
-    // 2b. Adaptive resolution guard: if the device can't hold the retina DPR,
-    // step it down (never below 1.0) instead of dropping frames. Only touches
-    // the pipeline when the value actually changes (no per-frame realloc churn).
+    // 2b. Adaptive resolution: step the DPR down when the device can't hold it
+    // (never below 1.0) and back UP when headroom returns (B5). A wide dead
+    // band (22–38ms) plus a 1.5s evaluation cooldown prevent oscillation and
+    // realloc churn. The composer now follows the renderer (B2 fix) — before,
+    // renderer.setPixelRatio changed only the canvas backing store while every
+    // post pass still rendered at the old size, i.e. the guard did nothing.
     this._frameTimeAvg = this._frameTimeAvg * 0.97 + Math.min(dt, 0.2) * 1000 * 0.03;
-    const maxDpr = Math.min(window.devicePixelRatio || 1, 2.0);
-    let targetDpr = this._qualityDpr;
-    if (this._frameTimeAvg > 42 && this._qualityDpr > 1.0) {
-      targetDpr = Math.max(1.0, this._qualityDpr - 0.25);
-    } else if (this._frameTimeAvg < 20 && this._qualityDpr < maxDpr) {
-      targetDpr = Math.min(this._qualityDpr + 0.125, maxDpr);
-    }
-    if (targetDpr !== this._qualityDpr && targetDpr !== this._appliedDpr) {
-      this._qualityDpr = targetDpr;
-      this._appliedDpr = targetDpr;
-      this.renderer.setPixelRatio(targetDpr);
-      this.composer.setSize(window.innerWidth, window.innerHeight);
+    this._dprEvalClock = (this._dprEvalClock || 0) + dt;
+    if (this._dprEvalClock >= 1.5) {
+      this._dprEvalClock = 0;
+      const maxDpr = Math.min(window.devicePixelRatio || 1, 2.0);
+      let targetDpr = this._qualityDpr;
+      if (this._frameTimeAvg > 38 && this._qualityDpr > 1.0) {
+        targetDpr = Math.max(1.0, this._qualityDpr - 0.25);
+      } else if (this._frameTimeAvg < 22 && this._qualityDpr < maxDpr) {
+        targetDpr = Math.min(this._qualityDpr + 0.125, maxDpr);
+      }
+      if (targetDpr !== this._qualityDpr) {
+        this._qualityDpr = targetDpr;
+        this.renderer.setPixelRatio(targetDpr);
+        this.composer.setPixelRatio(targetDpr);
+      }
     }
 
     // 3. Project 3D world-space scenario callout tags onto screen
@@ -1144,6 +1170,12 @@ export class NexusSanctuaryScene {
       { x: cx - size - 16, y: cy - size / 2, yaw: -Math.PI / 2 }, // Left (270 deg)
     ];
 
+    // B11 fix: each face now renders through the composer (renderPass camera
+    // swapped per face) so bloom + vignette + tone mapping match the standard
+    // mode — previously this path called renderer.render() directly and
+    // bypassed the entire post pipeline. The scissor rect clips the final
+    // OutputPass blit to each face viewport.
+    const mainCam = this.renderPass.camera;
     for (const v of views) {
       const vx = Math.max(0, Math.floor(v.x));
       const vy = Math.max(0, Math.floor(v.y));
@@ -1161,8 +1193,10 @@ export class NexusSanctuaryScene {
       );
       this.pyramidCam.lookAt(jPos.x, 0.98, jPos.z);
       this.pyramidCam.updateProjectionMatrix();
-      this.renderer.render(this.scene, this.pyramidCam);
+      this.renderPass.camera = this.pyramidCam;
+      this.composer.render();
     }
+    this.renderPass.camera = mainCam;
     this.renderer.setViewport(0, 0, w, h);
     this.renderer.setScissorTest(false);
   }
@@ -1206,11 +1240,18 @@ export class NexusSanctuaryScene {
       }
       placed.push({ sx, sy });
 
-      el.className = `spatial-tag ${a.amber ? 'amber' : ''}`;
+      // B8 fix: innerHTML parses + relayouts every frame; only write it when
+      // the content actually changed (position writes stay per-frame).
+      const cls = `spatial-tag ${a.amber ? 'amber' : ''}`;
+      if (el.className !== cls) el.className = cls;
       el.style.left = `${sx}px`;
       el.style.top = `${sy}px`;
       el.style.opacity = '1';
-      el.innerHTML = `${a.title}<span class="tag-sub">${a.sub}</span>`;
+      const html = `${a.title}<span class="tag-sub">${a.sub}</span>`;
+      if (el.__tagHtml !== html) {
+        el.innerHTML = html;
+        el.__tagHtml = html;
+      }
     });
   }
 }
