@@ -2,6 +2,34 @@
 
 Format: date — change — why. Newest first. Full diffs: git log.
 
+## 2026-11-13 (session 7) — Black-void avatar fix (root cause found + proven), EOS credentials complete in production, Groq free LLM provider, mobile dock fix
+
+**Digital-human embodiment repaired — the missing avatar was a NaN-poisoned camera, not a missing asset**
+- Symptom (production + local): scene rendered, UI worked, models downloaded 200, `loaded:true` — but the viewport was a black void with a flat center strip. VLM-confirmed "no humanoid anywhere in frame".
+- Root cause PROVEN with a property-setter stack trap on `targetYaw`: `BehaviorDirector` inspect branch computed the POI approach yaw as `atan2(look[0]-stand[0], look[2]-stand[2])` — but `stand` is 2D `[x, z]`, so `stand[2]` is `undefined` → NaN yaw → `root.rotation.y` NaN → conversation camera preset NaN → view-projection NaN → THREE.js silently frustum-culled EVERY object (avatar + architecture). Every inspect dispatch (30% of autonomy rolls) blanked the sanctuary.
+- Fix in three layers: correct index (`stand[1]`); `navigateTo` rejects non-finite destinations + focusCamera turn guards non-finite camera deltas + root-transform self-heal; `CameraDirector` NaN-guards desiredPos/target/fov with living_presence fallbacks. +4 regression tests (including one documenting the old formula as NaN-producing). 52/52 pass.
+- Live verification: 5+ min autonomy soak zero NaN; local avatar VLM-confirmed walking with full environment; PRODUCTION verified after deploy (center strip 1→106 color buckets, humanoid skin cluster present; Reset View + hologram mode + embodiment mode all verified). Commit `4cc3def`.
+
+**EOS: all five credentials now configured in Railway production**
+- Owner supplied the Client Secret (previously proven missing by 12 invalid_client_credentials permutations). Live OAuth result CHANGED to `client_missing_application_id` (18160) — Epic ACCEPTED the credentials; the remaining blocker is portal-side: the client needs an Application/Client-Policy association (userless trusted-server) in the Developer Portal. Exact owner steps documented in PROJECT_STATE.
+- Railway v2 GraphQL API reverse-engineered (endpoint moved to backboard.railway.com/graphql/v2; variableUpsert now takes projectId + returns Boolean). `EPIC_CLIENT_SECRET` created + stale `EPIC_CLIENT_ID` corrected via API (skipDeploys, single redeploy).
+
+**Task 2 — production LLM: Groq free-tier provider (D6 registry)**
+- Research verdict: GitHub Models RETIRED 2026-07-30 (rejected); Groq genuinely free (no card, no trial, no billing; gsk_ keys, ~14,400 req/day llama-3.1-8b-instant, verified Oct 2026).
+- `src/lib/nexus/providers/groqCloud.ts`: OpenAI-compatible LLM + whisper-large-v3-turbo ASR via plain fetch, zero deps. Default chain now `groq_cloud -> zai_cloud_route -> honest fallback`. Live-verified: no key → falls through to z.ai (real conversation completed); bad key → honest throw → fall-through (unit-tested). ACTIVATION: owner adds `GROQ_API_KEY` to Railway (free, 1 minute).
+
+**Task 5 — mobile: dialogue dock overflow fix**
+- On 390px the single-row dock needed ~476px with overflow visible — Resume Work/Transmit unreachable. ≤860px: bar wraps (input full row, buttons share rows, 44px targets). iPhone 14 emulation verified: dockFits=true, no horizontal overflow. Mobile avatar render verified (full figure visible).
+
+**Credentials live-verified this session (real API calls; values never printed)**
+- GitHub (authenticated, push proven), Kaggle ×6 (datasets/list + kernels/list 200 each), Supabase data plane (service_role JWT: auth health + both buckets), Supabase sb_secret_ (storage 200; management API 401 = project-scoped key, documented expected), Railway (workspace token: projects/services/variables read + variableUpsert + serviceInstanceRedeploy executed), EOS (secret VALID, portal-side blocker documented).
+- Railway env audit: 37 variables, hash-compared against owner-supplied values; 2 upserted (EPIC_CLIENT_SECRET new, EPIC_CLIENT_ID corrected), 35 in sync.
+
+**Security findings (Task 6)**
+- Frontend bundles scanned (8 chunks, 1.5 MB): ZERO credential leakage (EOS values, API keys, service-role JWTs all absent).
+- CRITICAL (owner decision required): all `/api/v1/*` endpoints except `/api/v1/storage` are UNAUTHENTICATED — conversations/send, memories, goals, switches, world mutations accept anonymous calls (verified live). Storage is properly owner-key-guarded (deny-by-default). Recommendation: extend the x-owner-key guard to mutation routes.
+- Note: all secrets were shared in chat by the owner; rotate after setup.
+
 ## 2026-11-13 (session 6) — Storage backend live (Supabase), §6 real tool execution, honesty guard, EOS IDs complete
 
 **Credential integration finished with REAL operations** (final master directive: use them, verify them, demonstrate — audit register rewritten: docs/INTEGRATIONS.md)
