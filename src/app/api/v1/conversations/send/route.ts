@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { synthesizeVoice, think } from '@/lib/nexus/brain';
+import { executeTool, detectImplicitStorageTool, type ToolResult } from '@/lib/nexus/tools';
+import { runLlm } from '@/lib/nexus/providers/registry';
 import { splitSentences } from '@/nexus/vendor/speechStream.mjs';
 import {
   commandMoveToZone,
@@ -62,6 +64,46 @@ export async function POST(req: NextRequest) {
     });
 
     const { directive, inferenceSource } = await think(content);
+
+    // §6 tool execution: REAL operations against live services, then the
+    // ACTUAL results are spoken back (follow-up turn — never fabricated).
+    // Honesty guard: if the LLM failed to emit a tool call for an unambiguous
+    // explicit storage request (observed 2026-11-13: claimed deletion without
+    // executing), the server force-executes it so the spoken reply matches
+    // reality.
+    if (directive.tool_calls.length === 0) {
+      const implicit = detectImplicitStorageTool(content);
+      if (implicit) directive.tool_calls = [implicit];
+    }
+    let toolResults: ToolResult[] = [];
+    if (directive.tool_calls.length > 0) {
+      for (const call of directive.tool_calls) {
+        toolResults.push(await executeTool(call));
+      }
+      try {
+        const speak = await runLlm({
+          messages: [
+            {
+              role: 'assistant',
+              content:
+                'You are NEXUS (persona: FRIDAY register, address the owner as "Boss", '
+                + '1-2 sentences, plain speakable prose, no markdown, no emoji). '
+                + 'You just executed tool operations for the owner. Speak ONLY what the '
+                + 'ACTUAL results below say — never invent success or details. If a '
+                + 'result failed, say it failed plainly.',
+            },
+            {
+              role: 'user',
+              content: `Owner asked: "${content}"
+Tool results: ${JSON.stringify(toolResults)}`,
+            },
+          ],
+        });
+        if (speak?.content?.trim()) directive.reply = speak.content.trim().slice(0, 600);
+      } catch {
+        // Keep the LLM's own reply; tool_results still surface honestly below.
+      }
+    }
 
     // Persist durable memory writes from the directive
     for (const w of directive.memory_writes) {
@@ -163,6 +205,8 @@ export async function POST(req: NextRequest) {
         // §14). null when no gateway is configured — client uses local engines.
         audio_faces: voice?.faces ?? null,
       },
+      // §6 tools: actual execution results (ok/detail/data only — no secrets)
+      tool_results: toolResults,
       world,
       activated_scenario: world.active_scenario,
     });

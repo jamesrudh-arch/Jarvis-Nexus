@@ -133,7 +133,10 @@ export class KaggleResourceManager {
     this.accounts[picked.index - 1].usageCount++;
     const res = await kaggleFetch(
       picked.token,
-      `/datasets/list?search=${encodeURIComponent(search)}&maxSize=${max}`
+      // NB: pageSize = result count. (maxSize is a BYTE-size filter on Kaggle —
+      // live-verified 2026-11-13: maxSize=5 returned 0 datasets, pageSize=5
+      // returned real results.)
+      `/datasets/list?search=${encodeURIComponent(search)}&pageSize=${max}`
     );
     if (!res.ok) throw new Error(`Kaggle dataset search failed: HTTP ${res.status}`);
     const rows = (Array.isArray(res.data) ? res.data : []) as Array<Record<string, unknown>>;

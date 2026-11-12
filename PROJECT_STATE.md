@@ -6,12 +6,25 @@
 > decisions > engineering baseline > ENGINEERING_DECISIONS.md > ARCHITECTURE.md >
 > IMPLEMENTATION_BACKLOG.md > PROJECT_STATE.md > CHANGELOG.md > RESEARCH_REGISTER.md.
 
-**Last session:** 2026-11-12 (session 5) — credential integration completed per directive: every supplied credential inspected, mapped, configured and exercised with REAL API operations (GitHub push, Kaggle ×6 data-plane ops with 77 kernels listed, Cloudflare R2-scoped token CREATED via API with S3 credentials derived per official docs, Railway write-access proven + volume + 19 production vars + live deployment verified, Epic EOS real OAuth attempt establishing the exact missing values).
-**Overall state:** P0 COMPLETE AND VERIFIED (sessions 1–3). Session 4: integrations layer + wake-word/standby/barge-in + runtime-environment implementations. Session 5: production deployment LIVE on Railway (`jarvis-nexus-production.up.railway.app`) with persistent volume + full env; remaining external items are precisely enumerated in docs/INTEGRATIONS.md (R2 dashboard enable, SUPABASE_URL, EOS secret/product/deployment ids). P1 render/asset work remains.
+**Last session:** 2026-11-13 (session 6) — credential integration COMPLETED per the final directive: every supplied credential mapped, configured and exercised with REAL operations. Supabase is now the storage backend (owner directive) with full CRUD live-verified (bucket create → upload → byte-identical readback → anonymous rejection → delete → gone); R2 retired and removed from production env. §6 tool execution made real (storage.put/get/list/delete + kaggle.datasets executed server-side, ACTUAL results spoken back — with a deterministic honesty guard after a live-observed false-deletion claim was caught and fixed). Kaggle `datasets/list` bug fixed (maxSize is a BYTE filter; pageSize is the count). EOS: all 4 IDs configured; Client Secret proven missing by 12 real OAuth permutations — the single outstanding credential in the project. `.env.local` rebuilt after sandbox recycle (GitHub token + DB password recovered FROM Railway production env).
+**Overall state:** P0 complete and verified; integrations layer real-operations-verified; production deployment LIVE on Railway (`jarvis-nexus-production.up.railway.app`) with the full 37-variable env including all session-6 credentials. P1 render/asset work remains.
 
 ---
 
-## What works (verified this session — session 5)
+## What works (verified this session — session 6)
+
+- **Credential recovery + mapping**: `.env.local` (lost to sandbox recycle) rebuilt from the owner's message + Railway production env (GITHUB_TOKEN, GITHUB_REPO, SUPABASE_DB_PASSWORD, CLOUDFLARE_ACCOUNT_ID, OWNER_EMAIL recovered WITHOUT printing values). 24 variables mapped to services; `.gitignore` coverage re-verified.
+- **Supabase = storage backend (directive)**: real CRUD verified twice (probe `verify_credentials_v2.py` + honest verifier): private buckets `jarvis-nexus-verify`/`jarvis-nexus-assets`, upload → byte-identical readback → anonymous rejection (400) → delete → gone. Both key classes live-verified (sb_secret_ + service_role JWT work on rest/storage/auth). Free-tier guardrails: 10 MiB/file, 920 MiB quota guard, usage surfaced in the UI.
+- **§6 REAL tool execution**: `tool_calls` in the directive contract → server-side execution → ACTUAL results spoken by a follow-up LLM turn. Live end-to-end: storage.put (60 bytes, readback verified, independent readback matched), storage.delete (after honesty-guard fix: really gone, HTTP 404), kaggle.datasets (16 real refs). Response carries `tool_results` for auditability.
+- **Honesty guard (defect caught live)**: first delete test — LLM claimed deletion without executing; object still present. Fixed: MANDATORY tool rules + `detectImplicitStorageTool` (explicit verb + key → force-execute). Unit-tested (44/44 suite, +7 new tests: key sanitization, call coercion, guard intents).
+- **Kaggle bug fix**: `datasets/list?maxSize=` is a BYTE-size filter (0 results); `pageSize` is the result count — fixed in `kaggle.ts`, verified live with real dataset refs.
+- **`/api/v1/storage`**: owner-key-guarded HTTP storage surface (deny-by-default). E2E: wrong/no key → 403; traversal key → 400; upload → verified; download → byte-identical; delete → 404. Status surface (public metadata) shows buckets/usage/quota.
+- **EOS**: Product/Client/Deployment/Sandbox IDs configured everywhere; 12/12 real OAuth permutations answered 400 invalid_client_credentials → Client Secret is the single genuinely missing credential (exact source documented: Dev Portal → product → Clients).
+- **Cloudflare**: token account-verified; R2 RETIRED per directive (no R2 calls; R2 vars deleted from Railway — verified none remain).
+- **Railway**: 16 vars upserted + 3 deleted (37 total, zero R2 leftovers); live deployment healthy.
+- **Honest verifier updated**: `scripts/verify_integrations.py` → 17/18 OK (only EOS secret fails, honestly).
+
+## What works (verified in session 5 — still true)
 
 - **Credential integration completed with real operations** (the directive's core demand — audit register: docs/INTEGRATIONS.md):
   - **GitHub**: authenticated (jamesrudh-arch), push permission verified, session commits pushed to main.

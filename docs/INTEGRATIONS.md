@@ -1,12 +1,14 @@
-# JARVIS NEXUS — Integration Audit Register (Session 5, 2026-11-12)
+# JARVIS NEXUS — Integration Audit Register (Session 6, 2026-11-13)
 
 Live-verification evidence: `scripts/verify_integrations.py` (honest verifier —
-accounts for account-scoped tokens, GraphQL null-propagation, project-scoped
-keys), `scripts/probe_services*.py` (deep probes, stages 1–8),
-`scripts/configure_production.py` (production configuration writes),
-`GET /api/v1/integrations` (runtime status surface). Statuses below are the
-results of REAL authenticated calls against each service on 2026-11-12 —
-no fabricated claims. Secrets live ONLY in gitignored `.env*` files.
+exercises REAL storage CRUD, real OAuth, per-account Kaggle identity),
+`scripts/verify_credentials_v2.py` (session-6 ground-truth probe),
+`scripts/recover_missing_creds.py` (credential recovery from Railway after
+`.env.local` was lost to a sandbox recycle), `scripts/sync_railway_env.py`
+(production env alignment), `GET /api/v1/integrations` + `GET /api/v1/storage`
+(runtime status surfaces). Statuses below are the results of REAL
+authenticated calls against each service on 2026-11-13 — no fabricated
+claims. Secrets live ONLY in gitignored `.env*` files.
 
 ## Audit states used (per directive)
 
@@ -17,79 +19,129 @@ scopes/identities enumerated) → **Real operations successful** (non-trivial
 read/write executed and verified) → **Production verified** (live deployment
 exercises the integration).
 
+## Supabase — STORAGE BACKEND, REAL OPERATIONS VERIFIED (production verified)
+
+| State | Evidence |
+|---|---|
+| Discovered | `SUPABASE_URL` (project `fccvmedhmlofgiwjrjrp`), `SUPABASE_ACCESS_TOKEN` (new-format `sb_secret_` secret key), `SUPABASE_SERVICE_ROLE_KEY` (owner-supplied JWT, payload role=service_role — treated as privileged, server-side only), `SUPABASE_DB_PASSWORD`; all recovered/recorded in `.env.local` |
+| Configured | `.env.local` + Railway production variables; runtime: `src/lib/nexus/integrations/supabase.ts` — full client (buckets, objects, PostgREST, usage/quota guardrails). Storage is THE project storage per owner directive (R2 retired) |
+| Authenticated | `GET /rest/v1/` → 200; `GET /auth/v1/health` → 200 (GoTrue v2.197.0); `GET /storage/v1/bucket` → 200. Key matrix live-verified: BOTH the `sb_secret_` key and the service_role JWT authenticate on rest+storage+auth (sb_secret_ preferred) |
+| Permissions verified | service-role data-plane scope confirmed: bucket create/list, object write/read/delete all permitted; private-bucket anonymous access correctly rejected (HTTP 400) |
+| Real operations | **Full storage CRUD, verified twice (probe + verifier)**: created PRIVATE buckets `jarvis-nexus-verify` + `jarvis-nexus-assets` (10 MiB per-file limit) → uploaded probe object → **byte-identical readback** → deleted → readback gone (400/404). PostgREST select surface reachable (OpenAPI descriptor 200) |
+| Production | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ACCESS_TOKEN`, `NEXUS_STORAGE_BUCKET` on Railway; `/api/v1/storage` (owner-key-guarded HTTP surface) + §6 tool layer (below) exercise the backend end-to-end |
+| Quota guardrails | 1 GiB free-tier budget enforced: uploads rejected past 920 MiB estimated usage; per-file cap 10 MiB; usage surfaced in `/api/v1/integrations` + `/api/v1/storage` |
+
+## §6 Tool execution — REAL OPERATIONS VERIFIED (agent-grade)
+
+The brain's directive contract now carries `tool_calls`; the server executes
+them against live services and a follow-up LLM turn speaks the ACTUAL results
+(`src/lib/nexus/tools.ts` + `toolContract.ts`, `conversations/send` route).
+Verified end-to-end on 2026-11-13 (local production build, live services):
+
+- **storage.put**: owner asked to store a note → real Supabase write, 60 bytes,
+  readback verified; reply spoken from the actual tool result; independent
+  readback via `/api/v1/storage` returned the exact content.
+- **storage.delete + honesty guard**: first attempt exposed a REAL defect — the
+  LLM claimed "deleted" without executing (object still present). Fixed with
+  MANDATORY tool rules + a deterministic server-side guard
+  (`detectImplicitStorageTool`: explicit verb + file key → force-execute).
+  Re-test: tool executed, `tool_results ok:true`, independent verification
+  HTTP 404 (really gone).
+- **kaggle.datasets**: "search Kaggle for datasets about wind turbine blade" →
+  16 REAL dataset refs returned and spoken (e.g.
+  `mohammadshekaramiz/small-wind-turbine-blade-dataset-cai-swtb`). Bug found
+  and fixed en route: `datasets/list?maxSize=` is a BYTE filter (returned 0);
+  the correct parameter is `pageSize`.
+- **storage.get / storage.list**: covered by the same guard + unit tests
+  (44/44); retrieval now force-executes on explicit "read back <key>" phrasing
+  instead of quoting dialogue history.
+
 ## GitHub — PRODUCTION VERIFIED
 
 | State | Evidence |
 |---|---|
-| Discovered | `GITHUB_TOKEN` (classic PAT) + `GITHUB_REPO` in `.env.local` |
-| Configured | `.env.local` (local) + Railway production variables (service Jarvis-Nexus) |
-| Authenticated | `GET /user` → 200, identity `jamesrudh-arch` |
-| Permissions verified | repo `jamesrudh-arch/Jarvis-Nexus`: push=True (also push on `Jarvis`) |
-| Real operations | Session-4 history pushed and verified via API + `git ls-remote`; this session's commits pushed (see git log) |
-| Production | The Railway service deploys from this repo (repo trigger, see Railway row) |
+| Discovered | `GITHUB_TOKEN` + `GITHUB_REPO` — recovered from Railway production variables after the sandbox recycle (`.env.local` had been lost; recovery script writes values without printing) |
+| Configured | `.env.local` + Railway production variables |
+| Authenticated | `GET /user` → 200, identity `jamesrudh-arch` (id 355075328) |
+| Permissions verified | repo `jamesrudh-arch/Jarvis-Nexus`: admin/maintain/push/triage/pull all true |
+| Real operations | Session-6 commits pushed and verified (see git log + ls-remote) |
+| Production | The Railway service deploys from this repo (repo trigger) |
 
 ## Kaggle ×6 — REAL OPERATIONS VERIFIED
 
 | State | Evidence |
 |---|---|
-| Discovered | `KAGGLE_API_TOKEN_1..6` (KGAT tokens) in `.env.local` |
-| Configured | `.env.local` + Railway production variables; runtime: `src/lib/nexus/integrations/kaggle.ts` (per-account verify, round-robin routing, dataset discovery, private kernel push) |
-| Authenticated | `GET /api/v1/hello` → 200 for each: jimcreat, wikeyoung, deyoungsltd, bittrexminingltd, wikeyoung5, youngwilly |
-| Permissions verified | Per-account identity confirmed; data-plane read scope live |
-| Real operations | `GET /api/v1/kernels/list?user=<name>` → 200 per account — **77 kernels visible** (e.g. `jimcreat/deyoung-diag`, `bittrexminingltd/deyoung-h3-b`, `wikeyoung5/deyoung-lipsync-cpu`); `datasets/list?user=` → 200 per account; `competitions/list` → 200. (Note: the `mine=true` query param is rejected 400 by the current API — `user=<username>` is the working form.) |
-| Production | Tokens configured on the Railway deployment; the resource manager is server-side only |
+| Discovered | `KAGGLE_API_TOKEN_1..6` (KGAT_ tokens, owner re-supplied 2026-11-13) |
+| Configured | `.env.local` + Railway production variables; runtime: per-account verify, round-robin routing, dataset discovery (fixed), private kernel push |
+| Authenticated | `GET /api/v1/hello` → 200 for each: jimcreat, wikeyoung, deyoungsltd, bittrexminingltd, wikeyoung5, youngwilly (all six re-verified today) |
+| Permissions verified | Per-account identity + data-plane read scope live |
+| Real operations | `kernels/list?user=<name>` → 200 per account (live today); `datasets/list` search → real results via the §6 tool (16 refs, see above). Write-plane (kernel push) deliberately NOT exercised in tests — it creates permanent objects on the owner's accounts; the code path exists and is quota-tracked per account |
+| Production | Tokens on the Railway deployment; resource manager server-side only |
 
-## Cloudflare + R2 — AUTHENTICATED, S3 CREDENTIALS CREATED VIA API; R2 ENABLEMENT IS A DASHBOARD/BILLING ACTION
+## Cloudflare — AUTHENTICATED (account); R2 RETIRED BY DIRECTIVE
 
 | State | Evidence |
 |---|---|
-| Discovered | `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` in `.env.local` |
-| Configured | `.env.local` + Railway production variables; runtime: `src/lib/nexus/integrations/r2.ts` (management REST + dependency-free SigV4 S3 data plane) |
-| Authenticated | `GET /accounts` → 200, account `Jamesrudh@gmail.com's Account`, id matches the supplied account id. The token is an **account-scoped API token**: `/user/tokens/verify` legitimately answers 401 (user-level auth required) — expected for this token class, not a fault |
-| Permissions verified | Account-tokens API read (`GET /accounts/{id}/tokens` → 200, existing token listed), 416 permission groups enumerable including all R2 groups (IDs recorded in `scripts/probe_services2.py` output) |
-| Real operations | **Created a new R2-scoped account token via the API** (`POST /accounts/{id}/tokens`, policy: Workers R2 Storage Bucket Item Read+Write + Storage Metadata Read, resource = the account) → 200 `jarvis-nexus-r2-s3` active. Per official R2 docs, the S3 credentials are derived from the created token: **Access Key ID = token id, Secret Access Key = SHA-256(token value)** — both computed and stored in `.env.local` + Railway (never printed/committed). The new token authenticates and reaches the R2 API |
-| Blocked (account state) | R2 itself is **not enabled on the Cloudflare account**: every R2 endpoint (list/create buckets, with both the original and the new token) returns `403 code 10042 "Please enable R2 through the Cloudflare Dashboard"`. The API message itself states this is a dashboard action; enabling R2 requires a payment method — a billing action that cannot be performed with an API token. Once the owner enables R2 (Dashboard → R2 → Enable), uploads activate with ZERO code changes (client + credentials are ready) |
+| Discovered | `CLOUDFLARE_API_TOKEN` (re-supplied 2026-11-13) + `CLOUDFLARE_ACCOUNT_ID` (recovered from Railway) |
+| Configured | `.env.local` + Railway |
+| Authenticated | `GET /accounts` → 200: `Jamesrudh@gmail.com's Account` (id matches). Token is account-scoped: `/user/tokens/verify` answers 401 for this class (expected, not a fault) |
+| R2 | **RETIRED by owner directive 2026-11-13** — Supabase is the storage backend. No R2 API calls are made; the account never had R2 enabled (error 10042, a dashboard billing action). The SigV4 client code is kept dormant for history; R2 credentials were removed from Railway (`R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` deleted — verified none remain) |
+| Free services | No Cloudflare service is currently required by the architecture (storage: Supabase free tier; deployment: Railway free tier). The verified token remains available if a genuinely free Cloudflare capability is needed later |
 
 ## Railway — PRODUCTION VERIFIED (live deployment)
 
 | State | Evidence |
 |---|---|
-| Discovered | `RAILWAY_API_TOKEN` in `.env.local` |
-| Configured | `.env.local` + the deployment's own runtime env; runtime status: `src/lib/nexus/integrations/index.ts` (projects + latest-deployment + public URL) |
-| Authenticated | GraphQL `projects` query → 200 (workspace token). `me` is not readable by this token (field-level restriction; querying `me` together with other fields nulls the whole response — this caused the earlier session's false "0 projects" reading; fixed in the verifier) |
-| Permissions verified | **Write access CONFIRMED by real mutations**: `variableUpsert` → true, `variableDelete` → true (probe variable created and removed — clean), `volumeCreate` → success. Schema introspection available (255 mutations) |
-| Real operations | Project `reasonable-heart` (created by owner 2026-11-12T14:49) — service **Jarvis-Nexus** deployed from GitHub `jamesrudh-arch/Jarvis-Nexus@main` (repo trigger). Deployment `b320d328` SUCCESS (image digest recorded). **Persistent volume created at `/data`** (SQLite home, matches Dockerfile). **19 environment variables written** (DATABASE_URL + all service credentials) |
-| Production | **Live at `https://jarvis-nexus-production.up.railway.app`** — `/api/v1/health` answered 200 (was `degraded: DATABASE_URL missing` before this session's env writes; the post-push deployment boots with the volume + full env). Deployment status verified via API after push |
+| Discovered | `RAILWAY_API_TOKEN` (re-supplied 2026-11-13) |
+| Configured | `.env.local` + the deployment's own runtime env; runtime status surface reports project + latest deployment + public URL |
+| Authenticated | GraphQL `projects` query → 200 (workspace token; `me` field not readable by this token class — known, accounted for) |
+| Permissions verified | Write access confirmed earlier by real mutations (variableUpsert/Delete, volumeCreate); re-exercised today: 16 variables upserted + 3 deleted via `scripts/sync_railway_env.py` |
+| Real operations | Project `reasonable-heart`, service **Jarvis-Nexus** (GitHub repo trigger, persistent volume `/data`): 37 production variables now include SUPABASE_URL / SERVICE_ROLE_KEY / EPIC_* IDs / OWNER_KEY / NEXUS_STORAGE_BUCKET; zero R2 leftovers |
+| Production | **Live at `https://jarvis-nexus-production.up.railway.app`** — `/api/v1/health` 200 (core online); post-push deployment re-verified |
 
-## Supabase — CONFIGURED; PROJECT URL IS THE SINGLE MISSING IDENTIFIER
-
-| State | Evidence |
-|---|---|
-| Discovered | `SUPABASE_ACCESS_TOKEN` (**`sb_secret_…` project-scoped secret key**, format-verified) + `SUPABASE_DB_PASSWORD` in `.env.local` |
-| Configured | `.env.local` + Railway production variables; runtime: `src/lib/nexus/integrations/supabase.ts` — data-plane client (PostgREST select/upsert, service health) activates the moment `SUPABASE_URL` is set; management client activates with an `sbp_` PAT |
-| Authenticated | Management API **rejects** the `sb_secret_` key with `401 "JWT could not be decoded"` (real response — it expects an `sbp_` personal access token). Header variants tried (Bearer / apikey / both / both paths) — established by attempt, not assumption |
-| Missing identifier | The **project URL** (`https://<ref>.supabase.co`, Dashboard → Settings → API). Searched: repo, git history, `.env*` files, reference repos, Railway project variables — not present. The `sb_secret_` key cannot list projects (management API rejects it), so the ref cannot be self-discovered. Owner action: paste `SUPABASE_URL` (or provide an `sbp_` PAT which enables project listing) |
-| Production | Credentials staged on Railway; when `SUPABASE_URL` is added the data-plane client goes live with zero code changes |
-
-## Epic Online Services — CLIENT ID VERIFIED; SECRET/PRODUCT/DEPLOYMENT IDS REQUIRED
+## Epic Online Services — IDS CONFIGURED; CLIENT SECRET IS THE SINGLE MISSING CREDENTIAL
 
 | State | Evidence |
 |---|---|
-| Discovered | `EPIC_CLIENT_CREDENTIAL` in `.env.local` — **Epic CLIENT ID format** (`xyza7891…`, 32 chars; classified, not guessed) |
-| Configured | Copied to `EPIC_CLIENT_ID` in `.env.local` + Railway; consumed by `unreal/Plugins/JarvisNexusEOS` (C++: `EOS_Platform_Create` + client-credentials login) via `src/lib/nexus/integrations/eos.ts` |
-| Authenticated (attempt) | **Real OAuth attempt**: `POST api.epicgames.dev/epic/oauth/v2/token` with client-credentials grant using the supplied ID as both id+secret → `400 invalid_client` (`errors.com.epicgames.account.invalid_client_credentials`); with empty secret → `invalid_client` header error; control probe with bogus id → same invalid-credentials error. **Established by attempt: the client secret is genuinely required and was not among the stored credentials** |
-| Missing values | `EPIC_CLIENT_SECRET`, `EPIC_PRODUCT_ID`, `EPIC_DEPLOYMENT_ID` (EOS Developer Portal → product → EOS settings). EOS auth happens inside the SDK at engine runtime — no REST verification exists |
+| Discovered | Owner-supplied 2026-11-13: Product `Jarvis nexus` (`EPIC_PRODUCT_ID`), `EPIC_CLIENT_ID` (xyza7891… format), `EPIC_DEPLOYMENT_ID`, `EPIC_SANDBOX_IDS` |
+| Configured | `.env.local` + Railway; consumed by `unreal/Plugins/JarvisNexusEOS` (C++: EOS_Platform_Create + client-credentials login) via `src/lib/nexus/integrations/eos.ts` |
+| Authenticated (attempt) | **Real OAuth attempts** against `api.epicgames.dev/epic/oauth/v2/token`: all **12 client/secret permutations** of every supplied value (client ID, product ID, deployment ID, sandbox ID) → `400 errors.com.epicgames.account.invalid_client_credentials`. Established by attempt: the Client Secret is a distinct credential and is not among the supplied values |
+| Missing value | `EPIC_CLIENT_SECRET` — EOS Developer Portal → your product → Clients → Client Secret. This is the ONLY missing integration credential in the project. Everything else is wired: once supplied, `eos.ts` performs the live exchange automatically and the UE5 plugin config is complete |
+| Runtime consumer | unreal/JarvisNexusEOS (EOS SDK at engine runtime) + ios/JarvisNexus |
+
+## /api/v1/storage — REAL OPERATIONS VERIFIED (owner HTTP surface)
+
+Guarded surface over the Supabase backend: `GET` status (public metadata
+only), `GET/PUT/DELETE ?key=` (require `X-Owner-Key` == server-side
+`OWNER_KEY`, deny-by-default when unset). E2E verified 2026-11-13: wrong key
+→ 403; no key → 403; traversal key (`../etc/passwd`) → 400; valid upload →
+`verified:true` (readback); download → byte-identical (binary-safe); delete →
+404 on re-read. Key sanitization unit-tested (44/44 suite).
 
 ## Blender / Unreal (local runtimes) — CONFIGURED, AWAITING EXTERNAL EXECUTION
 
-- `BLENDER_MCP_HOST=127.0.0.1`, `BLENDER_MCP_PORT=9876` configured (`.env.local`); runtime client `blenderMcp.ts`; addon `blender/jarvis_blender` (bpy operators + MCP-style TCP server). Execution requires Blender 4.2+ on any host (no credential to verify — local software).
-- `UNREAL_BRIDGE_URL` intentionally empty until the owner opens `unreal/` in UE 5.5 and runs the whitelisted Python bridge (see `unreal/README.md`).
+- `BLENDER_MCP_HOST=127.0.0.1`, `BLENDER_MCP_PORT=9876`; runtime client
+  `blenderMcp.ts`; addon `blender/jarvis_blender`. Execution requires Blender
+  4.2+ on any host (no credential to verify — local software).
+- `UNREAL_BRIDGE_URL` intentionally empty until the owner opens `unreal/` in
+  UE 5.5 and runs the whitelisted Python bridge (see `unreal/README.md`).
 
 ## Security posture
 
-- All secrets live ONLY in gitignored `.env*` (verified: `git check-ignore`; secrets audit over all tracked files — zero matches before push).
-- Production variables on Railway are stored by Railway (encrypted at rest); the API surface (`/api/v1/integrations`) exposes connection state + identities ONLY — verified: no route dumps `process.env`, no route forwards service operations to anonymous callers (grep-verified).
-- Probe variables created during write tests were deleted (Railway variables map verified empty of probes).
-- UE bridge accepts a fixed command whitelist (no arbitrary execution); Blender bridge likewise.
-- Kaggle tokens are used server-side only (Node runtime routes).
-- Standing recommendation: rotate the GitHub PAT (it was pasted in chat during the original directive).
+- All secrets live ONLY in gitignored `.env*` (`git check-ignore` verified;
+  secrets audit over all tracked files + git history — zero matches before push).
+- The owner-supplied "anon key" is actually a **service_role JWT** — it is
+  stored as `SUPABASE_SERVICE_ROLE_KEY`, used server-side only, and NEVER
+  shipped to the client. The frontend never receives any service credential.
+- `/api/v1/storage` mutations/downloads are deny-by-default behind
+  `X-Owner-Key` (random 64-hex generated server-side, stored in Railway env +
+  `.env.local` only); the status surface exposes metadata only.
+- Storage keys are sanitized (no traversal, no absolute paths, ≤128 chars,
+  extension-checked) in both the tool layer and the HTTP surface; per-file
+  10 MiB cap; free-tier quota guard at 920 MiB.
+- `/api/v1/integrations` exposes connection state + identities ONLY.
+- UE bridge accepts a fixed command whitelist (no arbitrary execution);
+  Blender bridge likewise. Kaggle/Supabase/GitHub/Railway tokens are used
+  server-side only (Node runtime routes).
+- Standing recommendation (unchanged): rotate the GitHub PAT and the
+  re-supplied tokens after development stabilizes; they were pasted in chat.

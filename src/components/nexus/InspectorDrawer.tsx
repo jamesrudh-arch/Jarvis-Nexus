@@ -32,9 +32,13 @@ interface IntegrationSnap {
     configuredCount: number;
   };
   cloudflare: { configured: boolean; accountAccess: boolean; r2Enabled: boolean; buckets: string[]; s3Credentials: boolean; bucketName: string | null; detail: string };
-  supabase: { managementConfigured: boolean; dataConfigured: boolean; connected: boolean; detail: string };
+  supabase: {
+    dataConfigured: boolean; connected: boolean; storageConnected: boolean;
+    buckets: string[]; appBucket: string | null; usageBytes: number | null;
+    quotaLimitBytes: number; keyClass: string | null; detail: string;
+  };
   railway: { configured: boolean; authenticated: boolean; projects: number; detail: string };
-  eos: { configured: boolean; complete: boolean; missing: string[]; detail: string; consumer: string };
+  eos: { configured: boolean; complete: boolean; authenticated: boolean; missing: string[]; detail: string; consumer: string };
   unreal: { configured: boolean; reachable: boolean; engineVersion: string | null; detail: string };
   blender: { configured: boolean; reachable: boolean; blenderVersion: string | null; detail: string };
 }
@@ -403,15 +407,25 @@ export default function InspectorDrawer({
                       </td>
                     </tr>
                     <tr>
-                      <td>Cloudflare R2</td>
-                      <td style={{ color: integrations.cloudflare.r2Enabled ? 'var(--cyan)' : 'var(--amber)' }}>
+                      <td>Cloudflare (account token)</td>
+                      <td style={{ color: 'var(--muted)' }}>
                         {integrations.cloudflare.detail}
                       </td>
                     </tr>
                     <tr>
-                      <td>Supabase</td>
-                      <td style={{ color: integrations.supabase.connected ? 'var(--cyan)' : 'var(--amber)' }}>
+                      <td>Supabase (data plane)</td>
+                      <td style={{ color: integrations.supabase.connected ? 'var(--cyan)' : 'var(--red)' }}>
                         {integrations.supabase.detail}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Object Storage — {integrations.supabase.appBucket ?? 'jarvis-nexus-assets'} (Supabase)</td>
+                      <td style={{ color: integrations.supabase.storageConnected ? 'var(--cyan)' : 'var(--amber)' }}>
+                        {integrations.supabase.storageConnected
+                          ? `CONNECTED · ${integrations.supabase.buckets.length} bucket(s) · `
+                            + `~${((integrations.supabase.usageBytes ?? 0) / 1048576).toFixed(2)} MiB of `
+                            + `${(integrations.supabase.quotaLimitBytes / 1048576).toFixed(0)} MiB free tier`
+                          : 'storage API unreachable with configured key'}
                       </td>
                     </tr>
                     <tr>
@@ -422,7 +436,7 @@ export default function InspectorDrawer({
                     </tr>
                     <tr>
                       <td>Epic Online Services</td>
-                      <td style={{ color: integrations.eos.complete ? 'var(--cyan)' : 'var(--amber)' }}>
+                      <td style={{ color: integrations.eos.authenticated ? 'var(--cyan)' : 'var(--amber)' }}>
                         {integrations.eos.detail}
                       </td>
                     </tr>

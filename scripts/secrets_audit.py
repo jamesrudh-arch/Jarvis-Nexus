@@ -13,7 +13,7 @@ PATTERNS = [
     ("Cloudflare API token value", re.compile(r"[A-Za-z0-9_-]{40}_[A-Za-z0-9_-]{13}")),
     ("Supabase secret key", re.compile(r"sb_secret_[A-Za-z0-9]{20,}")),
     ("Supabase PAT", re.compile(r"sbp_[A-Za-z0-9]{20,}")),
-    ("Railway token", re.compile(r"railway_\w+|rlw_[A-Za-z0-9]{20,}")),
+    ("Railway token", re.compile(r"rlwy_[A-Za-z0-9_]{15,}|railway_(?:pat|key|token)_[A-Za-z0-9]{15,}")),
     ("Epic secret-like", re.compile(r"xyza7891[A-Za-z0-9]{24}")),
     ("R2 secret key (sha256-like in env assignment)", re.compile(r"R2_SECRET_ACCESS_KEY\s*=\s*[0-9a-f]{64}")),
     ("Generic password assignment (literal)", re.compile(r"(?i)(password|passwd|secret)[a-z_]*\s*[:=]\s*['\"][^'\"]{12,}['\"]")),

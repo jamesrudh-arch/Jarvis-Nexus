@@ -105,12 +105,13 @@ async function railwayStatus(): Promise<IntegrationSnapshot['railway']> {
 export async function getIntegrationSnapshot(force = false): Promise<IntegrationSnapshot> {
   if (!force && cache && Date.now() - cache.at < CACHE_MS) return cache.snap;
 
-  const [github, kaggleAccounts, cloudflare, supabase, railway, unreal, blender] = await Promise.all([
+  const [github, kaggleAccounts, cloudflare, supabase, railway, eos, unreal, blender] = await Promise.all([
     githubClient.status(),
     kaggleManager.verifyAll(),
     r2Client.status(),
     supabaseClient.status(),
     railwayStatus(),
+    eosIntegration.status(),
     unrealBridge.status(),
     blenderMcp.status(),
   ]);
@@ -126,7 +127,7 @@ export async function getIntegrationSnapshot(force = false): Promise<Integration
     cloudflare,
     supabase,
     railway,
-    eos: eosIntegration.status(),
+    eos: await eosIntegration.status(),
     unreal,
     blender,
   };

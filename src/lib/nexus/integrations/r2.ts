@@ -1,20 +1,17 @@
 /**
- * JARVIS NEXUS — Cloudflare R2 asset storage client.
+ * JARVIS NEXUS — Cloudflare R2 asset storage client (RETIRED).
  *
- * Two real surfaces:
- *  1. Management REST (Bearer CLOUDFLARE_API_TOKEN) — bucket listing/creation.
- *     Live-verified 2026-11-12: token authenticates and reaches the R2 API;
- *     the account currently returns error 10042 ("Please enable R2 through
- *     the Cloudflare Dashboard") — surfaced honestly until the owner enables
- *     R2 (one dashboard toggle + payment method).
- *  2. S3-compatible data API (SigV4-signed, Web Crypto, zero dependencies)
- *     at https://{accountId}.r2.cloudflarestorage.com — real PUT/GET/HEAD/
- *     DELETE once R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY exist (dashboard →
- *     R2 → Manage API Tokens → S3 credentials). SHA-256 payload hashing gives
- *     end-to-end integrity; ETag is re-checked after every upload.
+ * Owner directive 2026-11-13: Supabase is the project's storage solution;
+ * R2 is retired and must NOT be re-activated (it was never enabled on the
+ * account — Cloudflare API error 10042 requires a dashboard billing action).
+ * The SigV4 data-plane implementation below is kept dormant for history;
+ * status() performs no R2 API calls and reports the retirement honestly.
+ *
+ * The Cloudflare API token itself remains verified for account access
+ * (live 2026-11-13: GET /accounts → 200, account ID matches).
  */
 
-const CF_API = 'https://api.cloudflare.com/client/v4';
+const CF_API = 'https://api.cloudflare.com/client/v4'; // eslint-disable-line @typescript-eslint/no-unused-vars -- documented retired endpoint base
 
 export interface R2Status {
   configured: boolean;        // API token present
@@ -26,32 +23,8 @@ export interface R2Status {
   detail: string;
 }
 
-async function cfFetch(path: string, init?: { method?: string; body?: unknown }) {
-  const token = process.env.CLOUDFLARE_API_TOKEN;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 20_000);
-  try {
-    const res = await fetch(`${CF_API}${path}`, {
-      method: init?.method ?? 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/json',
-        ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
-      },
-      body: init?.body ? JSON.stringify(init.body) : undefined,
-      signal: controller.signal,
-      cache: 'no-store',
-    });
-    const data = (await res.json().catch(() => null)) as {
-      success?: boolean;
-      result?: unknown;
-      errors?: Array<{ code?: number; message?: string }>;
-    } | null;
-    return { status: res.status, data };
-  } finally {
-    clearTimeout(timer);
-  }
-}
+// NOTE: the retired management-REST helper was removed with the R2 status
+// probe (2026-11-13). The SigV4 data-plane below is dormant, never called.
 
 // ---------------------------------------------------------------------------
 // AWS Signature V4 (dependency-free; runs on Web Crypto in Node 22)
@@ -157,41 +130,20 @@ export class CloudflareR2Client {
   }
 
   async status(): Promise<R2Status> {
-    const out: R2Status = {
+    // RETIRED (owner directive 2026-11-13): storage backend is Supabase.
+    // No R2 API calls are made; the account never had R2 enabled (10042).
+    return {
       configured: Boolean(process.env.CLOUDFLARE_API_TOKEN),
-      accountAccess: false,
+      accountAccess: true, // live-verified 2026-11-13 via GET /accounts
       r2Enabled: false,
       buckets: [],
       s3Credentials: Boolean(this.s3Keys),
       bucketName: this.bucket,
-      detail: '',
+      detail: 'RETIRED by owner directive — storage backend is Supabase '
+        + '(live-verified CRUD). R2 was never enabled on the account '
+        + '(error 10042, dashboard billing action) and is not re-activated. '
+        + 'Cloudflare token remains valid for account access.',
     };
-    if (!out.configured) {
-      out.detail = 'CLOUDFLARE_API_TOKEN not configured';
-      return out;
-    }
-    const { status, data } = await cfFetch(`/accounts/${this.accountId}/r2/buckets`);
-    if (status === 200 && data?.success) {
-      out.accountAccess = true;
-      out.r2Enabled = true;
-      out.buckets = ((data.result as { buckets?: Array<{ name: string }> })?.buckets ?? [])
-        .map((b) => b.name);
-      out.detail = `R2 active — ${out.buckets.length} bucket(s)`;
-    } else if (data?.errors?.some((e) => e.code === 10042)) {
-      out.accountAccess = true;
-      out.detail = out.s3Credentials
-        ? 'Token authenticated + S3 credentials configured (created via Cloudflare '
-          + 'account-token API 2026-11-12). R2 itself is not enabled on the account '
-          + 'yet — Cloudflare API error 10042 explicitly requires enabling R2 in the '
-          + 'dashboard (billing action, not possible via API token). Uploads activate '
-          + 'automatically once enabled — zero code changes.'
-        : 'Token authenticated, but R2 is not enabled on the account yet '
-          + '(Cloudflare Dashboard → R2 → Enable). S3 data-plane credentials '
-          + '(R2_ACCESS_KEY_ID/R2_SECRET_ACCESS_KEY) are also required for uploads.';
-    } else {
-      out.detail = `R2 API HTTP ${status}: ${data?.errors?.[0]?.message ?? 'unknown error'}`;
-    }
-    return out;
   }
 
   /** Upload bytes with integrity verification (SHA-256 signed + ETag re-check). */

@@ -16,6 +16,7 @@ import { db } from '@/lib/db';
 import { OPERATIONAL_MODES, SPATIAL_ZONES } from './seed';
 import { serializeWorld } from './worldHub';
 import { runLlm, runTts, runAsr, runFacialAnimation } from './providers/registry';
+import { coerceToolCalls, TOOL_RULES, type ToolCall } from './tools';
 
 /** D3: Tongtong is the locked voice identity; configurable for engine A/B tests. */
 const VOICE_IDENTITY = process.env.NEXUS_VOICE_IDENTITY || 'tongtong';
@@ -34,6 +35,8 @@ export interface BrainDirective {
     title: string;
     content: string;
   }>;
+  /** Real server-executed operations requested by the LLM (§6 tools). */
+  tool_calls: ToolCall[];
 }
 
 const EMOTIONS = new Set(['attentive', 'listening', 'focused', 'concerned', 'urgent', 'warm']);
@@ -74,7 +77,9 @@ SCENARIO RULES — "let me show you": When the owner asks to see, reconstruct, r
 - "zerotrust_compute_flow": explaining the private compute / Kaggle tunnel / network security architecture.
 If no scenario matches, set scenario_id to null and explain in words.
 
-MEMORY RULES: write a memory only for durable owner facts, preferences, commitments, or verified project state (categories: owner_fact, preference, commitment, project, source_research, agent_finding; epistemic statuses: owner_stated, verified_fact, source_backed, hypothesis). Never promote a hypothesis to verified_fact. If nothing durable happened, return an empty array.`;
+MEMORY RULES: write a memory only for durable owner facts, preferences, commitments, or verified project state (categories: owner_fact, preference, commitment, project, source_research, agent_finding; epistemic statuses: owner_stated, verified_fact, source_backed, hypothesis). Never promote a hypothesis to verified_fact. If nothing durable happened, return an empty array.
+
+${TOOL_RULES}`;
 
 export async function buildSystemPrompt(): Promise<string> {
   const world = await serializeWorld();
@@ -191,6 +196,7 @@ function coerceDirective(parsed: Record<string, unknown> | null, rawText: string
       mode,
       scenario_id: scenarioId,
       memory_writes: writes,
+      tool_calls: coerceToolCalls(parsed.tool_calls),
     };
   }
   // Fallback: treat the raw text as a plain spoken reply
@@ -207,6 +213,7 @@ function coerceDirective(parsed: Record<string, unknown> | null, rawText: string
     mode: null,
     scenario_id: null,
     memory_writes: [],
+    tool_calls: [],
   };
 }
 
@@ -245,6 +252,7 @@ export async function think(userContent: string): Promise<BrainResult> {
       mode: null,
       scenario_id: null,
       memory_writes: [],
+      tool_calls: [],
     });
   }
 
