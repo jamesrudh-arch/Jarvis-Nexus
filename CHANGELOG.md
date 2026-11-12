@@ -2,6 +2,33 @@
 
 Format: date — change — why. Newest first. Full diffs: git log.
 
+## 2026-11-12 (session 3) — Repository walkthrough + researched-tool integrations: Audio2Face-3D facial animation, MetaHuman drop-in path
+
+**Repository investigation (Directive §2, repeated per user order)**
+- All three reference repos (`reference/Jarvis/`, `ref_jarvis_repo/`, `repo-ref/`) diffed: near-identical clones of the same upstream (Python FastAPI CORE + Vite/three.js frontend); the live Next.js port already carries the world/character/scenario modules forward
+- Full read of the live character stack: JarvisCharacterController.js (1,580 lines), client speech wiring, provider registry, send/TTS routes — the actual baseline for this session's work (previous summaries had drifted from the real state)
+
+**Research (the repos the Master Directive names — RESEARCH_REGISTER F8–F14, with sources)**
+- NVIDIA Audio2Face: open-sourced Sep 2025 (F8); the hosted build.nvidia.com NIM is DEPRECATED and gRPC-only (F9); full wire protocol extracted by cloning NVIDIA/Audio2Face-3D-Samples (F10): PCM16-mono WAV in → bidi `ProcessAudioStream` → ARKit blendshape keyframes `{time_code, values[]}` with CamelCase names + emotion params
+- metahuman-to-glb: 5-stage UE 5.7 → Draco GLB pipeline, 51 ARKit blendshapes, ~40 MB; needs Windows + UE + Blender (F11). MetaHuman license permits use in ANY engine since 5.6 (F12) — our three.js use is compatible
+- PixelStreamingInfrastructure: Epic's official external servers/frontend repo since UE 5.5 (F13) — recorded as the P4 Unreal-track transport
+- Convention discovery (F14): UE/MetaHuman ARKit set uses SINGLE `mouthFunnel`/`mouthPucker` (no L/R) — 51 shapes excluding tongueOut; verified against NVIDIA's shipped configs
+
+**Audio2Face-3D integration (Directive §14 — "connect to the real tools")**
+- New provider `src/lib/nexus/providers/audio2face.ts` + `FacialAnimationProvider` contract + registry chain `NEXUS_FACE_PROVIDERS` (default `audio2face_local`); `runFacialAnimation()` with time budget
+- `scripts/a2f_gateway.py`: self-hostable FastAPI gateway speaking NVIDIA's exact gRPC protocol (cloned client as the reference) → JSON `{fps, durationMs, curves}`; JARVIS emotion states mapped to A2F emotion strengths; honest /health; runs wherever the owner hosts A2F — no gRPC/npm deps in the Next.js tree
+- `synthesizeVoice()` attaches the face track for the SAME audio chunk (budget `A2F_BUDGET_MS`, default 1200 ms, never delays first word); send route returns `audio_faces`, TTS route returns `faces`
+- Client: track flows through the SpeechSequencer into `character.speak()`; `faceCurve.mjs` validates deeply and samples with linear interpolation; `_updateLipSync` Layer 0 = neural track (jaw/mouth/brow/cheek/nose/chin/tongue), blink + gaze stay LOCAL by design (ED-19/ED-20); expression layer defers brow/mouth to the track while active
+- Honest degradation verified LIVE with no gateway configured: faces:null → local LipsyncZh/En engines drive speech (98 viseme segments in the headless audit); zero console errors
+
+**MetaHuman drop-in path (D2 upgrade readiness)**
+- New `src/nexus/vendor/skeletonMaps.mjs`: UE5→Mixamo bone map (one-to-one, completeness-tested), convention auto-detection, ARKit-51 list, viseme→ARKit fallback mixes
+- Controller load() detects the skeleton convention and aliases bones — every downstream system (retarget tables, postures, gaze, fingers, accents) works unchanged on a metahuman-to-glb export; Avaturn-specific rest-pose calibration skipped for that convention; `_setMorph` degrades visemes to ARKit shapes on rigs without Oculus visemes
+
+**Verification**
+- 37/37 unit tests (13 new: track validation/sampling/ownership, bone-map completeness, viseme fallback, ARKit-51 exact set); `tsc --noEmit` clean; production build clean; headless audit v3 passes end-to-end (character loads, speaks, points, behaves)
+- A2F chain verified LIVE against a clearly-labelled test-substitute gateway (`scripts/mock_a2f_gateway.py`, Directive §27) via `scripts/verify_a2f_stub.py`: PASS — cheekPuff (curve-only fingerprint) sustained >0.2, jawOpen varied >0.25 p2p and reached >0.6 on the live face morphs; send route returns `audio_faces`; client speaks through the sequencer. Only the NVIDIA gRPC hop inside the gateway remains externally blocked (wheel + GPU)
+
 ## 2026-11-12 (session 2) — Character-quality pass: Chinese lip-sync, streamed speech, aliveness, locomotion fix
 
 **Mandarin lip-sync engine (D-workflow)**

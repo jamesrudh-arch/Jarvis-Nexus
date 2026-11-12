@@ -18,18 +18,22 @@ import type {
   LlmProvider,
   TtsProvider,
   AsrProvider,
+  FacialAnimationProvider,
   ChatCompletionRequest,
   ChatCompletionResult,
   TtsRequest,
   TtsResult,
   AsrRequest,
   AsrResult,
+  FacialAnimationRequest,
+  FacialAnimationResult,
 } from './types';
 
 export interface InferenceConfig {
   llm: string[];
   tts: string[];
   asr: string[];
+  face: string[];
 }
 
 /** Parse a comma-separated provider chain env var; empty -> fallback chain. */
@@ -46,6 +50,7 @@ export function getInferenceConfig(): InferenceConfig {
     llm: parseProviderChain(process.env.NEXUS_LLM_PROVIDERS, ['zai_cloud_route']),
     tts: parseProviderChain(process.env.NEXUS_TTS_PROVIDERS, ['zai_cloud_route']),
     asr: parseProviderChain(process.env.NEXUS_ASR_PROVIDERS, ['zai_cloud_route']),
+    face: parseProviderChain(process.env.NEXUS_FACE_PROVIDERS, ['audio2face_local']),
   };
 }
 
@@ -74,6 +79,13 @@ async function resolveTts(id: string): Promise<TtsProvider | null> {
 async function resolveAsr(id: string): Promise<AsrProvider | null> {
   if (id === 'zai_cloud_route') {
     return (await import('./zaiCloud')).zaiAsr;
+  }
+  return null;
+}
+
+async function resolveFace(id: string): Promise<FacialAnimationProvider | null> {
+  if (id === 'audio2face_local') {
+    return (await import('./audio2face')).a2fFace;
   }
   return null;
 }
@@ -131,6 +143,32 @@ export async function runAsr(req: AsrRequest): Promise<string> {
     }
   }
   return '';
+}
+
+/** Run the facial-animation chain; null when every provider fails or is
+ *  unconfigured (caller keeps the local rule-based lip-sync engines). */
+export async function runFacialAnimation(
+  req: FacialAnimationRequest,
+  budgetMs?: number
+): Promise<FacialAnimationResult | null> {
+  const chain = getInferenceConfig().face;
+  for (const id of chain) {
+    try {
+      const provider = await resolveFace(id);
+      if (!provider || !(await provider.available())) continue;
+      const attempt = provider.animate(req);
+      const result = budgetMs
+        ? await Promise.race([
+            attempt,
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), budgetMs)),
+          ])
+        : await attempt;
+      if (result && Object.keys(result.curves).length > 0) return result;
+    } catch (err) {
+      console.warn(`[inference:face] provider '${id}' failed: ${(err as Error).message}`);
+    }
+  }
+  return null;
 }
 
 export { DEFAULT_CHAIN };

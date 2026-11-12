@@ -47,6 +47,25 @@ export interface AsrResult {
   providerId: string;
 }
 
+/**
+ * Facial animation (Directive §14): audio → ARKit blendshape track.
+ * JSON-safe wire format shared with the client: { fps, durationMs, curves }.
+ */
+export interface FacialAnimationRequest {
+  /** Synthesized voice audio (PCM/WAV or MP3 depending on TTS engine). */
+  audio: Buffer;
+  mime: string;
+  emotion?: string;
+}
+
+export interface FacialAnimationResult {
+  providerId: string;
+  fps: number;
+  durationMs: number;
+  /** ARKit-52 blendshape name → per-frame values (0..1, slight overscan ok). */
+  curves: Record<string, number[]>;
+}
+
 export interface LlmProvider {
   readonly id: string;
   /** Cheap readiness probe; the registry also treats thrown errors as unavailable. */
@@ -64,4 +83,10 @@ export interface AsrProvider {
   readonly id: string;
   available(): Promise<boolean>;
   transcribe(req: AsrRequest): Promise<AsrResult>;
+}
+
+export interface FacialAnimationProvider {
+  readonly id: string;
+  available(): Promise<boolean>;
+  animate(req: FacialAnimationRequest): Promise<FacialAnimationResult | null>;
 }

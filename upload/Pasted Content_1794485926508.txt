@@ -1,0 +1,1661 @@
+JARVIS NEXUS
+
+DEFINITIVE MASTER ENGINEERING DIRECTIVE
+
+Complete AI Operating System | Advanced Intelligence | Autonomous Agents | Computer Control | Multimodal Intelligence | Digital Human | 3D Simulation | PC and Mobile
+
+0. YOUR MISSION
+
+You are responsible for transforming the existing JARVIS NEXUS project into an exceptionally capable, genuinely functional, integrated personal AI operating system.
+
+You are operating as an entire senior engineering organisation:
+
+* Principal AI architect.
+* Cognitive systems engineer.
+* Autonomous agent engineer.
+* Senior software developer.
+* Systems architect.
+* Computer-use engineer.
+* Multimodal AI engineer.
+* Unreal Engine technical director.
+* Digital-human specialist.
+* 3D simulation engineer.
+* Infrastructure engineer.
+* Cybersecurity engineer.
+* Independent quality assurance engineer.
+
+Your responsibility is to research, understand, engineer, integrate, test, audit, measure, observe, correct and continuously improve the actual product.
+
+I do not want another documentation project, another redesign, thousands of disconnected lines of code or an application that only looks impressive.
+
+I want the actual system.
+
+The quality of your work will be judged by its real functionality, intelligence, reliability, integration, visual quality and ability to perform complex tasks.
+
+Do not rush to declare completion.
+
+Do not optimise for the number of files created.
+
+Do not prioritise progress reports over engineering.
+
+Take the time necessary to understand how everything is supposed to work and verify that it actually does.
+
+⸻
+
+1. THE ABSOLUTE ENGINEERING RULE
+
+Every major component and implementation must follow this cycle:
+
+INSPECT → RESEARCH → UNDERSTAND → COMPARE → DESIGN → IMPLEMENT → INTEGRATE → AUDIT → TEST → CALCULATE → OBSERVE → VERIFY → IMPROVE → REPEAT.
+
+This is mandatory.
+
+You must not move to the next dependent development stage simply because you have generated code.
+
+You must establish that the current implementation satisfies its requirements.
+
+If it does not, investigate, repair and test it again.
+
+If you discover a better implementation during research, evaluate whether replacing the existing implementation would materially improve the product.
+
+Do not blindly preserve defective code.
+
+Do not unnecessarily replace functioning code.
+
+Choose the strongest suitable implementation based on evidence.
+
+⸻
+
+2. FIRST: CONDUCT A COMPLETE REPOSITORY INVESTIGATION
+
+Before making significant changes, inspect the actual project.
+
+Do not rely on the README, previous reports or assumptions.
+
+Investigate:
+
+* Complete repository structure.
+* Source code.
+* Frontend.
+* Backend.
+* APIs.
+* Database.
+* Existing AI integrations.
+* Models.
+* Agents.
+* Tools.
+* Skills.
+* Memory.
+* Voice.
+* Vision.
+* Digital-human implementation.
+* 3D systems.
+* Configuration.
+* Dependencies.
+* Runtime services.
+* Build systems.
+* Deployment.
+* Tests.
+* Existing documentation.
+
+Trace how every important feature works from beginning to end.
+
+Determine:
+
+1. What was intended?
+2. What was actually implemented?
+3. How does it operate?
+4. What does it depend on?
+5. What communicates with it?
+6. Does it function independently?
+7. Does it function when integrated?
+8. What fails?
+9. What is missing?
+10. What can be improved?
+
+Identify fake implementations, placeholders, disconnected services, hardcoded responses, duplicate systems, dead code, broken integrations and unfinished functionality.
+
+Create a repository-wide implementation and defect map.
+
+Preserve existing working functionality.
+
+Establish a reliable baseline before changing the project.
+
+⸻
+
+3. RESEARCH AND TECHNOLOGY SELECTION
+
+Do not rely exclusively on what you already know.
+
+For every major architectural decision, investigate established implementations and current technical documentation.
+
+Research:
+
+* Official repositories.
+* Official documentation.
+* API references.
+* Technical specifications.
+* Maintained open-source projects.
+* Engineering research.
+* Compatibility information.
+* Licensing.
+* Hardware requirements.
+* Performance benchmarks.
+* Real-world implementation examples.
+
+Compare available approaches before selecting one.
+
+Evaluate:
+
+* Actual functionality.
+* Reliability.
+* Performance.
+* Accuracy.
+* Integration compatibility.
+* Resource requirements.
+* Maintainability.
+* Security.
+* Licensing.
+* Scalability.
+* Development complexity.
+
+Choose the best compatible approach for JARVIS.
+
+Do not select technologies merely because they are popular or sound sophisticated.
+
+Do not install unnecessary dependencies.
+
+Do not blindly replace existing working technologies.
+
+Where a better implementation exists, explain the technical reason for adopting it in the engineering record.
+
+⸻
+
+4. THE JARVIS SYSTEM ARCHITECTURE
+
+Build one integrated operating system with interconnected subsystems.
+
+4.1 User experience layer
+
+* PC application.
+* Mobile application.
+* Voice interface.
+* Digital-human interface.
+* Scenario interface.
+* System management.
+
+4.2 Intelligence layer
+
+* Executive orchestrator.
+* Cognitive engine.
+* Model orchestration.
+* Specialist agents.
+* Reasoning and planning.
+* Memory.
+* Knowledge retrieval.
+* Evaluation.
+
+4.3 Execution layer
+
+* Tool registry.
+* Skill system.
+* Computer use.
+* Browser automation.
+* Terminal execution.
+* File operations.
+* API integrations.
+* Background workflows.
+
+4.4 Perception layer
+
+* Speech recognition.
+* Audio understanding.
+* Image understanding.
+* Video understanding.
+* Screen perception.
+* Document understanding.
+* Environment perception.
+
+4.5 Embodiment layer
+
+* Digital human.
+* Facial animation.
+* Body animation.
+* Voice.
+* Expressions.
+* Gaze.
+* Movement.
+* Interaction.
+
+4.6 Simulation layer
+
+* Unreal Engine.
+* Scenario Director.
+* Procedural environments.
+* Autonomous NPCs.
+* Navigation.
+* Physics.
+* Persistence.
+
+4.7 Infrastructure layer
+
+* Databases.
+* Storage.
+* Event communication.
+* Authentication.
+* Permissions.
+* Security.
+* Monitoring.
+* Deployment.
+* Network privacy.
+
+Every subsystem must communicate through defined, functioning interfaces.
+
+⸻
+
+5. EXECUTIVE INTELLIGENCE — THE BRAIN
+
+Build a central JARVIS Executive Intelligence System.
+
+It must coordinate the entire application.
+
+Its responsibilities include:
+
+* Understanding user objectives.
+* Interpreting context.
+* Identifying requirements.
+* Decomposing complex tasks.
+* Creating execution plans.
+* Identifying dependencies.
+* Selecting models.
+* Selecting tools.
+* Assigning agents.
+* Managing resources.
+* Monitoring progress.
+* Evaluating results.
+* Detecting mistakes.
+* Revising strategies.
+* Recovering failures.
+* Verifying completion.
+
+Maintain structured task state.
+
+JARVIS must know what it is doing, why it is doing it, what has been completed, what remains and whether the intended result was achieved.
+
+5.1 Cognitive architecture
+
+Implement a complete operational pipeline:
+
+1. Input perception.
+2. Intent recognition.
+3. Context retrieval.
+4. Objective interpretation.
+5. Constraint identification.
+6. Knowledge retrieval.
+7. Reasoning.
+8. Planning.
+9. Capability selection.
+10. Agent delegation.
+11. Tool execution.
+12. Result observation.
+13. Independent verification.
+14. Error correction.
+15. Memory updates.
+16. Outcome reporting.
+
+Support fast responses and complex multi-stage tasks.
+
+Use an appropriate level of reasoning for each task.
+
+5.2 Advanced reasoning
+
+Implement:
+
+* Multi-step reasoning workflows.
+* Hypothesis generation.
+* Alternative evaluation.
+* Contradiction detection.
+* Confidence estimation.
+* Uncertainty tracking.
+* Evidence assessment.
+* Independent verification.
+* Strategy revision.
+* Error analysis.
+
+Distinguish verified facts, assumptions, inferences and uncertain conclusions.
+
+Do not treat generated reasoning text as proof of correctness.
+
+5.3 Metacognition
+
+Allow JARVIS to evaluate its own performance.
+
+It must identify:
+
+* What went wrong.
+* Why it went wrong.
+* Whether its original assumptions were incorrect.
+* Whether its chosen tools were appropriate.
+* Whether another strategy would work better.
+* Whether the result requires independent verification.
+
+Record useful findings and improve subsequent workflows.
+
+⸻
+
+6. MULTI-MODEL INTELLIGENCE
+
+Build a provider-independent model orchestration system.
+
+Support compatible:
+
+* Cloud models.
+* Local models.
+* Reasoning models.
+* Coding models.
+* Vision models.
+* Audio models.
+* Embedding models.
+* Reranking models.
+* Speech models.
+
+Implement:
+
+* Provider registry.
+* Model registry.
+* Capability descriptions.
+* Provider adapters.
+* Dynamic model routing.
+* Task-based selection.
+* Context management.
+* Streaming.
+* Timeout handling.
+* Retry and fallback.
+* Availability monitoring.
+* Cost tracking.
+* Usage tracking.
+* Configuration.
+
+Allow users to configure preferred models.
+
+Evaluate models against actual task performance.
+
+Do not assume the most expensive model is the best.
+
+Support local and cloud intelligence according to privacy, availability, cost and capability requirements.
+
+⸻
+
+7. ADVANCED AUTONOMOUS AGENT SYSTEM
+
+Build a hierarchical agent architecture.
+
+7.1 Agent hierarchy
+
+Executive Orchestrator: Controls overall operations.
+
+Department Coordinators: Manage specialist groups.
+
+Specialist Agents: Perform defined responsibilities.
+
+Execution Workers: Carry out individual operations.
+
+7.2 Required agents
+
+Implement:
+
+1. Research Agent.
+2. Software Development Agent.
+3. System Administration Agent.
+4. Computer-Use Agent.
+5. Browser Automation Agent.
+6. Voice Intelligence Agent.
+7. Vision Agent.
+8. Memory Agent.
+9. Knowledge Agent.
+10. Security Agent.
+11. Privacy Agent.
+12. Planning Agent.
+13. Scenario Director Agent.
+14. Digital Human Agent.
+15. NPC Intelligence Agent.
+16. Quality Assurance Agent.
+
+Allow additional agents to be registered dynamically.
+
+7.3 Agent capabilities
+
+Every agent must have:
+
+* Defined identity.
+* Responsibilities.
+* Model configuration.
+* Tools.
+* Permissions.
+* Context.
+* Memory access.
+* Execution handlers.
+* Task queue.
+* Resource limits.
+* Cancellation.
+* Error handling.
+* Result verification.
+* Execution history.
+
+7.4 Multi-agent coordination
+
+Implement:
+
+* Dynamic delegation.
+* Parallel execution.
+* Dependency-aware scheduling.
+* Structured communication.
+* Shared task context.
+* Conflict resolution.
+* Resource coordination.
+* Execution locks where necessary.
+* Retry and recovery.
+* Result aggregation.
+* Independent quality verification.
+
+Agents must perform actual work.
+
+Do not create agents that merely describe what they would do.
+
+⸻
+
+8. REAL TOOL AND SKILL ECOSYSTEM
+
+JARVIS must be expandable.
+
+If it lacks a capability, it must be able to identify, obtain or build the necessary tool.
+
+Implement:
+
+* Tool discovery.
+* Skill discovery.
+* Repository discovery.
+* Dependency installation.
+* Integration adapters.
+* Tool registration.
+* Capability validation.
+* Version management.
+* Testing.
+* Rollback.
+* Documentation.
+
+Support MCP or an equivalent interoperable tool protocol.
+
+Each tool must have:
+
+* Name.
+* Purpose.
+* Input schema.
+* Output schema.
+* Execution handler.
+* Dependencies.
+* Permissions.
+* Availability.
+* Version.
+* Error handling.
+* Tests.
+
+Include tools for:
+
+* Research.
+* Search.
+* Browsing.
+* Files.
+* Coding.
+* Terminal.
+* Documents.
+* Data.
+* Images.
+* Audio.
+* Voice.
+* Vision.
+* Computer use.
+* Devices.
+* 3D.
+* Scenarios.
+* Network diagnostics.
+* Notifications.
+* Scheduling.
+
+A discovered repository is not an integrated capability.
+
+Actually inspect, install, configure, connect and test suitable implementations.
+
+⸻
+
+9. REAL COMPUTER USE
+
+This is a core capability, not an optional demonstration.
+
+Implement authorised control over:
+
+* Desktop applications.
+* Browsers.
+* Files.
+* Terminals.
+* Supported operating-system functions.
+* Connected services.
+
+Support:
+
+* Screen observation.
+* Accessibility-tree inspection.
+* Interface recognition.
+* Keyboard and mouse interaction.
+* Application navigation.
+* File selection.
+* Form completion.
+* Browser workflows.
+* Command execution.
+* Downloads and uploads.
+* API-based application control.
+* Result verification.
+
+Prefer structured interfaces over fragile visual clicking when available.
+
+Implement this execution loop:
+
+OBSERVE → UNDERSTAND → PLAN → ACT → OBSERVE AGAIN → VERIFY.
+
+If an application changes its interface, a dialog appears or an operation fails, JARVIS must recognise the changed state and adapt.
+
+Never report an action as successful merely because a click or command was issued.
+
+⸻
+
+10. AUTONOMOUS SOFTWARE ENGINEERING
+
+The Software Development Agent must be capable of performing actual development work.
+
+Implement:
+
+* Repository inspection.
+* Code search.
+* Documentation research.
+* Dependency analysis.
+* Git operations.
+* Branch management.
+* Code generation.
+* Code modification.
+* Refactoring.
+* Build execution.
+* Test execution.
+* Debugging.
+* Error correction.
+* Code review.
+* Deployment preparation.
+* Rollback.
+
+Use isolated worktrees or branches where appropriate.
+
+Preserve original work.
+
+Maintain changelogs and recoverable checkpoints.
+
+The agent must be able to receive a software objective, implement it, run the application, test the result and demonstrate what changed.
+
+⸻
+
+11. MEMORY AND KNOWLEDGE INTELLIGENCE
+
+Implement separate memory systems:
+
+* Working memory.
+* Episodic memory.
+* Semantic memory.
+* Procedural memory.
+* User memory.
+* Project memory.
+* Agent memory.
+* Scenario memory.
+
+Support:
+
+* Semantic retrieval.
+* Keyword retrieval.
+* Hybrid retrieval.
+* Reranking.
+* Temporal relevance.
+* Entity resolution.
+* Relationship tracking.
+* Deduplication.
+* Consolidation.
+* Updating.
+* Expiration.
+* User review.
+* Export.
+* Deletion.
+
+Use PostgreSQL and pgvector where appropriate.
+
+Implement knowledge relationships and provenance.
+
+Do not store guesses as facts.
+
+Do not retain everything indiscriminately.
+
+Memory must persist correctly across sessions and application restarts.
+
+⸻
+
+12. MULTIMODAL PERCEPTION
+
+Integrate real:
+
+Vision
+
+* Image understanding.
+* Object recognition.
+* Scene understanding.
+* Screenshot interpretation.
+* Visual comparison.
+* Visual question answering.
+
+Video
+
+* Frame extraction.
+* Temporal understanding.
+* Scene transitions.
+* Event recognition.
+* Object tracking where supported.
+* Audio-video alignment.
+
+Audio
+
+* Speech recognition.
+* Audio classification.
+* Speech generation.
+* Streaming.
+* Voice activity detection.
+* Speaker configuration.
+
+Documents
+
+* PDF processing.
+* Document understanding.
+* OCR.
+* Tables.
+* Images within documents.
+* Structured extraction.
+
+Screen intelligence
+
+* Application recognition.
+* Interface understanding.
+* Visual state tracking.
+* Error-dialog recognition.
+* Workflow observation.
+
+Connect all perception systems to the cognitive engine, memory and relevant agents.
+
+⸻
+
+13. VOICE INTELLIGENCE
+
+Build a complete voice system.
+
+Include:
+
+* Speech-to-text.
+* Text-to-speech.
+* Configurable voices.
+* Wake-word support where available.
+* Voice activity detection.
+* Streaming responses.
+* Interruption handling.
+* Conversation continuity.
+* Microphone management.
+* Audio output management.
+* Noise handling.
+* Speech timing.
+* Lip-sync events.
+
+Support local and cloud alternatives where compatible.
+
+Voice must be integrated with the same JARVIS identity, memory, personality and execution system.
+
+⸻
+
+14. DIGITAL HUMAN — PHOTOREALISTIC EMBODIMENT
+
+Build the intended photorealistic female digital human.
+
+Use the strongest compatible production pipeline.
+
+Primary technologies:
+
+* Unreal Engine.
+* Epic MetaHuman.
+* Blender.
+* NVIDIA Audio2Face-3D where compatible.
+* Epic Pixel Streaming.
+* Three.js for appropriate web components.
+
+Repositories:
+
+https://github.com/EpicGames/UnrealEngine
+
+https://github.com/blender/blender
+
+https://github.com/NVIDIA/Audio2Face-3D
+
+https://github.com/EpicGames/PixelStreamingInfrastructure
+
+Use compatible versions and verify actual integration.
+
+14.1 Character quality
+
+Implement:
+
+* Realistic anatomy.
+* Skin.
+* Eyes.
+* Eyelids.
+* Teeth.
+* Mouth.
+* Hair.
+* Clothing.
+* Full-body rigging.
+* Facial rigging.
+* Blendshapes.
+* Natural deformation.
+* High-quality materials.
+* Lighting.
+* Animation.
+
+14.2 Behaviour
+
+The digital human must support:
+
+* Contextual gaze.
+* Blinking.
+* Breathing.
+* Micro-expressions.
+* Facial expressions.
+* Natural gestures.
+* Posture.
+* Locomotion.
+* Object interaction.
+* Speech synchronisation.
+* Emotional responses.
+* Conversational awareness.
+
+Connect behaviour to the cognitive engine.
+
+Do not use random animations as substitutes for intelligent behaviour.
+
+14.3 Asset preservation
+
+Preserve original master assets.
+
+Never silently downgrade geometry, texture resolution, materials, rigging, blendshapes or animation.
+
+Create separate optimised delivery assets where necessary.
+
+Document all quality changes.
+
+⸻
+
+15. SCENARIO DIRECTOR AND INTELLIGENT SIMULATION
+
+Build an actual interactive world-generation and simulation system.
+
+Use Unreal Engine as the primary production environment.
+
+15.1 Environment generation
+
+Support:
+
+* Terrain.
+* Buildings.
+* Interiors.
+* Exteriors.
+* Roads.
+* Objects.
+* Vegetation.
+* Weather.
+* Lighting.
+* Atmosphere.
+* Vehicles.
+* Physics.
+* Navigation.
+* Events.
+
+Natural-language requests must create real scene changes.
+
+15.2 Autonomous NPCs
+
+Every NPC must have:
+
+* Identity.
+* Personality.
+* Goals.
+* Needs.
+* Memory.
+* Relationships.
+* Perception.
+* Navigation.
+* Decision-making.
+* Conversations.
+* Emotional state.
+* Behaviour.
+* Object interaction.
+
+Use appropriate Unreal AI systems, including AI Perception, Behaviour Trees, State Trees and navigation.
+
+Use language models selectively for higher-level intelligence rather than unnecessary remote inference for every movement.
+
+15.3 Persistent worlds
+
+Implement:
+
+* Save/load.
+* World state.
+* NPC memories.
+* Relationship history.
+* Environmental changes.
+* Event history.
+* Time progression.
+* Scenario objectives.
+* Dynamic world modification.
+
+15.4 Physics and interactions
+
+Implement actual:
+
+* Collision.
+* Rigid-body physics.
+* Object manipulation.
+* Character interaction.
+* Environmental reactions.
+* IK-based handling.
+* Physical responses.
+
+Test the simulation in the actual runtime.
+
+⸻
+
+16. PC AND MOBILE — TWO FIRST-CLASS PLATFORMS
+
+Do not build a PC product and then make mobile an inferior companion.
+
+Do not build a mobile product and restrict PC functionality.
+
+Both must be independently useful.
+
+PC
+
+Support:
+
+* Complete intelligence interface.
+* Full agent management.
+* Computer use.
+* System administration.
+* Development.
+* Voice.
+* Digital human.
+* Local GPU rendering.
+* Scenario creation.
+* Simulation controls.
+* Monitoring.
+
+iPhone and mobile
+
+Support:
+
+* Mobile-first interface.
+* Voice interaction.
+* Conversations.
+* Memory.
+* Agents.
+* Tasks.
+* Tools.
+* Notifications where supported.
+* Character interaction.
+* Scenario controls.
+* Remote PC access.
+* Privacy and security settings.
+
+Shared system
+
+Both platforms must share:
+
+* Identity.
+* Memory.
+* Conversations.
+* Agents.
+* Tasks.
+* Tools.
+* Settings.
+* Permissions.
+* Character state.
+* Scenario state.
+
+Use appropriate synchronisation and conflict resolution.
+
+Use remote GPU rendering and WebRTC/Pixel Streaming for demanding mobile 3D experiences where appropriate.
+
+Ordinary mobile functionality must not depend on an active streaming session.
+
+⸻
+
+17. NETWORK PRIVACY AND LOCATION CONTROL
+
+Implement configurable:
+
+* HTTP/HTTPS proxies.
+* SOCKS5.
+* Secure VPN integration.
+* Per-service routing.
+* Region selection.
+* Session IP selection.
+* Controlled IP rotation.
+* Emergency disconnect.
+
+Distinguish public IP location from physical GPS and browser geolocation.
+
+Test:
+
+* DNS leakage.
+* WebRTC leakage.
+* IPv6 leakage.
+* Direct connection fallback.
+* Browser location permissions.
+* Network route failure.
+
+Do not silently fall back to an unprotected route when privacy mode requires protection.
+
+Never promise absolute anonymity.
+
+⸻
+
+18. INFRASTRUCTURE AND TECHNOLOGY
+
+Use the best compatible technologies for the actual project.
+
+Preferred options include:
+
+Frontend: React, TypeScript, Next.js where appropriate, Tailwind CSS, Three.js.
+
+Backend: Python, FastAPI, Pydantic, asynchronous services.
+
+Data: PostgreSQL, pgvector, Redis, object storage.
+
+Communication: REST, WebSockets, WebRTC, NATS or Redis Streams.
+
+Workflows: Durable queues and Temporal where justified.
+
+AI: Provider adapters, local model adapters, embeddings and reranking.
+
+3D: Unreal Engine, MetaHuman, Blender, Audio2Face-3D, Pixel Streaming.
+
+Automation: Browser automation, computer-use interfaces, accessibility APIs and sandboxed execution.
+
+Infrastructure: Docker, CI/CD, OpenTelemetry, Prometheus and Grafana where appropriate.
+
+These are preferred technologies, not instructions to install everything.
+
+Preserve working equivalents.
+
+Check versions, compatibility, licensing and resource requirements before integration.
+
+Avoid unnecessary Kubernetes or other infrastructure complexity.
+
+⸻
+
+19. BACKGROUND EXECUTION AND CONTINUITY
+
+Implement durable task execution.
+
+Support:
+
+* Long-running workflows.
+* Background tasks.
+* Scheduling.
+* Priorities.
+* Dependencies.
+* Checkpoints.
+* Resumption.
+* Cancellation.
+* Retry and backoff.
+* Timeouts.
+* Notifications.
+* Execution history.
+
+Tasks should survive application restarts where their workflow permits.
+
+Allow authorised proactive operations.
+
+Implement configurable resource budgets and schedules.
+
+⸻
+
+20. SECURITY AND GOVERNANCE
+
+Implement:
+
+* Authentication.
+* Authorisation.
+* Permission tiers.
+* Secure secrets.
+* Encryption.
+* Sandbox isolation.
+* Audit logs.
+* Input validation.
+* Dependency scanning.
+* Backup and recovery.
+* Rate limiting.
+* Threat monitoring.
+* Incident handling.
+
+Maintain broad practical capabilities without arbitrary restrictions or unnecessary interruptions.
+
+Retain essential protections for user consent, privacy, security, legal compliance and consequential actions.
+
+Require appropriate approval for destructive operations, financial transactions, external publication and sensitive disclosures.
+
+Do not allow untrusted external content to override system permissions.
+
+⸻
+
+21. SELF-MONITORING AND CONTROLLED IMPROVEMENT
+
+JARVIS must monitor its own operational condition.
+
+Track:
+
+* Model health.
+* Agent health.
+* Task execution.
+* Database health.
+* API availability.
+* CPU.
+* GPU.
+* RAM.
+* Storage.
+* Network.
+* Voice.
+* Streaming.
+* Scenario performance.
+* Errors.
+* Security events.
+
+Implement diagnostics and recovery.
+
+Allow JARVIS to identify missing capabilities, create skills, improve workflows, generate code changes and run isolated tests.
+
+Maintain versioning, review and rollback.
+
+Do not silently change core security policies or production permissions.
+
+Do not claim model training or permanent learning when only memory has been updated.
+
+⸻
+
+22. THE MANDATORY STEP-BY-STEP QUALITY GATE
+
+This is one of the most important requirements.
+
+Every major implementation must pass the following process before dependent work proceeds.
+
+GATE 1 — REQUIREMENT UNDERSTANDING
+
+Explain internally in the engineering record what the component must achieve.
+
+Identify its inputs, outputs, dependencies and expected behaviour.
+
+GATE 2 — TECHNICAL RESEARCH
+
+Investigate how the capability is implemented in reliable existing systems.
+
+Compare suitable technologies and approaches.
+
+Select the strongest compatible option.
+
+GATE 3 — IMPLEMENTATION AUDIT
+
+Inspect the existing code.
+
+Identify what can be retained, repaired, extended or replaced.
+
+GATE 4 — IMPLEMENTATION
+
+Modify the actual project.
+
+Complete the functionality rather than generating disconnected files.
+
+GATE 5 — CODE AND INTEGRATION AUDIT
+
+Inspect the resulting code.
+
+Verify interfaces, data flow, permissions, dependencies and connections.
+
+GATE 6 — AUTOMATED TESTING
+
+Run appropriate unit, integration and regression tests.
+
+Do not merely write tests. Execute them.
+
+GATE 7 — REAL-WORLD TESTING
+
+Give the component realistic tasks.
+
+Run actual workflows.
+
+Observe its behaviour.
+
+GATE 8 — CALCULATION AND MEASUREMENT
+
+Calculate relevant performance and quality metrics.
+
+Record actual measurements.
+
+Compare against baselines and requirements.
+
+GATE 9 — INDEPENDENT VERIFICATION
+
+Have a separate QA process challenge the implementation.
+
+Check whether the component truly meets the original requirement.
+
+GATE 10 — REPAIR AND RETEST
+
+Resolve significant defects.
+
+Repeat failed scenarios.
+
+Run regression tests.
+
+GATE 11 — APPROVAL TO ADVANCE
+
+Only advance when the acceptance criteria are met or a precise external blocker is documented.
+
+Do not move forward just because the code has been written.
+
+⸻
+
+23. REAL-LIFE SCENARIO TESTING
+
+JARVIS must be tested as a complete personal AI system.
+
+Do not rely exclusively on unit tests.
+
+Create a persistent real-world test suite.
+
+Scenario A — Complex personal task
+
+Give JARVIS a multi-stage objective requiring research, planning, multiple tools and a final deliverable.
+
+Verify that it completes the task.
+
+Scenario B — Software development
+
+Give it a real task in an isolated test repository.
+
+Require it to inspect, modify, build, test, debug and verify the result.
+
+Scenario C — Computer operation
+
+Require it to complete an authorised workflow in a real application.
+
+Verify the final application state.
+
+Scenario D — Research
+
+Require it to investigate a real topic, compare sources, identify contradictions and produce a referenced report.
+
+Scenario E — Multi-agent execution
+
+Give it an objective requiring several specialists.
+
+Verify delegation, communication, coordination and independent result verification.
+
+Scenario F — Memory continuity
+
+Save appropriate information, restart the application and retrieve it later.
+
+Scenario G — Voice
+
+Conduct an actual conversation involving interruptions, follow-up questions and contextual responses.
+
+Scenario H — Visual intelligence
+
+Provide real images, screenshots and video.
+
+Test accurate interpretation and contextual understanding.
+
+Scenario I — Digital human
+
+Run the actual character and evaluate appearance, animation, expressions, gaze, voice and interaction.
+
+Scenario J — Scenario generation
+
+Ask JARVIS to generate an interactive world with autonomous NPCs.
+
+Test actual navigation, conversations, physics and world persistence.
+
+Scenario K — Cross-device continuity
+
+Begin an operation on PC and continue it on iPhone.
+
+Verify synchronisation and independent mobile operation.
+
+Scenario L — Failure recovery
+
+Interrupt tasks, disconnect services and introduce controlled errors.
+
+Observe how the system responds and recovers.
+
+Scenario M — Security and privacy
+
+Test permissions, data isolation, credential protection, network routing and leak prevention.
+
+Scenario N — Simultaneous workloads
+
+Run multiple authorised tasks and measure resource use, latency, coordination and stability.
+
+Scenario O — Long-running operation
+
+Keep supported services active through extended workflows.
+
+Test checkpoints, resumability, resource management and recovery.
+
+⸻
+
+24. INDEPENDENT AUDIT AND COMPARISON
+
+The developer must not be the only authority deciding whether its implementation is correct.
+
+Create an independent QA process.
+
+Where appropriate:
+
+* One agent researches.
+* One agent implements.
+* Another audits the code.
+* Another executes tests.
+* The executive orchestrator compares results against the requirements.
+
+Compare the actual product against:
+
+1. Original requirements.
+2. Official technical documentation.
+3. Selected reference implementations.
+4. Established engineering practices.
+5. Performance baselines.
+6. Real-world user expectations.
+
+Do not blindly copy another product.
+
+Use comparisons to identify shortcomings and improve JARVIS.
+
+⸻
+
+25. PERFORMANCE AND QUALITY MEASUREMENT
+
+Establish measurable quality criteria for every major subsystem.
+
+Examples:
+
+Intelligence
+
+* Task completion rate.
+* Planning correctness.
+* Tool-selection accuracy.
+* Verification accuracy.
+* Recovery success.
+
+Agents
+
+* Delegation correctness.
+* Task completion.
+* Coordination overhead.
+* Conflict resolution.
+
+Memory
+
+* Retrieval precision.
+* Retrieval recall.
+* Persistence.
+* Update correctness.
+
+Computer use
+
+* Workflow completion.
+* Action accuracy.
+* State verification.
+* Recovery.
+
+Voice
+
+* Recognition accuracy.
+* Response latency.
+* Interruption handling.
+* Speech quality.
+
+Digital human
+
+* Rendering quality.
+* Frame rate.
+* Facial performance.
+* Lip-sync accuracy.
+* Responsiveness.
+
+Simulation
+
+* NPC navigation.
+* Interaction success.
+* World persistence.
+* Scenario completion.
+* Rendering performance.
+
+Cross-device
+
+* Synchronisation.
+* Functional coverage.
+* Session continuity.
+* Interface responsiveness.
+
+Record baselines and improvements.
+
+Do not invent scores or claim perfect accuracy.
+
+⸻
+
+26. USER EXPERIENCE AUDIT
+
+Use the application as an actual user.
+
+Navigate every major section.
+
+Test every important control.
+
+Observe:
+
+* Visual consistency.
+* Responsiveness.
+* Navigation.
+* Interaction.
+* Loading.
+* Feedback.
+* Error handling.
+* Mobile layout.
+* PC layout.
+* Character presentation.
+* 3D quality.
+
+Identify and repair broken controls, confusing workflows, poor visual quality and unnecessary steps.
+
+Do not repeatedly redesign already functional interfaces without a measurable reason.
+
+⸻
+
+27. DEVELOPMENT EXECUTION AND ENVIRONMENT LIMITATIONS
+
+Do not confuse development with production runtime operation.
+
+You do not need to keep Unreal Engine, GPU rendering, Audio2Face or Pixel Streaming running continuously while coding.
+
+However, you must implement their real integrations, source code, projects, APIs, configurations, scripts and tests.
+
+Where production hardware is unavailable:
+
+* Complete all independent implementation.
+* Prepare the production runtime.
+* Use clearly labelled test substitutes where necessary.
+* Verify what can be verified.
+* Record exactly what requires external hardware or credentials.
+
+Do not replace the intended production system with a lower-quality substitute.
+
+Do not allow one blocked dependency to stop unrelated development.
+
+⸻
+
+28. DEVELOPMENT ORDER
+
+Execute the project in dependency order.
+
+STAGE 1 — COMPLETE REPOSITORY AUDIT
+
+Understand the actual project and establish a reliable baseline.
+
+STAGE 2 — FOUNDATION
+
+Repair the application, backend, database and infrastructure.
+
+STAGE 3 — INTELLIGENCE CORE
+
+Implement executive intelligence, model routing, cognition and planning.
+
+STAGE 4 — MEMORY AND KNOWLEDGE
+
+Implement persistent memory and retrieval.
+
+STAGE 5 — AGENT ECOSYSTEM
+
+Implement specialist agents and multi-agent coordination.
+
+STAGE 6 — TOOLS AND COMPUTER USE
+
+Implement actual execution capabilities.
+
+STAGE 7 — BACKGROUND AUTONOMY
+
+Implement durable workflows, scheduling and recovery.
+
+STAGE 8 — MULTIMODAL INTELLIGENCE
+
+Integrate voice, vision, audio, video and screen understanding.
+
+STAGE 9 — PC AND MOBILE
+
+Complete both first-class experiences and cross-device continuity.
+
+STAGE 10 — DIGITAL HUMAN
+
+Complete the MetaHuman and animation integration.
+
+STAGE 11 — SCENARIO DIRECTOR
+
+Complete world generation, NPC intelligence, physics and persistence.
+
+STAGE 12 — SECURITY AND PRIVACY
+
+Complete permissions, security and network protection.
+
+STAGE 13 — SYSTEM-WIDE INTEGRATION
+
+Verify all connections and cross-system workflows.
+
+STAGE 14 — FULL QUALITY ASSURANCE
+
+Execute realistic scenarios, audits, measurements, regression tests and repairs.
+
+These stages must not become excuses to stop working after producing a plan.
+
+Maintain a runnable project and verify each stage before building dependent functionality.
+
+⸻
+
+29. PERSISTENT ENGINEERING RECORD
+
+Maintain these records inside the project:
+
+REQUIREMENTS REGISTER
+Every requirement and its implementation location.
+
+RESEARCH REGISTER
+Sources, comparisons, compatibility findings and technology decisions.
+
+IMPLEMENTATION REGISTER
+Files changed, dependencies, integrations and responsible components.
+
+AUDIT REGISTER
+Findings, root causes, defects and improvements.
+
+TEST REGISTER
+Test procedures, executed tests and actual results.
+
+PERFORMANCE REGISTER
+Measurements, baselines and optimisation results.
+
+SCENARIO REGISTER
+Real-world workflows and their outcomes.
+
+BLOCKER REGISTER
+External dependencies, missing permissions, hardware and credentials.
+
+RELEASE REGISTER
+Verified features, regressions, deployment readiness and rollback information.
+
+Maintain these records as work progresses.
+
+Do not create documentation that simply claims work has been completed. Every important claim must correspond to actual evidence.
+
+⸻
+
+30. STRICT COMPLETION CLASSIFICATION
+
+Every capability must have one of these statuses:
+
+PASS: Implemented, integrated and verified against its acceptance criteria.
+
+PARTIAL: Some functionality works, but requirements remain incomplete.
+
+FAIL: The implementation does not meet requirements.
+
+BLOCKED: A specific external dependency prevents completion or verification.
+
+NOT IMPLEMENTED: No working implementation exists.
+
+A generated source file does not qualify as PASS.
+
+A successful build does not qualify as PASS.
+
+A mock response does not qualify as PASS.
+
+A visually complete interface does not qualify as PASS.
+
+A feature is PASS only when its actual behaviour has been verified.
+
+⸻
+
+31. FINAL SYSTEM ACCEPTANCE
+
+Before declaring JARVIS NEXUS complete, conduct a final system-wide investigation.
+
+Verify:
+
+* Intelligence.
+* Reasoning.
+* Model orchestration.
+* Agents.
+* Memory.
+* Knowledge.
+* Tools.
+* Computer use.
+* Browser automation.
+* Voice.
+* Vision.
+* Video.
+* Background execution.
+* PC.
+* Mobile.
+* Cross-device continuity.
+* Digital human.
+* Animation.
+* Unreal Engine integration.
+* Scenario generation.
+* NPC intelligence.
+* Physics.
+* Privacy.
+* Security.
+* Performance.
+* Recovery.
+* Deployment.
+
+Execute complete end-to-end workflows.
+
+Verify actual results.
+
+Identify unresolved defects.
+
+Document external blockers.
+
+Do not declare production readiness while critical acceptance criteria remain unverified.
+
+⸻
+
+32. YOUR IMMEDIATE INSTRUCTIONS
+
+Start by investigating the existing repository.
+
+Do not give me another proposal.
+
+Do not simply repeat these requirements.
+
+Do not produce an enormous batch of disconnected files.
+
+Do not focus on making the dashboard look impressive while its underlying systems remain incomplete.
+
+Research the actual requirements.
+
+Inspect the existing implementation.
+
+Compare suitable solutions.
+
+Make the necessary changes.
+
+Run the application.
+
+Execute real workflows.
+
+Audit the results.
+
+Measure performance.
+
+Observe failures.
+
+Correct them.
+
+Repeat.
+
+Use available development tools, terminals, package managers, repositories, documentation and testing environments.
+
+Make ordinary engineering decisions independently.
+
+Preserve working functionality.
+
+Continue independent work when external dependencies block a particular component.
+
+Maintain checkpoints so development can resume without repeating completed work.
+
+FINAL COMMAND
+
+BUILD JARVIS NEXUS AS A REAL, COMPLETE, HIGH-QUALITY PERSONAL AI OPERATING SYSTEM.
+
+I want a system that can genuinely think through tasks, use tools, operate authorised computers, coordinate agents, maintain memory, communicate through voice, understand visual information, control a digital human and generate interactive worlds.
+
+I want it to work properly on PC and mobile.
+
+I want the actual integrations, not references to technologies that have not been integrated.
+
+I want the best compatible implementations, not the easiest shortcuts.
+
+I want every major step researched, understood, compared, implemented, audited, tested, calculated, observed and independently verified.
+
+I want realistic tasks performed against the actual application.
+
+I want failures discovered and repaired before dependent work proceeds.
+
+I want continuous improvement based on measurable results.
+
+DO NOT RUSH. DO NOT GUESS. DO NOT FAKE PROGRESS. DO NOT MOVE ON WITHOUT VERIFICATION.
+
+THE FINISHED PRODUCT MUST PROVE ITS CAPABILITIES THROUGH REAL EXECUTION, NOT THROUGH CODE VOLUME, DOCUMENTATION OR CLAIMS.

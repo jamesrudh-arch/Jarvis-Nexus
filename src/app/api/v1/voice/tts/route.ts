@@ -5,8 +5,10 @@ import { synthesizeVoice } from '@/lib/nexus/brain';
  * POST /api/v1/voice/tts
  * Lightweight narration synthesis for scenario timeline cues (no full brain
  * round-trip — just her voice). Body: { text: string, emotion?: string }
- * Returns { audio: string(base64 wav), mime: string } or {} when synthesis
- * is unavailable (the client falls back to browser speech).
+ * Returns { audio: string(base64 wav), mime: string, faces?: FaceTrack } or {}
+ * when synthesis is unavailable (the client falls back to browser speech).
+ * `faces` (ARKit blendshape track from the Audio2Face-3D chain, §14) is null
+ * unless a gateway is configured.
  */
 export async function POST(req: Request) {
   try {

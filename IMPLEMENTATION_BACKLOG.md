@@ -19,6 +19,11 @@ Status legend: [done] verified this session · [next] dependency-ready · [plann
 - [done] D7 — all 7 uploaded images inspected + classified (see RESEARCH_REGISTER)
 - [done] P0 directive deliverables 1–13 (build, runtime, e2e provider, error surfaces, tests, deployable; .env.example)
 
+## Owner-side bring-up (session 3 — external hardware/credentials required)
+
+1. [next] A2F bring-up: on the machine hosting Audio2Face-3D — clone NVIDIA/Audio2Face-3D-Samples, `pip install proto/sample_wheel/nvidia_ace-*.whl`, `pip install fastapi uvicorn grpcio numpy scipy pyyaml`, run `scripts/a2f_gateway.py` (env: `A2F_GRPC_URI`, or NVCF legacy: `A2F_USE_SSL=1 A2F_API_KEY A2F_FUNCTION_ID`), point the app at it (`A2F_SERVICE_URL`). Acceptance: her mouth tracks the neural curve; unit tests already cover the in-app path.
+2. [next] MetaHuman bring-up: on Windows + UE 5.6/5.7 + Blender 5.x, run metahuman-to-glb (5 stages), copy the ~40 MB GLB into `public/models/`, swap the model path. In-app support (bone aliasing, ARKit-51, viseme fallback) is done and unit-tested (ED-21).
+
 ## Phase 1 — Sharp & Light (rendering + assets + mobile) — NEXT
 
 1. [next] KTX2 (UASTC head / ETC1S body) + meshopt for jarvis_avaturn.glb — measured: 14 MB → ~4 MB, VRAM 1.5 GB → 335 MB

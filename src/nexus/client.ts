@@ -63,6 +63,15 @@ export interface JarvisMessage {
   audio_mime: string | null;
   /** The exact text chunk the preloaded `audio` covers (first sentence). */
   audio_text?: string | null;
+  /** ARKit blendshape track for the preloaded audio chunk (Audio2Face-3D, §14). */
+  audio_faces?: { fps: number; durationMs: number; curves: Record<string, number[]> } | null;
+}
+
+/** Voice chunk payload consumed by the sequencer: audio + optional face track. */
+export interface VoiceChunk {
+  data: string;
+  mime: string;
+  faces?: { fps: number; durationMs: number; curves: Record<string, number[]> } | null;
 }
 
 export interface Telemetry {
@@ -191,19 +200,25 @@ export class NexusClient {
     // TTS prefetch, so time-to-first-word is one short synthesis instead of
     // one full-paragraph synthesis. Abortable for instant owner interrupts.
     this.speechSequencer = new SpeechSequencer({
-      fetchAudio: async (text: string, signal: AbortSignal) => {
+      fetchAudio: async (text: string, signal: AbortSignal): Promise<VoiceChunk | null> => {
         try {
-          const voice = await api<{ audio?: string; mime?: string }>('/api/v1/voice/tts', {
+          const voice = await api<{
+            audio?: string;
+            mime?: string;
+            faces?: VoiceChunk['faces'];
+          }>('/api/v1/voice/tts', {
             method: 'POST',
             body: JSON.stringify({ text, emotion: this.conversationEmotion }),
             signal,
           });
-          return voice?.audio ? { data: voice.audio, mime: voice.mime || 'audio/wav' } : null;
+          return voice?.audio
+            ? { data: voice.audio, mime: voice.mime || 'audio/wav', faces: voice.faces ?? null }
+            : null;
         } catch {
           return null;
         }
       },
-      speakChunk: (text: string, audio: { data: string; mime: string } | null, onEnd: () => void) => {
+      speakChunk: (text: string, audio: VoiceChunk | null, onEnd: () => void) => {
         const jarvis = this.sanctuary?.jarvis;
         if (!jarvis || !jarvis.loaded) { onEnd(); return; }
         jarvis.speak(text, { audio: audio || undefined, onEnd });
@@ -456,9 +471,10 @@ export class NexusClient {
       // starts immediately; the rest synthesizes as she talks.
       this.conversationEmotion = jarvisMsg.emotional_tone || 'neutral';
       const chunks = splitSentences(jarvisMsg.content);
-      const preloaded = jarvisMsg.audio && jarvisMsg.audio_text && chunks[0] === jarvisMsg.audio_text
-        ? { data: jarvisMsg.audio, mime: jarvisMsg.audio_mime || 'audio/wav' }
-        : null;
+      const preloaded: VoiceChunk | null =
+        jarvisMsg.audio && jarvisMsg.audio_text && chunks[0] === jarvisMsg.audio_text
+          ? { data: jarvisMsg.audio, mime: jarvisMsg.audio_mime || 'audio/wav', faces: jarvisMsg.audio_faces ?? null }
+          : null;
       if (chunks.length > 0) {
         this.speechSequencer?.play(jarvisMsg.content, preloaded);
       } else {

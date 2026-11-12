@@ -159,6 +159,9 @@ export async function POST(req: NextRequest) {
         audio: voice ? voice.audio : null,
         audio_mime: voice ? voice.mime : null,
         audio_text: voice ? firstChunk : null,
+        // ARKit blendshape track for the first audio chunk (Audio2Face-3D chain,
+        // §14). null when no gateway is configured — client uses local engines.
+        audio_faces: voice?.faces ?? null,
       },
       world,
       activated_scenario: world.active_scenario,

@@ -16,6 +16,12 @@ import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { retarget } from '../vendor/retargeter.mjs';
 import { LipsyncEn } from '../vendor/lipsync-en.mjs';
 import { LipsyncZh, hasCJK } from '../vendor/lipsync-zh.mjs';
+import { validateFaceTrack, sampleCurveValues, isCurveDriven } from '../vendor/faceCurve.mjs';
+import {
+  detectSkeletonConvention,
+  aliasBoneName,
+  VISEME_ARKIT_FALLBACK,
+} from '../vendor/skeletonMaps.mjs';
 import {
   tailorSuitAlbedoTexture,
   createMicroNormalTexture,
@@ -147,6 +153,10 @@ export class JarvisCharacterController {
     this.speechStartPerf = 0;
     this.activeUtterance = null;
     this.onSpeechEndCallback = null;
+    // ARKit blendshape track (Audio2Face-3D chain, §14): when present it is
+    // AUTHORITATIVE for mouth/jaw/brow shapes; the local rule engines are the
+    // fallback when it is null. Cleared with the visemes on every speech end.
+    this.speechFaces = null;
 
     // Aliveness layer: speech energy envelope, beat-gesture clock, eye saccades.
     // (This is what separates "present person" from "rendered mannequin".)
@@ -179,8 +189,21 @@ export class JarvisCharacterController {
     this.armature = avatarGltf.scene.getObjectByName('Armature') || avatarGltf.scene;
     this.armature.scale.setScalar(1);
 
+    // Skeleton convention: Mixamo-style (Avaturn, today) or UE5/MetaHuman-style
+    // (metahuman-to-glb output — Directive §14 upgrade track). Bones are
+    // ALIASED to Mixamo names so every downstream system (retarget tables,
+    // postures, gaze, fingers) works unchanged across conventions.
+    const rawBoneNames = new Set();
+    this.armature.traverse((o) => { if (o.isBone) rawBoneNames.add(o.name); });
+    this.skeletonConvention = detectSkeletonConvention((n) => rawBoneNames.has(n));
+    const convention = this.skeletonConvention;
+
     // Calibrate skeleton to standard Mixamo coordinate rolls & scale
-    retarget(this.armature, AVATURN_RETARGET);
+    // (Avaturn-specific rest-pose calibration — a MetaHuman GLB arrives
+    // already calibrated from UE, and applying Avaturn rolls would wreck it.)
+    if (convention === 'mixamo') {
+      retarget(this.armature, AVATURN_RETARGET);
+    }
 
     // --- Cross-rig quaternion retargeting tables -------------------------------
     // The Avaturn rig's leg bones rest ~180deg (Z) away from the Mixamo
@@ -191,7 +214,7 @@ export class JarvisCharacterController {
       const rest = {};
       root.traverse((o) => {
         if (o.isBone) {
-          const clean = o.name.replace(/^mixamorig:/, '').replace(/^mixamorig/, '');
+          const clean = aliasBoneName(o.name, convention);
           if (!rest[clean]) rest[clean] = o.quaternion.clone();
         }
       });
@@ -227,7 +250,7 @@ export class JarvisCharacterController {
 
     this.armature.traverse((obj) => {
       if (obj.isBone) {
-        this.bones[obj.name] = obj;
+        this.bones[aliasBoneName(obj.name, convention)] = obj;
       }
       if (obj.isMesh) {
         obj.castShadow = true;
@@ -657,6 +680,11 @@ export class JarvisCharacterController {
     const clean = text.replace(/\[.*?\]/g, '').trim();
     if (!clean) return;
 
+    // ARKit blendshape track (Audio2Face-3D chain, §14): validated here so a
+    // malformed payload can never reach the face — null falls back to the
+    // local rule engines below.
+    this.speechFaces = audio && audio.faces ? validateFaceTrack(audio.faces) : null;
+
     // Build the phoneme/viseme schedule — mixed-language aware:
     // CJK runs go through the Mandarin pinyin engine (syllable → initial +
     // final + tone), latin runs through the English rule engine, and
@@ -880,11 +908,24 @@ export class JarvisCharacterController {
   }
 
   _setMorph(name, value, lerpAlpha = 0.25) {
+    let applied = false;
     for (const mesh of this.morphMeshes) {
       const idx = mesh.morphTargetDictionary[name];
       if (idx !== undefined) {
+        applied = true;
         const cur = mesh.morphTargetInfluences[idx] || 0;
         mesh.morphTargetInfluences[idx] = cur + (value - cur) * lerpAlpha;
+      }
+    }
+    // Rigs without Oculus visemes (MetaHuman GLB exports ARKit-51 only):
+    // degrade the viseme to its ARKit shape mix so the local rule engines
+    // still produce legible speech on the upgraded model.
+    if (!applied && name.startsWith('viseme_')) {
+      const fallback = VISEME_ARKIT_FALLBACK[name];
+      if (fallback) {
+        for (const [target, weight] of Object.entries(fallback)) {
+          this._setMorph(target, value * weight, lerpAlpha);
+        }
       }
     }
   }
@@ -895,6 +936,7 @@ export class JarvisCharacterController {
     }
     this._setMorph('jawOpen', 0, 1.0);
     this._setMorph('mouthOpen', 0, 1.0);
+    this.speechFaces = null; // face track dies with the utterance
   }
 
   getHeadWorldPosition(target = new THREE.Vector3()) {
@@ -1304,20 +1346,25 @@ export class JarvisCharacterController {
 
   _updateExpressions() {
     const e = this.emotionalState;
-    this._setMorph('browInnerUp', e === 'listening' ? 0.18 : (e === 'concerned' ? 0.36 : (e === 'urgent' ? 0.24 : 0.04)), 0.14);
-    this._setMorph('browDownLeft', e === 'focused' ? 0.24 : (e === 'concerned' ? 0.22 : (e === 'urgent' ? 0.3 : 0.0)), 0.14);
-    this._setMorph('browDownRight', e === 'focused' ? 0.24 : (e === 'concerned' ? 0.22 : (e === 'urgent' ? 0.3 : 0.0)), 0.14);
+    // When an ARKit face track is playing (Audio2Face-3D), the track owns the
+    // brow/mouth shapes — our layer only adds the ocular expression cues.
+    const curveActive = Boolean(this.speechFaces);
+    if (!curveActive) {
+      this._setMorph('browInnerUp', e === 'listening' ? 0.18 : (e === 'concerned' ? 0.36 : (e === 'urgent' ? 0.24 : 0.04)), 0.14);
+      this._setMorph('browDownLeft', e === 'focused' ? 0.24 : (e === 'concerned' ? 0.22 : (e === 'urgent' ? 0.3 : 0.0)), 0.14);
+      this._setMorph('browDownRight', e === 'focused' ? 0.24 : (e === 'concerned' ? 0.22 : (e === 'urgent' ? 0.3 : 0.0)), 0.14);
+      // Composed poise — never a frozen customer-support grin
+      this._setMorph('mouthSmileLeft', e === 'listening' ? 0.06 : 0.02, 0.12);
+      this._setMorph('mouthSmileRight', e === 'listening' ? 0.06 : 0.02, 0.12);
+    }
     this._setMorph('eyeSquintLeft', e === 'focused' ? 0.18 : 0.04, 0.14);
     this._setMorph('eyeSquintRight', e === 'focused' ? 0.18 : 0.04, 0.14);
     this._setMorph('eyeWideLeft', e === 'urgent' ? 0.22 : 0.0, 0.18);
     this._setMorph('eyeWideRight', e === 'urgent' ? 0.22 : 0.0, 0.18);
-    // Composed poise — never a frozen customer-support grin
-    this._setMorph('mouthSmileLeft', e === 'listening' ? 0.06 : 0.02, 0.12);
-    this._setMorph('mouthSmileRight', e === 'listening' ? 0.06 : 0.02, 0.12);
   }
 
   _updateLipSync() {
-    if (!this.isSpeaking || this.speechTimeline.length === 0) {
+    if (!this.isSpeaking || (this.speechTimeline.length === 0 && !this.speechFaces)) {
       for (const v of VISEME_NAMES) this._setMorph(v, 0, 0.28);
       this._setMorph('jawOpen', 0, 0.3);
       this._setMorph('mouthOpen', 0, 0.3);
@@ -1325,6 +1372,42 @@ export class JarvisCharacterController {
     }
 
     const elapsed = performance.now() - this.speechStartPerf;
+
+    // --- Layer 0: ARKit blendshape track (Audio2Face-3D chain, §14) ---
+    // Neural audio→face output sampled at the SAME clock origin as the voice
+    // buffer; authoritative for mouth/jaw/brow/cheek shapes. Blink + gaze stay
+    // local (isCurveDriven) — a generic audio model cannot know where she is
+    // looking. The waveform energy layer still drives her beat gestures.
+    if (this.speechFaces) {
+      const sampled = sampleCurveValues(this.speechFaces, elapsed);
+      let jaw = 0;
+      for (const [name, value] of Object.entries(sampled)) {
+        if (!isCurveDriven(name)) continue;
+        this._setMorph(name, value, 0.55);
+        if (name === 'jawOpen') jaw = value;
+      }
+      // Extra lip aperture so articulation reads at conversational distance
+      this._setMorph('mouthOpen', jaw * 0.55, 0.5);
+      // the viseme rule engine stays silent while the track is authoritative
+      for (const v of VISEME_NAMES) this._setMorph(v, 0, 0.4);
+
+      // End-of-speech detection (same contract as the timeline path below)
+      if (this.activeAudioSource) return;
+      if (elapsed > this.speechFaces.durationMs + 260) {
+        const audioStillPlaying = this.activeAudioEl && !this.activeAudioEl.paused;
+        if (!audioStillPlaying && (!('speechSynthesis' in window) || !window.speechSynthesis.speaking)) {
+          this.isSpeaking = false;
+          this._clearVisemes();
+          if (this.onSpeechEndCallback) {
+            const cb = this.onSpeechEndCallback;
+            this.onSpeechEndCallback = null;
+            cb();
+          }
+        }
+      }
+      return;
+    }
+
     const lastEnd = timeline_lastEnd(this.speechTimeline);
 
     // --- Layer 1: phoneme timeline ("which sound") ---

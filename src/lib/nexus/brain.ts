@@ -15,7 +15,7 @@
 import { db } from '@/lib/db';
 import { OPERATIONAL_MODES, SPATIAL_ZONES } from './seed';
 import { serializeWorld } from './worldHub';
-import { runLlm, runTts, runAsr } from './providers/registry';
+import { runLlm, runTts, runAsr, runFacialAnimation } from './providers/registry';
 
 /** D3: Tongtong is the locked voice identity; configurable for engine A/B tests. */
 const VOICE_IDENTITY = process.env.NEXUS_VOICE_IDENTITY || 'tongtong';
@@ -253,17 +253,40 @@ export async function think(userContent: string): Promise<BrainResult> {
 }
 
 /** Synthesize her voice via the TTS provider chain. Returns base64 WAV audio,
- *  or null on failure (client falls back to browser TTS). */
-export async function synthesizeVoice(
-  text: string,
-  emotion: string
-): Promise<{ audio: string; mime: string } | null> {
+ *  or null on failure (client falls back to browser TTS).
+ *
+ *  Directive §14 facial animation: when an Audio2Face-3D gateway is configured
+ *  (A2F_SERVICE_URL), the SAME audio is converted to an ARKit blendshape track
+ *  (D6 provider chain, time-budgeted so a slow gateway never delays the first
+ *  spoken word). Without a gateway the local rule engines stay authoritative —
+ *  `faces` is simply null and nothing is fabricated. */
+export interface SynthesizedVoice {
+  audio: string;
+  mime: string;
+  faces: { fps: number; durationMs: number; curves: Record<string, number[]> } | null;
+}
+
+export async function synthesizeVoice(text: string, emotion: string): Promise<SynthesizedVoice | null> {
   const clean = text.replace(/\[.*?\]/g, '').trim();
   if (!clean || clean.length > 1000) return null;
   const speed = emotion === 'urgent' ? 1.12 : emotion === 'concerned' ? 0.96 : 1.0;
   const result = await runTts({ text: clean, voice: VOICE_IDENTITY, speed, format: 'wav' });
   if (!result || result.audio.length < 2000) return null;
-  return { audio: result.audio.toString('base64'), mime: result.mime };
+
+  // Best-effort ARKit face track for this exact audio chunk (null → local engines)
+  const budgetMs = Number(process.env.A2F_BUDGET_MS) || 1200;
+  const faceTrack = await runFacialAnimation(
+    { audio: result.audio, mime: result.mime, emotion },
+    budgetMs
+  );
+
+  return {
+    audio: result.audio.toString('base64'),
+    mime: result.mime,
+    faces: faceTrack
+      ? { fps: faceTrack.fps, durationMs: faceTrack.durationMs, curves: faceTrack.curves }
+      : null,
+  };
 }
 
 /** Transcribe owner speech (base64 audio) via the ASR provider chain. */
