@@ -47,9 +47,14 @@ export function parseProviderChain(raw: string | undefined, fallback: string[]):
 
 export function getInferenceConfig(): InferenceConfig {
   return {
-    llm: parseProviderChain(process.env.NEXUS_LLM_PROVIDERS, ['zai_cloud_route']),
+    // 2026-11-13 (Task 2): groq_cloud is the genuinely-free production LLM
+    // route (no card, no billing — free gsk_ keys, rate-limited). z.ai's
+    // SDK credentials are sandbox-ambient and do not exist on Railway, so
+    // on production the chain is: groq_cloud (when GROQ_API_KEY is set)
+    // -> honest degraded fallback. Override order via NEXUS_LLM_PROVIDERS.
+    llm: parseProviderChain(process.env.NEXUS_LLM_PROVIDERS, ['groq_cloud', 'zai_cloud_route']),
     tts: parseProviderChain(process.env.NEXUS_TTS_PROVIDERS, ['zai_cloud_route']),
-    asr: parseProviderChain(process.env.NEXUS_ASR_PROVIDERS, ['zai_cloud_route']),
+    asr: parseProviderChain(process.env.NEXUS_ASR_PROVIDERS, ['zai_cloud_route', 'groq_cloud']),
     face: parseProviderChain(process.env.NEXUS_FACE_PROVIDERS, ['audio2face_local']),
   };
 }
@@ -66,6 +71,9 @@ async function resolveLlm(id: string): Promise<LlmProvider | null> {
   if (id === 'zai_cloud_route') {
     return (await import('./zaiCloud')).zaiLlm;
   }
+  if (id === 'groq_cloud') {
+    return (await import('./groqCloud')).groqLlm;
+  }
   return null;
 }
 
@@ -79,6 +87,9 @@ async function resolveTts(id: string): Promise<TtsProvider | null> {
 async function resolveAsr(id: string): Promise<AsrProvider | null> {
   if (id === 'zai_cloud_route') {
     return (await import('./zaiCloud')).zaiAsr;
+  }
+  if (id === 'groq_cloud') {
+    return (await import('./groqCloud')).groqAsr;
   }
   return null;
 }

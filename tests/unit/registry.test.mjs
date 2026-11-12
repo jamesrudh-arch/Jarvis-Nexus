@@ -23,3 +23,47 @@ test('parseProviderChain: env chain parsing with fallbacks', () => {
   chain.push('mutant');
   assert.deepEqual(fallback, ['zai_cloud_route']);
 });
+
+test('D6 registry: groq_cloud is the default first LLM hop (2026-11-13 Task-2)', async () => {
+  // The production LLM chain must start with a provider whose credentials can
+  // genuinely exist on Railway. groq_cloud (free gsk_ keys, no card) leads;
+  // zai_cloud_route stays as the sandbox-ambient second hop.
+  const mod = await import('../../src/lib/nexus/providers/registry.ts');
+  const cfg = mod.getInferenceConfig();
+  assert.equal(cfg.llm[0], 'groq_cloud', 'groq_cloud must be the first default LLM provider');
+  assert.ok(cfg.llm.includes('zai_cloud_route'), 'zai_cloud_route remains in the chain');
+  assert.ok(cfg.asr.includes('groq_cloud'), 'groq_cloud ASR (whisper) is in the ASR chain');
+
+  // NEXUS_LLM_PROVIDERS still overrides the default order completely.
+  const before = process.env.NEXUS_LLM_PROVIDERS;
+  process.env.NEXUS_LLM_PROVIDERS = 'zai_cloud_route';
+  try {
+    assert.deepEqual(mod.getInferenceConfig().llm, ['zai_cloud_route']);
+  } finally {
+    if (before === undefined) delete process.env.NEXUS_LLM_PROVIDERS;
+    else process.env.NEXUS_LLM_PROVIDERS = before;
+  }
+});
+
+test('groqCloud provider: unavailable without GROQ_API_KEY, available with it', async () => {
+  const { groqLlm } = await import('../../src/lib/nexus/providers/groqCloud.ts');
+  const before = process.env.GROQ_API_KEY;
+  delete process.env.GROQ_API_KEY;
+  try {
+    assert.equal(await groqLlm.available(), false, 'no key -> unavailable (chain falls through honestly)');
+  } finally {
+    if (before !== undefined) process.env.GROQ_API_KEY = before;
+  }
+  process.env.GROQ_API_KEY = 'gsk_test_key';
+  try {
+    assert.equal(await groqLlm.available(), true);
+    await assert.rejects(
+      () => groqLlm.chat({ messages: [{ role: 'user', content: 'hi' }] }),
+      /Groq chat HTTP/,
+      'with a fake key the real API call must throw (honest error -> chain falls through)'
+    );
+  } finally {
+    if (before === undefined) delete process.env.GROQ_API_KEY;
+    else process.env.GROQ_API_KEY = before;
+  }
+});
