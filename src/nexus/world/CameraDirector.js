@@ -256,6 +256,20 @@ export class CameraDirector {
   update(dt, jarvis, reducedMotion = false) {
     this._computeComposition(jarvis);
 
+    // NaN guard (2026-11-13): a poisoned character transform would otherwise
+    // drive the camera to NaN, and the NaN view-projection matrix silently
+    // culls EVERY object in the scene (renders as a black void). Fall back to
+    // the living_presence defaults so the sanctuary always stays visible.
+    if (!Number.isFinite(this.desiredPos.x) || !Number.isFinite(this.desiredPos.y) || !Number.isFinite(this.desiredPos.z)) {
+      this.desiredPos.set(2.65, 1.62, 3.85);
+    }
+    if (!Number.isFinite(this.desiredTarget.x) || !Number.isFinite(this.desiredTarget.y) || !Number.isFinite(this.desiredTarget.z)) {
+      this.desiredTarget.set(0.65, 1.38, 0.45);
+    }
+    if (!Number.isFinite(this.desiredFov)) {
+      this.desiredFov = focalLengthToVerticalFov(40);
+    }
+
     if (this.manualUserHoldSec > 0) {
       this.manualUserHoldSec -= dt;
       this.controls.update();

@@ -620,6 +620,14 @@ export class JarvisCharacterController {
    * so JARVIS never clips through consoles or slides sideways.
    */
   navigateTo(targetX, targetZ, targetYaw, { urgent = false, posture = 'console_interaction', emotion = 'focused' } = {}) {
+    // NaN guard (2026-11-13): a non-finite destination or yaw would propagate
+    // into root.rotation.y, then the camera composition, and finally the
+    // view-projection matrix — silently culling the ENTIRE scene to a black
+    // void. Any caller with a bad value is ignored; she keeps her current
+    // valid state instead of being poisoned.
+    if (!Number.isFinite(targetX) || !Number.isFinite(targetZ) || !Number.isFinite(targetYaw)) {
+      return;
+    }
     this.urgentRun = Boolean(urgent);
     this.postureMode = posture;
     this.emotionalState = emotion;
@@ -969,7 +977,7 @@ export class JarvisCharacterController {
     if (this.focusCamera && this.postureMode === 'conversational_focus' && this.waypoints.length === 0) {
       const dx = cameraWorldPos.x - this.root.position.x;
       const dz = cameraWorldPos.z - this.root.position.z;
-      if (Math.hypot(dx, dz) > 0.35) {
+      if (Number.isFinite(dx) && Number.isFinite(dz) && Math.hypot(dx, dz) > 0.35) {
         this.targetYaw = Math.atan2(dx, dz);
       }
     }
@@ -1005,6 +1013,18 @@ export class JarvisCharacterController {
       this.currentSpeed *= Math.max(0, 1 - realDt * 10);
       this._fadeToAction('idle', 0.35);
       this.root.rotation.y = this._lerpAngle(this.root.rotation.y, this.targetYaw, realDt * 5.0);
+    }
+
+    // 1b. Self-healing (2026-11-13): if any external path ever poisons the
+    // root transform with NaN, recover to a valid pose instead of rendering
+    // a black void forever.
+    if (!Number.isFinite(this.root.rotation.y)) {
+      this.root.rotation.y = Number.isFinite(this.targetYaw) ? this.targetYaw : -0.42;
+    }
+    if (!Number.isFinite(this.root.position.x) || !Number.isFinite(this.root.position.z)) {
+      this.root.position.set(1.45, 0, 0.95);
+      this.waypoints = [];
+      this.currentSpeed = 0;
     }
 
     // 2. Advance skeletal mixer

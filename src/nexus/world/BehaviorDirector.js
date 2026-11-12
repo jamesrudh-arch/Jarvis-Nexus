@@ -85,7 +85,11 @@ export class BehaviorDirector {
       if (idx === this._lastPoi) idx = (idx + 1) % POIS.length;
       this._lastPoi = idx;
       const poi = POIS[idx];
-      const yaw = Math.atan2(poi.look[0] - poi.stand[0], poi.look[2] - poi.stand[2]);
+      // stand is [x, z]; look is [x, y, z]. Face the POI's look target from
+      // the stand spot: yaw = atan2(lookX - standX, lookZ - standZ).
+      // (2026-11-13 fix: was poi.stand[2] — undefined — which produced a NaN
+      // yaw that poisoned the camera transform and blanked the entire scene.)
+      const yaw = Math.atan2(poi.look[0] - poi.stand[0], poi.look[2] - poi.stand[1]);
       j.lookWorldTarget.set(poi.look[0], poi.look[1], poi.look[2]);
       j.focusCamera = false;
       j.emotionalState = 'focused';
