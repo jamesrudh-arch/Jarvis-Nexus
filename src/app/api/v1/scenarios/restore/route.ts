@@ -3,7 +3,7 @@ import { commandMoveToZone, serializeWorld, setScenarioRuntime } from '@/lib/nex
 import { requireOwnerKey } from '@/lib/nexus/ownerGuard';
 
 export async function POST(req: Request) {
-  const denied = requireOwnerKey(req);
+  const denied = await requireOwnerKey(req);
   if (denied) return denied;
   try {
     setScenarioRuntime(null);

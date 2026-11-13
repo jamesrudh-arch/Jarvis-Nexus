@@ -10,7 +10,7 @@ const VALID_CATEGORIES = new Set([
 const VALID_STATUSES = new Set(['owner_stated', 'verified_fact', 'source_backed', 'hypothesis']);
 
 export async function GET(req: Request) {
-  const denied = requireOwnerKey(req);
+  const denied = await requireOwnerKey(req);
   if (denied) return denied;
   try {
     await ensureSeed();
@@ -29,7 +29,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: NextRequest) {
-  const denied = requireOwnerKey(req);
+  const denied = await requireOwnerKey(req);
   if (denied) return denied;
   try {
     await ensureSeed();

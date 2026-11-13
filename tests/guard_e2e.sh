@@ -42,6 +42,12 @@ check() { # name expected actual
 }
 code() { curl -s -o /dev/null -w "%{http_code}" --max-time 20 "$@"; }
 
+# Rate-limit era (Phase 1): every anonymous/wrong-key probe runs as a UNIQUE
+# client IP (X-Forwarded-For, the header the production proxy provides), so the
+# 5-auth-failures/60s lockout is not tripped by the matrix itself. The lockout
+# behaviour itself is proven separately in tests/phase1_e2e.sh.
+xff() { echo "10.$((RANDOM%256)).$((RANDOM%256)).$((RANDOM%256))"; }
+
 # --- 1. public status surface stays open --------------------------------------
 check "GET  /health                public" 200 "$(code "$BASE/api/v1/health")"
 check "GET  /world                 public" 200 "$(code "$BASE/api/v1/world")"
@@ -54,11 +60,11 @@ ANON=()
 anon() { # name method path [data]
   local c h
   if [ -n "${4:-}" ]; then
-    c=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 -X "$2" "$BASE$3" -H 'Content-Type: application/json' -d "$4")
+    c=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 -X "$2" "$BASE$3" -H "X-Forwarded-For: $(xff)" -H 'Content-Type: application/json' -d "$4")
   else
-    c=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 -X "$2" "$BASE$3")
+    c=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 -X "$2" "$BASE$3" -H "X-Forwarded-For: $(xff)")
   fi
-  h=$(curl -s -D - -o /dev/null --max-time 20 -X "$2" "$BASE$3" -H 'Content-Type: application/json' -d "${4:-{}}" | tr -d '\r' | grep -i '^x-auth-required:' | head -1 | tr 'A-Z' 'a-z')
+  h=$(curl -s -D - -o /dev/null --max-time 20 -X "$2" "$BASE$3" -H "X-Forwarded-For: $(xff)" -H 'Content-Type: application/json' -d "${4:-{}}" | tr -d '\r' | grep -i '^x-auth-required:' | head -1 | tr 'A-Z' 'a-z')
   check "ANON $1 $2" 403 "$c"
   if [ "$c" = "403" ] && [ "$h" = "x-auth-required: owner-key" ]; then
     PASS=$((PASS+1)); echo "PASS  $1 carries X-Auth-Required: owner-key"
@@ -92,8 +98,8 @@ anon "/world/reduced-motion POST" POST "/api/v1/world/reduced-motion?enabled=fal
 anon "/scenarios/restore POST  " POST /api/v1/scenarios/restore
 
 # --- 3. wrong key rejected ------------------------------------------------------
-check "WRONG KEY /memories POST" 403 "$(code -X POST "$BASE/api/v1/memories" -H 'Content-Type: application/json' -H "X-Owner-Key: wrong-key-attempt" -d '{"title":"x","content":"y"}')"
-check "WRONG BEARER /memories GET" 403 "$(code "$BASE/api/v1/memories" -H "Authorization: Bearer wrong-key-attempt")"
+check "WRONG KEY /memories POST" 403 "$(code -X POST "$BASE/api/v1/memories" -H "X-Forwarded-For: $(xff)" -H 'Content-Type: application/json' -H "X-Owner-Key: wrong-key-attempt" -d '{"title":"x","content":"y"}')"
+check "WRONG BEARER /memories GET" 403 "$(code "$BASE/api/v1/memories" -H "X-Forwarded-For: $(xff)" -H "Authorization: Bearer wrong-key-attempt")"
 
 # --- 4. correct key accepted (X-Owner-Key and Bearer) ---------------------------
 H="X-Owner-Key: $KEY"
@@ -103,6 +109,8 @@ check "KEY /agents GET          " 200 "$(code "$BASE/api/v1/agents" -H "$H")"
 check "KEY /security/events GET " 200 "$(code "$BASE/api/v1/security/events" -H "$H")"
 check "KEY via Bearer /memories " 200 "$(code "$BASE/api/v1/memories" -H "Authorization: Bearer $KEY")"
 check "KEY /conversations empty " 400 "$(code -X POST "$BASE/api/v1/conversations/send" -H "$H" -H 'Content-Type: application/json' -d '{"content":""}')"
+# Mic gate (Phase 1): enable mic so the 400 proves the KEY gate passed.
+code -X PATCH "$BASE/api/v1/switches/microphone" -H "$H" -H 'Content-Type: application/json' -d '{"enabled":true}' >/dev/null
 check "KEY /asr empty audio     " 400 "$(code -X POST "$BASE/api/v1/asr" -H "$H" -H 'Content-Type: application/json' -d '{"audio_base64":""}')"
 check "KEY /tts empty text      " 400 "$(code -X POST "$BASE/api/v1/voice/tts" -H "$H" -H 'Content-Type: application/json' -d '{"text":""}')"
 check "KEY /integrations bogus  " 400 "$(code -X POST "$BASE/api/v1/integrations" -H "$H" -H 'Content-Type: application/json' -d '{"action":"bogus"}')"

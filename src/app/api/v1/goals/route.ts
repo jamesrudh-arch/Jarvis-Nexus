@@ -19,7 +19,7 @@ function serializeGoal(g: {
 }
 
 export async function GET(req: Request) {
-  const denied = requireOwnerKey(req);
+  const denied = await requireOwnerKey(req);
   if (denied) return denied;
   try {
     await ensureSeed();
@@ -40,7 +40,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: NextRequest) {
-  const denied = requireOwnerKey(req);
+  const denied = await requireOwnerKey(req);
   if (denied) return denied;
   try {
     await ensureSeed();

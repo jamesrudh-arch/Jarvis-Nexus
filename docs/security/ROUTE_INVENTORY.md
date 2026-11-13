@@ -140,3 +140,26 @@ removing the two guard lines from any single handler.
 - No per-IP throttling on the Next.js app yet (the FastAPI CORE has
   5-fail/60 s); Next.js middleware-level throttling is a follow-up item.
 - OWNER_KEY rotation is a Railway variable edit + redeploy.
+
+## PHASE 1 UPDATE (2026-11-13) — switch enforcement, rate limiting, audit trail, backup/restore
+
+New routes (all owner-key guarded; backup/restore additionally require Master ON):
+
+| Route | Method | Guard | Notes |
+| --- | --- | --- | --- |
+| `/api/v1/auth/verify` | GET | owner key (no master gate) | The "login" surface — survives Master OFF so the OwnerGate panel can always unlock (ED-P1-4) |
+| `/api/v1/admin/backup` | GET | owner key + Master ON | Full DB export, secrets excluded, sensitive memory redacted (ED-P1-5) |
+| `/api/v1/admin/restore` | POST | owner key + Master ON | Strict validation (400), 4 MiB cap (413), dry-run, pre-restore safety backup, ATOMIC transactional restore with count verification (ED-P1-5) |
+
+Guard layers now (in order): rate limit (429) → owner key (403, audited) →
+Master switch (403, audited, fresh DB read per request — ED-P1-3) → per-route
+switch gates (microphone/camera/embodiment/computer_control — ED-P1-6).
+Master OFF cascade: mic/camera forced OFF, running agents paused, world to
+standby (ED-P1-1). All denials write SecurityAuditEvent records (route + IP,
+never key material).
+
+Verification: `tests/phase1_e2e.sh` 48/48 (fresh-DB cold boot, switch gates,
+master matrix, cascade, audit categories, backup/restore live + on a separate
+copy, restart persistence, rate lockout) · `tests/guard_e2e.sh` 70/70 (updated
+for the rate-limit era — unique client IPs per probe, ED-P1-7) · unit 80/80 ·
+tsc clean · build success · FastAPI CORE regression 43/43.
