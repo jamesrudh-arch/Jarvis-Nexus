@@ -2,6 +2,16 @@
 
 Format: date — change — why. Newest first. Full diffs: git log.
 
+## 2026-11-13 (session 9) — PHASE 0 RE-AUDIT under the new Master Engineering Directive (Phase 0→15) — evidence-backed report, zero code changes
+
+**Why:** the owner supplied a new, more detailed Master Engineering Directive (phased build with mandatory blueprint intake, world atlas, vertical slice, 6 regions/6 cities, 50 inhabitants, Unreal/Blender pipelines, Laboratory, missions). Its FIRST ACTION mandates a complete repository + environment audit, a Phase 0 report, then STOP for owner GO. Documentation-only commit.
+
+- **Phase 0 report**: `docs/phase-reports/PHASE-0-REPORT.md` (canonical) + owner copies in `download/` (md + pdf). Component audit with exact status labels, environment inventory, live evidence trail, blockers, rollback.
+- **Verification re-run (fresh sandbox, Python deps reinstalled from requirements.txt)**: 62/62 Next.js unit tests (1006 ms), 43/43 FastAPI CORE tests (clean-env sqlite, 2.62 s), `tsc --noEmit` clean, `next build` SUCCESS, standalone runtime probe (health 200 in 37 ms, anon 403, correct key 200), guard matrix re-verified live on dev server AND standalone (both `X-Owner-Key` and `Bearer` forms), GitHub remote in sync at `040c91c`, Supabase 200/401.
+- **CRITICAL FINDING (B1)**: Railway production `jarvis-nexus.up.railway.app` returns `Application not found` (404) on ALL paths — was live and verified at end of session 8b. Railway API token already dead (owner-rotated), so diagnosis requires the owner's Railway dashboard. GitHub → Railway auto-deploy chain verified intact on the GitHub side.
+- **Blockers recorded**: B2 Unreal unavailable in sandbox (author-only until owner's UE machine), B3 Blender unavailable (headless attempt scheduled for Phase 4), B4 Groq key pending, B5 EOS portal association pending.
+- **Structural gaps vs new directive**: `docs/blueprint/` absent (Phase 0B needs owner GO + blueprint-file decision), `unreal/` is a skeleton (not `world/Unreal/`), `blender/` scripts-only (no `.blend` assets — Part 6 explicitly insufficient), no phase branches/tags yet.
+
 ## 2026-11-13 (session 8b) — GATE 0 EXTENDED TO THE PRODUCTION APP: owner-key guard on every privileged route (Next.js)
 
 **Why:** session 7's audit rated the deployed app CRITICAL — every `/api/v1/*` route except `/api/v1/storage` was unauthenticated. Re-proven BEFORE hardening with a non-destructive anonymous create+delete cycle on production (both 200). This closes the production surface and completes Gate 0 across both codebases.
