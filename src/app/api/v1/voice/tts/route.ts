@@ -12,7 +12,7 @@ import { requireOwnerKey } from '@/lib/nexus/ownerGuard';
  * unless a gateway is configured.
  */
 export async function POST(req: Request) {
-  const denied = requireOwnerKey(req);
+  const denied = await requireOwnerKey(req);
   if (denied) return denied;
   try {
     const body = await req.json().catch(() => null);

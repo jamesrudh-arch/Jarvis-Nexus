@@ -4,7 +4,7 @@ import { commandMoveToZone, ensureSeed, serializeWorld, setScenarioRuntime } fro
 import { requireOwnerKey } from '@/lib/nexus/ownerGuard';
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const denied = requireOwnerKey(req);
+  const denied = await requireOwnerKey(req);
   if (denied) return denied;
   try {
     await ensureSeed();

@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
         detail: status.detail,
       });
     }
-    const denied = requireOwnerKey(req);
+    const denied = await requireOwnerKey(req);
     if (denied) return denied;
     const clean = sanitizeStorageKey(key);
     if (!clean) return NextResponse.json({ detail: 'Invalid key.' }, { status: 400 });
@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  const denied = requireOwnerKey(req);
+  const denied = await requireOwnerKey(req);
   if (denied) return denied;
   const key = req.nextUrl.searchParams.get('key');
   const clean = sanitizeStorageKey(key);
@@ -88,7 +88,7 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const denied = requireOwnerKey(req);
+  const denied = await requireOwnerKey(req);
   if (denied) return denied;
   const key = req.nextUrl.searchParams.get('key');
   const clean = sanitizeStorageKey(key);

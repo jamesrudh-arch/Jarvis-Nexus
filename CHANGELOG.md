@@ -2,6 +2,16 @@
 
 Format: date — change — why. Newest first. Full diffs: git log.
 
+## 2026-11-13 (session 9, continued) — PHASE 1 SECURITY: switch enforcement + rate limiting + audit trail + backup/restore (production app)
+
+**Why:** Part 16 Phase 1 + Parts 13/14. Gate 0 (session 8b) closed authentication; Phase 1 closes ENFORCEMENT: the seven switches were stored but not enforced on the production app, there was no rate limiting, no audit trail for denials, and no backup/restore.
+
+- **3-layer guard** (`ownerGuard.ts`, now async — 27 call sites in 21 route files await it): rate limit (5 auth failures/60 s/IP → 429 + Retry-After, general 240/min cap) → owner key (403, audited, counts toward lockout) → Master switch (403, audited, FRESH DB read per request — a TTL cache was rejected mid-implementation because it opens a one-request hole; fail-closed on read error).
+- **Switch enforcement (Part 13 table)**: master OFF denies all privileged routes except the control plane (health, switches, auth/verify — ED-P1-1) and cascades mic/camera OFF + pauses agents + world standby; microphone gates asr (403 before audio processing); embodiment gates holographic/digital-human modes; computer_control gates ALL tool execution with an honest spoken block ("I have not executed any tools") — never silent. Autonomy/remote_compute enforcement points documented (no self-initiated work / worker queue exists yet — gates land with those features).
+- **New routes**: `GET /api/v1/auth/verify` (login surface surviving Master OFF — OwnerGate now verifies against it), `GET /api/v1/admin/backup` (secrets excluded, sensitive memory redacted), `POST /api/v1/admin/restore` (strict validation → 400, 4 MiB → 413, dry-run, pre-restore safety backup, ATOMIC interactive-transaction restore with in-transaction count verification — any failure rolls back completely).
+- **Verification 241/241**: unit 80/80 (+18 new: rateLimit ×7, backupValidation ×11); Gate 0 E2E 70/70 re-proven in the rate-limit era (unique client IPs per probe — ED-P1-7); NEW Phase 1 E2E 48/48 incl. fresh-DB cold-boot defaults (mic/camera OFF), master matrix, cascade, audit categories, backup→restore **on a separate copy** verified against backup counts, restart persistence, rate lockout; FastAPI CORE regression 43/43; tsc clean; build success.
+- **Docs**: ENGINEERING_DECISIONS ED-P1-1…P1-8 · ROUTE_INVENTORY Phase 1 section · `docs/phase-reports/PHASE-1-REPORT.md`. Production verification deferred until B1 (Railway) clears.
+
 ## 2026-11-13 (session 9, continued) — PHASE 0B: verbatim blueprint intake (7 files) + findings register
 
 **Why:** owner GO "extract from directive" — the seven approved blueprint files named in Part 16 Phase 0B never existed as separate files; their content is embedded in the master directive. Extracted verbatim with a re-runnable verification engine.

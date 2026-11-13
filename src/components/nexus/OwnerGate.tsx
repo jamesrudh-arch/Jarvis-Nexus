@@ -44,7 +44,10 @@ export default function OwnerGate() {
     setState('checking');
     try {
       // Verify against a cheap guarded endpoint BEFORE storing anything.
-      const res = await fetch('/api/v1/agents', { headers: { ...ownerKeyHeaders(), 'X-Owner-Key': key } });
+      // Phase 1: verify against the dedicated login endpoint — it stays
+      // reachable when the Master switch is OFF, so the owner can always
+      // unlock and reach the switches control plane to power back up.
+      const res = await fetch('/api/v1/auth/verify', { headers: { ...ownerKeyHeaders(), 'X-Owner-Key': key } });
       if (res.ok) {
         setStoredOwnerKey(key);
         setState('ok');

@@ -4,7 +4,7 @@ import { SPATIAL_ZONES } from '@/lib/nexus/seed';
 import { requireOwnerKey } from '@/lib/nexus/ownerGuard';
 
 export async function POST(req: NextRequest) {
-  const denied = requireOwnerKey(req);
+  const denied = await requireOwnerKey(req);
   if (denied) return denied;
   try {
     const body = await req.json();

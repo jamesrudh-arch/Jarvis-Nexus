@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
  * Responses contain connection state and identities ONLY — never credentials.
  */
 export async function GET(req: Request) {
-  const denied = requireOwnerKey(req);
+  const denied = await requireOwnerKey(req);
   if (denied) return denied;
   try {
     const snap = await getIntegrationSnapshot();
@@ -26,7 +26,7 @@ export async function GET(req: Request) {
 
 /** POST /api/v1/integrations {action:"verify"} — force a fresh live check. */
 export async function POST(request: Request) {
-  const denied = requireOwnerKey(request);
+  const denied = await requireOwnerKey(request);
   if (denied) return denied;
   let body: { action?: string } = {};
   try { body = await request.json(); } catch { /* empty body */ }
