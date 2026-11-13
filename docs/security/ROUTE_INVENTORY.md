@@ -105,6 +105,26 @@ the key) and blocks inference-quota theft.
    `download/screenshots/gate0_ui_locked.png`, `gate0_ui_unlocked.png`,
    `gate0_ui_after_reload.png`.
 
+## PRODUCTION VERIFICATION (2026-11-13, after deploy of the hardening commit)
+
+Live against https://jarvis-nexus-production.up.railway.app after the GitHub-main
+auto-deploy landed (observed transition: anonymous `POST /api/v1/memories`
+returned 200 at 01:36:56Z, 403 at 01:37:22Z):
+
+- PUBLIC (expect 200, all confirmed): health, world, switches, scenarios, telemetry.
+- ANONYMOUS PRIVILEGED (expect 403, all confirmed): GET memories / goals /
+  agents / integrations / security/events; POST conversations/send, voice/tts,
+  asr, world/move, world/interrupt; PUT storage.
+- Wrong key → 403 `{"detail":"Invalid owner key.","auth_required":"owner_key"}`
+  (the new shared-guard response shape).
+- Anonymous 403 responses carry `x-auth-required: owner-key` (drives OwnerGate).
+- Switch safety: `PATCH /switches/master` (same value) → 403, master state
+  unchanged — no production state was altered by any probe.
+- The correct-key path on production requires the owner's secret and was
+  verified end-to-end locally against the identical build (guard matrix 70/70 +
+  headless-browser UX flow); the owner unlocks via the OwnerGate panel using
+  the `OWNER_KEY` value from the Railway variables.
+
 ## Rollback
 
 Single revert of the hardening commit restores the previous behavior (all
