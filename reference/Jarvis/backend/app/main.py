@@ -1,25 +1,36 @@
 """JARVIS NEXUS — Modular FastAPI CORE Server."""
 from __future__ import annotations
 
+import asyncio
 import json
 import math
 import time
 import uuid
+import zlib
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import psutil
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from starlette.background import BackgroundTask
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy.orm import Session
 
+from .auth import (
+    WS_AUTH_MESSAGE_TIMEOUT_SEC,
+    WS_POLICY_VIOLATION_CODE,
+    issue_ws_ticket,
+    record_auth_failure,
+    require_owner,
+    verify_ws_first_message,
+)
 from .config import REPO_ROOT, UPLOADS_DIR, settings
-from .database import Base, SessionLocal, engine, get_db, init_database_extensions
+from .database import Base, SessionLocal, engine, get_db, init_database_extensions, migrate_legacy_memory_embedding_column
 from .models import (
     AgentTaskRun,
     Conversation,
@@ -38,12 +49,17 @@ from .models import (
     ToolAuditLog,
 )
 from .security_crypto import decrypt_text, encrypt_dict, encrypt_text, mask_identifier, verify_worker_token
-from .services.inference_hub import build_kaggle_worker_package, inference_hub, test_kaggle_profile_auth
+from .services.inference_hub import (
+    build_kaggle_worker_package,
+    inference_hub,
+    sweep_stale_worker_packages,
+    test_kaggle_profile_auth,
+    validate_core_wss_url,
+)
 from .services.seed_data import OPERATIONAL_MODES, SPATIAL_ZONES, ensure_seed_data
 from .services.simulation_and_tools import (
     agent_coordinator,
     export_sanctuary_backup,
-    restore_sanctuary_backup,
     run_coupled_engineering_simulation,
     tool_runner,
 )
@@ -58,8 +74,13 @@ async def lifespan(_app: FastAPI):
     global PGVECTOR_ACTIVE
     PGVECTOR_ACTIVE = init_database_extensions()
     Base.metadata.create_all(bind=engine)
+    # Gate 0 Item 5: databases created before the embedding->lexical_fingerprint
+    # rename get their legacy column renamed here (best-effort, idempotent).
+    migrate_legacy_memory_embedding_column()
     with SessionLocal() as db:
         ensure_seed_data(db)
+    # Gate 0 Item 4: clear worker packages left over from previous runs.
+    sweep_stale_worker_packages()
     yield
 
 
@@ -69,6 +90,14 @@ app = FastAPI(
     description="Persistent orchestration, memory, goals, private compute, scenario direction, and shared 3D embodiment engine.",
     lifespan=lifespan,
 )
+
+# ---------------------------------------------------------------------------
+# Gate 0 Item 1 — Owner authentication on every REST route.
+# One dependency (require_owner) applied at the router level. `/api/v1/health`
+# stays on the app (public, status-only). Every other /api/v1 route lives on
+# `router` and therefore requires `Authorization: Bearer <JARVIS_OWNER_TOKEN>`.
+# ---------------------------------------------------------------------------
+router = APIRouter(prefix="/api/v1", dependencies=[Depends(require_owner)])
 
 app.add_middleware(
     CORSMiddleware,
@@ -205,30 +234,108 @@ class ResearchQueryRequest(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Gate 0 Item 3 — strict, CLOSED backup-snapshot schema for admin restore.
+# Every level forbids extra fields: an unknown table at the top level or an
+# unknown field inside any entry is a hard validation error, never a silent
+# import. The shape matches export_sanctuary_backup() output exactly.
+# ---------------------------------------------------------------------------
+
+class _StrictBackupModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+class BackupSwitchEntry(_StrictBackupModel):
+    switch_key: str
+    enabled: bool
+
+
+class BackupMemoryEntry(_StrictBackupModel):
+    id: str = Field(min_length=1, max_length=64)
+    category: str
+    epistemic_status: str
+    title: str = Field(min_length=1, max_length=200)
+    content: str
+    is_sensitive: bool
+    confidence: float = Field(ge=0.0, le=1.0)
+    source_ref: Optional[str] = None
+    project_tag: Optional[str] = None
+
+
+class BackupGoalEntry(_StrictBackupModel):
+    id: str = Field(min_length=1, max_length=64)
+    title: str = Field(min_length=1, max_length=200)
+    description: str
+    priority: int = Field(ge=0, le=9)
+    status: str
+    progress: int = Field(ge=0, le=100)
+    depends_on: List[str] = Field(default_factory=list)
+    schedule_spec: str
+    assigned_zone: str
+    next_action: str
+
+
+class BackupWorldStateEntry(_StrictBackupModel):
+    owner_name: str
+    first_launch_completed: bool
+    active_mode: str
+    current_zone: str
+    reduced_motion: bool
+
+
+class BackupKaggleMaskedEntry(_StrictBackupModel):
+    slot_index: int
+    profile_name: str
+    masked_username: str
+    preferred_model: str
+    gpu_accelerator: str
+    is_active: bool
+
+
+class BackupSnapshot(_StrictBackupModel):
+    schema_version: str
+    exported_at: str
+    world_state: BackupWorldStateEntry
+    switches: List[BackupSwitchEntry]
+    memories: List[BackupMemoryEntry]
+    goals: List[BackupGoalEntry]
+    kaggle_profiles_masked: List[BackupKaggleMaskedEntry]
+
+
+# ---------------------------------------------------------------------------
 # 1. Health, Capabilities & World State
 # ---------------------------------------------------------------------------
 
 @app.get("/api/v1/health")
-def get_health(db: Session = Depends(get_db)):
-    caps = settings.runtime_capabilities()
-    caps["pgvector_extension_active"] = PGVECTOR_ACTIVE
+def get_health():
+    """Status only — deliberately exposes no capability, inference, or client detail.
+    Public by design (used by the Railway healthcheck); everything else requires
+    owner authentication (Gate 0 Item 1).
+    """
     return {
         "status": "ok",
         "service": settings.PROJECT_NAME,
         "version": settings.VERSION,
         "uptime_sec": round(time.time() - BOOT_TIME, 1),
-        "capabilities": caps,
-        "inference": inference_hub.status_snapshot(db),
-        "connected_embodiment_clients": len(world_hub.clients),
     }
 
 
-@app.get("/api/v1/world")
+@router.post("/auth/ws-ticket")
+def create_ws_ticket():
+    """Issue a single-use, short-lived ticket for /ws/nexus first-message auth.
+
+    The ticket (or the owner token itself) must be sent as the FIRST WebSocket
+    message after connecting to /ws/nexus — never in the URL, where it could be
+    logged. Tickets expire after 60 seconds and are consumed on first use.
+    """
+    return issue_ws_ticket()
+
+
+@router.get("/world")
 def get_world_state(db: Session = Depends(get_db)):
     return world_hub.serialize_world(db)
 
 
-@app.post("/api/v1/world/complete-onboarding")
+@router.post("/world/complete-onboarding")
 async def complete_onboarding(owner_name: str = Query(default="Owner"), db: Session = Depends(get_db)):
     state = db.query(NexusWorldState).filter_by(id=1).first()
     state.first_launch_completed = True
@@ -241,7 +348,7 @@ async def complete_onboarding(owner_name: str = Query(default="Owner"), db: Sess
     return snap
 
 
-@app.post("/api/v1/world/reduced-motion")
+@router.post("/world/reduced-motion")
 async def set_reduced_motion(enabled: bool = Query(...), db: Session = Depends(get_db)):
     state = db.query(NexusWorldState).filter_by(id=1).first()
     state.reduced_motion = enabled
@@ -251,7 +358,7 @@ async def set_reduced_motion(enabled: bool = Query(...), db: Session = Depends(g
     return snap
 
 
-@app.post("/api/v1/world/mode")
+@router.post("/world/mode")
 async def switch_operational_mode(req: ModeSwitchRequest, db: Session = Depends(get_db)):
     mode = next((m for m in OPERATIONAL_MODES if m["id"] == req.mode_id), None)
     if not mode:
@@ -276,7 +383,7 @@ async def switch_operational_mode(req: ModeSwitchRequest, db: Session = Depends(
     return snap
 
 
-@app.post("/api/v1/world/move")
+@router.post("/world/move")
 async def move_jarvis(req: MoveRequest, db: Session = Depends(get_db)):
     if req.zone_id not in SPATIAL_ZONES:
         raise HTTPException(status_code=404, detail=f"Unknown spatial zone '{req.zone_id}'")
@@ -292,14 +399,14 @@ async def move_jarvis(req: MoveRequest, db: Session = Depends(get_db)):
     return snap
 
 
-@app.post("/api/v1/world/interrupt")
+@router.post("/world/interrupt")
 async def interrupt_jarvis(reason: str = Query(default="Owner direct address"), db: Session = Depends(get_db)):
     snap = world_hub.interrupt_for_owner(db, reason=reason)
     await world_hub.broadcast("jarvis_interrupted", snap)
     return snap
 
 
-@app.post("/api/v1/world/resume")
+@router.post("/world/resume")
 async def resume_jarvis_work(db: Session = Depends(get_db)):
     snap = world_hub.resume_interrupted_work(db)
     await world_hub.broadcast("world_sync", snap)
@@ -310,7 +417,7 @@ async def resume_jarvis_work(db: Session = Depends(get_db)):
 # 2. Seven Persistent Owner Switches (Hardware-Grade Enforcement)
 # ---------------------------------------------------------------------------
 
-@app.get("/api/v1/switches")
+@router.get("/switches")
 def list_switches(db: Session = Depends(get_db)):
     rows = db.query(OwnerSwitch).all()
     order = ["master", "microphone", "camera", "autonomy", "remote_compute", "computer_control", "embodiment"]
@@ -328,7 +435,7 @@ def list_switches(db: Session = Depends(get_db)):
     ]
 
 
-@app.patch("/api/v1/switches/{switch_key}")
+@router.patch("/switches/{switch_key}")
 async def update_switch(switch_key: str, req: SwitchUpdateRequest, db: Session = Depends(get_db)):
     sw = db.query(OwnerSwitch).filter_by(switch_key=switch_key).first()
     if not sw:
@@ -386,7 +493,7 @@ async def update_switch(switch_key: str, req: SwitchUpdateRequest, db: Session =
 # 3. Persistent Conversations & Interruption
 # ---------------------------------------------------------------------------
 
-@app.get("/api/v1/conversations")
+@router.get("/conversations")
 def get_primary_conversation(db: Session = Depends(get_db)):
     conv = db.query(Conversation).order_by(Conversation.created_at.asc()).first()
     if not conv:
@@ -420,7 +527,7 @@ def get_primary_conversation(db: Session = Depends(get_db)):
     }
 
 
-@app.post("/api/v1/conversations/send")
+@router.post("/conversations/send")
 async def send_conversation_message(req: ChatSendRequest, db: Session = Depends(get_db)):
     switches = {s.switch_key: s.enabled for s in db.query(OwnerSwitch).all()}
     if req.modality == "voice" and not switches.get("microphone", False):
@@ -535,19 +642,27 @@ VALID_MEMORY_CATEGORIES = {
 }
 
 
-def _simple_lexical_embedding(text: str) -> List[float]:
-    """Deterministic 16-dim normalized character-trigram hash projection for local semantic ranking."""
+def _lexical_fingerprint(text: str) -> List[float]:
+    """Gate 0 Item 5 — honest name and honest semantics.
+
+    Deterministic 16-dim character-trigram hash projection used for LOCAL
+    LEXICAL ranking. This is NOT a semantic embedding: no neural encoder is
+    involved, and JARVIS NEXUS does not implement vector search. The trigram
+    hash uses crc32 so fingerprints stay identical across process restarts
+    (Python's builtin hash() is salted per process and would have silently
+    changed every persisted fingerprint on each restart).
+    """
     vec = [0.0] * 16
     clean = (text or "").lower()
     for i in range(max(0, len(clean) - 2)):
         tri = clean[i : i + 3]
-        idx = hash(tri) % 16
+        idx = zlib.crc32(tri.encode("utf-8")) % 16
         vec[idx] += 1.0
     norm = math.sqrt(sum(v * v for v in vec)) or 1.0
     return [round(v / norm, 4) for v in vec]
 
 
-@app.get("/api/v1/memories")
+@router.get("/memories")
 def list_memories(
     category: Optional[str] = None,
     q: Optional[str] = None,
@@ -582,7 +697,7 @@ def list_memories(
     return results
 
 
-@app.post("/api/v1/memories")
+@router.post("/memories")
 def create_memory(req: MemoryCreateRequest, db: Session = Depends(get_db)):
     if req.category not in VALID_MEMORY_CATEGORIES:
         raise HTTPException(status_code=400, detail=f"Invalid category '{req.category}'.")
@@ -590,7 +705,7 @@ def create_memory(req: MemoryCreateRequest, db: Session = Depends(get_db)):
     is_sens = req.is_sensitive or req.category == "sensitive"
     enc = encrypt_text(req.content) if is_sens else None
     stored_content = "[ENCRYPTED]" if is_sens else req.content
-    emb = json.dumps(_simple_lexical_embedding(f"{req.title} {req.content}"))
+    fp = json.dumps(_lexical_fingerprint(f"{req.title} {req.content}"))
 
     rec = MemoryRecord(
         category=req.category,
@@ -602,14 +717,14 @@ def create_memory(req: MemoryCreateRequest, db: Session = Depends(get_db)):
         confidence=req.confidence,
         source_ref=req.source_ref,
         project_tag=req.project_tag,
-        embedding_json=emb,
+        lexical_fingerprint_json=fp,
     )
     db.add(rec)
     db.commit()
     return {"id": rec.id, "category": rec.category, "epistemic_status": rec.epistemic_status, "is_sensitive": rec.is_sensitive}
 
 
-@app.patch("/api/v1/memories/{memory_id}")
+@router.patch("/memories/{memory_id}")
 def update_memory(memory_id: str, req: MemoryUpdateRequest, db: Session = Depends(get_db)):
     rec = db.query(MemoryRecord).filter_by(id=memory_id).first()
     if not rec:
@@ -639,7 +754,7 @@ def update_memory(memory_id: str, req: MemoryUpdateRequest, db: Session = Depend
     return {"id": rec.id, "epistemic_status": rec.epistemic_status, "updated": True}
 
 
-@app.delete("/api/v1/memories/{memory_id}")
+@router.delete("/memories/{memory_id}")
 def forget_memory(memory_id: str, db: Session = Depends(get_db)):
     rec = db.query(MemoryRecord).filter_by(id=memory_id).first()
     if not rec:
@@ -653,7 +768,7 @@ def forget_memory(memory_id: str, db: Session = Depends(get_db)):
 # 5. Goals, Dependencies & Auditable Scheduling
 # ---------------------------------------------------------------------------
 
-@app.get("/api/v1/goals")
+@router.get("/goals")
 def list_goals(db: Session = Depends(get_db)):
     goals = db.query(GoalRecord).order_by(GoalRecord.priority.asc(), GoalRecord.created_at.asc()).all()
     status_by_id = {g.id: g.status for g in goals}
@@ -689,7 +804,7 @@ def list_goals(db: Session = Depends(get_db)):
     return out
 
 
-@app.post("/api/v1/goals")
+@router.post("/goals")
 def create_goal(req: GoalCreateRequest, db: Session = Depends(get_db)):
     g = GoalRecord(
         title=req.title,
@@ -710,7 +825,7 @@ def create_goal(req: GoalCreateRequest, db: Session = Depends(get_db)):
     return {"id": g.id, "status": g.status}
 
 
-@app.patch("/api/v1/goals/{goal_id}/status")
+@router.patch("/goals/{goal_id}/status")
 async def update_goal_status(goal_id: str, req: GoalStatusUpdateRequest, db: Session = Depends(get_db)):
     g = db.query(GoalRecord).filter_by(id=goal_id).first()
     if not g:
@@ -747,7 +862,7 @@ async def update_goal_status(goal_id: str, req: GoalStatusUpdateRequest, db: Ses
 # 6. Specialist Agents & Guarded Tools
 # ---------------------------------------------------------------------------
 
-@app.get("/api/v1/agents")
+@router.get("/agents")
 def list_agents(db: Session = Depends(get_db)):
     agents = db.query(SpecialistAgent).all()
     runs = db.query(AgentTaskRun).order_by(AgentTaskRun.started_at.desc()).limit(15).all()
@@ -780,7 +895,7 @@ def list_agents(db: Session = Depends(get_db)):
     }
 
 
-@app.post("/api/v1/agents/{agent_id}/dispatch")
+@router.post("/agents/{agent_id}/dispatch")
 async def dispatch_specialist_agent(agent_id: str, req: AgentDispatchRequest, db: Session = Depends(get_db)):
     world_snap = world_hub.command_move_to_zone(
         db,
@@ -795,7 +910,7 @@ async def dispatch_specialist_agent(agent_id: str, req: AgentDispatchRequest, db
     return res
 
 
-@app.post("/api/v1/agents/runs/{run_id}/cancel")
+@router.post("/agents/runs/{run_id}/cancel")
 def cancel_agent_run(run_id: str, db: Session = Depends(get_db)):
     run = agent_coordinator.cancel_run(db, run_id)
     if not run:
@@ -803,7 +918,7 @@ def cancel_agent_run(run_id: str, db: Session = Depends(get_db)):
     return {"run_id": run.id, "status": run.status}
 
 
-@app.get("/api/v1/tools")
+@router.get("/tools")
 def list_guarded_tools(db: Session = Depends(get_db)):
     logs = db.query(ToolAuditLog).order_by(ToolAuditLog.created_at.desc()).limit(20).all()
     return {
@@ -829,7 +944,7 @@ def GuardedToolRunner_spec_list() -> List[Dict[str, Any]]:
     return [{"tool_name": k, **v} for k, v in tool_runner.ALLOWLIST.items()]
 
 
-@app.post("/api/v1/tools/execute")
+@router.post("/tools/execute")
 def execute_guarded_tool(req: ToolExecuteRequest, db: Session = Depends(get_db)):
     return tool_runner.execute(db, req.tool_name, req.arguments, req.confirmation_token)
 
@@ -838,7 +953,7 @@ def execute_guarded_tool(req: ToolExecuteRequest, db: Session = Depends(get_db))
 # 7. Live Research & Coupled Simulations
 # ---------------------------------------------------------------------------
 
-@app.post("/api/v1/research/query")
+@router.post("/research/query")
 async def run_live_research(req: ResearchQueryRequest, db: Session = Depends(get_db)):
     world_snap = world_hub.command_move_to_zone(
         db,
@@ -877,7 +992,7 @@ async def run_live_research(req: ResearchQueryRequest, db: Session = Depends(get
     }
 
 
-@app.post("/api/v1/simulations/run")
+@router.post("/simulations/run")
 async def run_simulation(req: SimulationRunRequest, db: Session = Depends(get_db)):
     result = run_coupled_engineering_simulation(req.simulation_type, req.parameters)
     await world_hub.broadcast("simulation_computed", result)
@@ -903,7 +1018,7 @@ def _serialize_scenario(s: ScenarioDefinition) -> Dict[str, Any]:
     }
 
 
-@app.get("/api/v1/scenarios")
+@router.get("/scenarios")
 def list_scenarios(db: Session = Depends(get_db)):
     rows = db.query(ScenarioDefinition).order_by(ScenarioDefinition.created_at.asc()).all()
     return {
@@ -912,7 +1027,7 @@ def list_scenarios(db: Session = Depends(get_db)):
     }
 
 
-@app.post("/api/v1/scenarios")
+@router.post("/scenarios")
 def save_scenario(req: ScenarioCreateRequest, db: Session = Depends(get_db)):
     valid_classes = {"illustration", "data_driven_simulation", "source_backed_reconstruction", "speculative_visualisation"}
     if req.classification not in valid_classes:
@@ -950,7 +1065,7 @@ def save_scenario(req: ScenarioCreateRequest, db: Session = Depends(get_db)):
     return _serialize_scenario(sc)
 
 
-@app.post("/api/v1/scenarios/{scenario_id}/activate")
+@router.post("/scenarios/{scenario_id}/activate")
 async def activate_scenario(scenario_id: str, req: ScenarioActivateRequest, db: Session = Depends(get_db)):
     sc = db.query(ScenarioDefinition).filter_by(id=scenario_id).first()
     if not sc:
@@ -985,7 +1100,7 @@ async def activate_scenario(scenario_id: str, req: ScenarioActivateRequest, db: 
     return {"scenario": _serialize_scenario(sc), "runtime": world_hub.active_scenario_runtime}
 
 
-@app.post("/api/v1/scenarios/restore")
+@router.post("/scenarios/restore")
 async def restore_world_from_scenario(db: Session = Depends(get_db)):
     world_hub.active_scenario_runtime = None
     world_snap = world_hub.command_move_to_zone(
@@ -1003,7 +1118,7 @@ async def restore_world_from_scenario(db: Session = Depends(get_db)):
 # 9. Spatial Video & Media Services
 # ---------------------------------------------------------------------------
 
-@app.get("/api/v1/media")
+@router.get("/media")
 def list_media(db: Session = Depends(get_db)):
     items = db.query(MediaItem).order_by(MediaItem.created_at.desc()).all()
     out = []
@@ -1044,7 +1159,7 @@ def list_media(db: Session = Depends(get_db)):
     }
 
 
-@app.post("/api/v1/media/upload")
+@router.post("/media/upload")
 async def upload_media_file(
     title: str = Form(...),
     source_kind: str = Form(default="owner_import"),
@@ -1074,7 +1189,7 @@ async def upload_media_file(
     return {"id": item.id, "title": item.title, "url": f"/api/v1/media/files/{safe_name}"}
 
 
-@app.get("/api/v1/media/files/{filename}")
+@router.get("/media/files/{filename}")
 def serve_uploaded_media(filename: str):
     safe = Path(filename).name
     target = UPLOADS_DIR / safe
@@ -1083,7 +1198,7 @@ def serve_uploaded_media(filename: str):
     return FileResponse(target)
 
 
-@app.post("/api/v1/media/{media_id}/commentary")
+@router.post("/media/{media_id}/commentary")
 def add_media_commentary(media_id: str, req: CommentaryCreateRequest, db: Session = Depends(get_db)):
     item = db.query(MediaItem).filter_by(id=media_id).first()
     if not item:
@@ -1100,7 +1215,7 @@ def add_media_commentary(media_id: str, req: CommentaryCreateRequest, db: Sessio
     return {"id": c.id, "timestamp_sec": c.timestamp_sec, "label": c.label}
 
 
-@app.post("/api/v1/media/video-state")
+@router.post("/media/video-state")
 async def sync_spatial_video_state(req: VideoStateSyncRequest, db: Session = Depends(get_db)):
     world_hub.active_video_runtime = {
         "media_id": req.media_id,
@@ -1119,7 +1234,7 @@ async def sync_spatial_video_state(req: VideoStateSyncRequest, db: Session = Dep
     return world_hub.active_video_runtime
 
 
-@app.post("/api/v1/media/generate")
+@router.post("/media/generate")
 def request_video_generation(prompt: str = Query(...)):
     """Replaceable video-generation adapter. Never fabricates a generated video when unconfigured."""
     if not settings.OPTIONAL_VIDEO_GEN_ENDPOINT:
@@ -1137,12 +1252,12 @@ def request_video_generation(prompt: str = Query(...)):
 # 10. Local PC & Private Kaggle Compute (6+ Encrypted Profiles)
 # ---------------------------------------------------------------------------
 
-@app.get("/api/v1/compute/status")
+@router.get("/compute/status")
 def get_compute_status(db: Session = Depends(get_db)):
     return inference_hub.status_snapshot(db)
 
 
-@app.get("/api/v1/compute/worker-setup-info")
+@router.get("/compute/worker-setup-info")
 def get_worker_setup_info():
     """Return masked token fingerprint and local CLI launch command without exposing raw keys in public logs."""
     return {
@@ -1157,7 +1272,7 @@ def get_worker_setup_info():
     }
 
 
-@app.get("/api/v1/compute/kaggle/profiles")
+@router.get("/compute/kaggle/profiles")
 def list_kaggle_profiles(db: Session = Depends(get_db)):
     rows = db.query(KaggleProfileRecord).order_by(KaggleProfileRecord.slot_index.asc()).all()
     return [
@@ -1179,7 +1294,7 @@ def list_kaggle_profiles(db: Session = Depends(get_db)):
     ]
 
 
-@app.post("/api/v1/compute/kaggle/profiles")
+@router.post("/compute/kaggle/profiles")
 def add_kaggle_profile(req: KaggleProfileUpsertRequest, db: Session = Depends(get_db)):
     max_slot = db.query(KaggleProfileRecord).count() + 1
     enc = None
@@ -1208,7 +1323,7 @@ def add_kaggle_profile(req: KaggleProfileUpsertRequest, db: Session = Depends(ge
     return {"id": prof.id, "slot_index": prof.slot_index, "profile_name": prof.profile_name, "masked_username": prof.masked_username}
 
 
-@app.patch("/api/v1/compute/kaggle/profiles/{profile_id}")
+@router.patch("/compute/kaggle/profiles/{profile_id}")
 def update_kaggle_profile(profile_id: str, req: KaggleProfileUpsertRequest, db: Session = Depends(get_db)):
     prof = db.query(KaggleProfileRecord).filter_by(id=profile_id).first()
     if not prof:
@@ -1237,7 +1352,7 @@ def update_kaggle_profile(profile_id: str, req: KaggleProfileUpsertRequest, db: 
     return {"id": prof.id, "profile_name": prof.profile_name, "is_active": prof.is_active, "masked_username": prof.masked_username, "masked_key": prof.masked_key}
 
 
-@app.delete("/api/v1/compute/kaggle/profiles/{profile_id}")
+@router.delete("/compute/kaggle/profiles/{profile_id}")
 def delete_kaggle_profile(profile_id: str, db: Session = Depends(get_db)):
     prof = db.query(KaggleProfileRecord).filter_by(id=profile_id).first()
     if not prof:
@@ -1247,7 +1362,7 @@ def delete_kaggle_profile(profile_id: str, db: Session = Depends(get_db)):
     return {"deleted_id": profile_id}
 
 
-@app.post("/api/v1/compute/kaggle/profiles/{profile_id}/test")
+@router.post("/compute/kaggle/profiles/{profile_id}/test")
 async def test_kaggle_profile(profile_id: str, db: Session = Depends(get_db)):
     prof = db.query(KaggleProfileRecord).filter_by(id=profile_id).first()
     if not prof:
@@ -1255,24 +1370,48 @@ async def test_kaggle_profile(profile_id: str, db: Session = Depends(get_db)):
     return await test_kaggle_profile_auth(db, prof)
 
 
-@app.get("/api/v1/compute/kaggle/profiles/{profile_id}/package")
+@router.get("/compute/kaggle/profiles/{profile_id}/package")
 def download_kaggle_worker_package(
     profile_id: str,
-    core_wss_url: str = Query(default="wss://your-nexus-host.example/ws/worker"),
+    core_wss_url: str = Query(...),
     db: Session = Depends(get_db),
 ):
+    """Owner-authenticated (router dependency) worker package download.
+
+    Gate 0 Item 4 hardening:
+    - core_wss_url is REQUIRED and must be a wss:// URL whose host is in the
+      JARVIS_ALLOWED_WORKER_HOSTS allowlist (loopback additionally permitted
+      in development) — the value is embedded in the generated notebook, so
+      it is validated before it ever reaches a package.
+    - The ZIP never contains any secret: the notebook loads the worker token
+      from Kaggle Secrets at runtime (proven by test_gate0_worker_pkg.py).
+    - The package file is DELETED right after the response is sent, and a TTL
+      sweep removes anything older than 15 minutes (interrupted downloads).
+    """
     prof = db.query(KaggleProfileRecord).filter_by(id=profile_id).first()
     if not prof:
         raise HTTPException(status_code=404, detail="Kaggle profile not found.")
+
+    problem = validate_core_wss_url(core_wss_url)
+    if problem:
+        raise HTTPException(status_code=400, detail=problem)
+
+    sweep_stale_worker_packages()
     zip_path = build_kaggle_worker_package(prof, core_wss_url=core_wss_url)
-    return FileResponse(zip_path, filename=zip_path.name, media_type="application/zip")
+    return FileResponse(
+        zip_path,
+        filename=zip_path.name,
+        media_type="application/zip",
+        # Single-use artifact: gone the moment the download completes.
+        background=BackgroundTask(lambda: zip_path.unlink(missing_ok=True)),
+    )
 
 
 # ---------------------------------------------------------------------------
 # 11. Defensive Security, Telemetry & Backup/Restore
 # ---------------------------------------------------------------------------
 
-@app.get("/api/v1/security/events")
+@router.get("/security/events")
 def list_security_events(db: Session = Depends(get_db)):
     events = db.query(SecurityAuditEvent).order_by(SecurityAuditEvent.created_at.desc()).limit(30).all()
     switches = {s.switch_key: s.enabled for s in db.query(OwnerSwitch).all()}
@@ -1299,7 +1438,7 @@ def list_security_events(db: Session = Depends(get_db)):
     }
 
 
-@app.get("/api/v1/telemetry")
+@router.get("/telemetry")
 def get_real_telemetry(db: Session = Depends(get_db)):
     vm = psutil.virtual_memory()
     disk = psutil.disk_usage(str(REPO_ROOT))
@@ -1324,23 +1463,330 @@ def get_real_telemetry(db: Session = Depends(get_db)):
     }
 
 
-@app.post("/api/v1/admin/backup")
+# ---------------------------------------------------------------------------
+# 11b. Gate 0 Item 3 — hardened owner-only admin backup/restore
+#
+# Both routes sit behind the router-level owner authentication AND require the
+# Master switch ON. Restore additionally: caps payload size (2 MiB), parses and
+# validates the snapshot against a strict closed schema (unknown tables/fields
+# rejected), semantically validates enums/references/duplicates, takes an
+# automatic pre-restore safety backup, applies everything inside a single
+# transaction with complete rollback on any error, and supports dry-run.
+# ---------------------------------------------------------------------------
+
+RESTORE_SCHEMA_VERSION = "1.0.0"
+MAX_RESTORE_PAYLOAD_BYTES = 2 * 1024 * 1024
+REDACTED_MARKER = "[REDACTED_SENSITIVE]"
+VALID_EPISTEMIC_STATUSES = {"owner_stated", "verified_fact", "source_backed", "hypothesis"}
+VALID_GOAL_STATUSES = {"active", "paused", "pending", "completed"}
+SEVEN_SWITCH_KEYS = {"master", "microphone", "camera", "autonomy", "remote_compute", "computer_control", "embodiment"}
+
+
+def _require_master_on(db: Session, *, action: str) -> None:
+    """Refuse admin backup/restore unless the Master switch is ON (audited)."""
+    master = db.query(OwnerSwitch).filter_by(switch_key="master").first()
+    if master is None or not master.enabled:
+        db.add(SecurityAuditEvent(
+            severity="warning",
+            category="admin_blocked",
+            message=f"'{action}' refused: Master switch is OFF.",
+            source="AdminGuard",
+        ))
+        db.commit()
+        raise HTTPException(status_code=403, detail=f"Master switch is OFF. '{action}' requires Master ON.")
+
+
+def _semantic_backup_problems(snap: BackupSnapshot, db: Session) -> List[str]:
+    """Content validation beyond shape: enums, referential integrity, duplicates."""
+    problems: List[str] = []
+
+    if snap.schema_version != RESTORE_SCHEMA_VERSION:
+        problems.append(f"unsupported schema_version '{snap.schema_version}' (expected '{RESTORE_SCHEMA_VERSION}')")
+
+    if snap.world_state.current_zone not in SPATIAL_ZONES:
+        problems.append(f"world_state.current_zone '{snap.world_state.current_zone}' is not a known spatial zone")
+    if snap.world_state.active_mode not in {m["id"] for m in OPERATIONAL_MODES}:
+        problems.append(f"world_state.active_mode '{snap.world_state.active_mode}' is not a known operational mode")
+
+    seen_switches: set = set()
+    for sw in snap.switches:
+        if sw.switch_key in seen_switches:
+            problems.append(f"duplicate switch entry '{sw.switch_key}'")
+            continue
+        seen_switches.add(sw.switch_key)
+        if sw.switch_key not in SEVEN_SWITCH_KEYS:
+            problems.append(f"unknown switch '{sw.switch_key}' (allowed: {sorted(SEVEN_SWITCH_KEYS)})")
+
+    seen_mem_ids: set = set()
+    for m in snap.memories:
+        if m.id in seen_mem_ids:
+            problems.append(f"duplicate memory id '{m.id}'")
+            continue
+        seen_mem_ids.add(m.id)
+        if m.category not in VALID_MEMORY_CATEGORIES:
+            problems.append(f"memory '{m.id}' has invalid category '{m.category}'")
+        if m.epistemic_status not in VALID_EPISTEMIC_STATUSES:
+            problems.append(f"memory '{m.id}' has invalid epistemic_status '{m.epistemic_status}'")
+
+    existing_goal_ids = {g.id for g in db.query(GoalRecord).all()}
+    snapshot_goal_ids = {g.id for g in snap.goals}
+    seen_goal_ids: set = set()
+    for g in snap.goals:
+        if g.id in seen_goal_ids:
+            problems.append(f"duplicate goal id '{g.id}'")
+            continue
+        seen_goal_ids.add(g.id)
+        if g.status not in VALID_GOAL_STATUSES:
+            problems.append(f"goal '{g.id}' has invalid status '{g.status}'")
+        for dep in g.depends_on:
+            if dep not in snapshot_goal_ids and dep not in existing_goal_ids:
+                problems.append(f"goal '{g.id}' depends on unknown goal id '{dep}'")
+
+    return problems
+
+
+def _apply_restore(db: Session, snap: BackupSnapshot) -> Dict[str, int]:
+    """Mutate the session ONLY (no commit here). The caller commits once —
+    atomically — or rolls the entire transaction back on any error."""
+    counts = {
+        "world_state": 0,
+        "switches": 0,
+        "memories_restored": 0,
+        "memories_skipped_sensitive": 0,
+        "memories_present_unchanged": 0,
+        "goals_restored": 0,
+        "goals_updated": 0,
+    }
+
+    state = db.query(NexusWorldState).filter_by(id=1).first()
+    if state is not None:
+        ws = snap.world_state
+        state.owner_name = ws.owner_name
+        state.first_launch_completed = ws.first_launch_completed
+        state.active_mode = ws.active_mode
+        state.current_zone = ws.current_zone
+        state.reduced_motion = ws.reduced_motion
+        counts["world_state"] = 1
+
+    for sw in snap.switches:
+        rec = db.query(OwnerSwitch).filter_by(switch_key=sw.switch_key).first()
+        if rec is not None:
+            rec.enabled = sw.enabled
+            counts["switches"] += 1
+
+    for m in snap.memories:
+        # Sensitive plaintext was never exported — these can never be restored.
+        if m.is_sensitive or m.content == REDACTED_MARKER:
+            counts["memories_skipped_sensitive"] += 1
+            continue
+        if db.query(MemoryRecord).filter_by(id=m.id).first() is not None:
+            counts["memories_present_unchanged"] += 1
+            continue
+        db.add(MemoryRecord(
+            id=m.id,
+            category=m.category,
+            epistemic_status=m.epistemic_status,
+            title=m.title,
+            content=m.content,
+            is_sensitive=False,
+            confidence=m.confidence,
+            source_ref=m.source_ref,
+            project_tag=m.project_tag,
+        ))
+        counts["memories_restored"] += 1
+
+    for g in snap.goals:
+        existing = db.query(GoalRecord).filter_by(id=g.id).first()
+        if existing is not None:
+            existing.status = g.status
+            existing.progress = g.progress
+            existing.next_action = g.next_action
+            counts["goals_updated"] += 1
+        else:
+            db.add(GoalRecord(
+                id=g.id,
+                title=g.title,
+                description=g.description,
+                priority=g.priority,
+                status=g.status,
+                progress=g.progress,
+                depends_on_json=json.dumps(g.depends_on),
+                schedule_spec=g.schedule_spec,
+                assigned_zone=g.assigned_zone,
+                autonomous_allowed=True,
+                next_action=g.next_action,
+            ))
+            counts["goals_restored"] += 1
+
+    return counts
+
+
+@router.post("/admin/backup")
 def create_backup(db: Session = Depends(get_db)):
-    return export_sanctuary_backup(db)
+    _require_master_on(db, action="admin/backup")
+    result = export_sanctuary_backup(db)
+    result["secrets_policy"] = {
+        "policy": "excluded (not encrypted)",
+        "sensitive_memory_contents": "excluded — '[REDACTED_SENSITIVE]' marker only",
+        "kaggle_credentials": "excluded — masked identifiers only",
+        "fernet_master_key_worker_and_owner_tokens": "never exported",
+        "statement": (
+            "Secrets are EXCLUDED from this backup, not encrypted: sensitive memory plaintext, "
+            "Kaggle username/API-key pairs, the Fernet master key, and the worker/owner tokens "
+            "are absent by construction. A restore therefore cannot resurrect credentials or "
+            "sensitive plaintext."
+        ),
+    }
+    db.add(SecurityAuditEvent(
+        severity="info",
+        category="admin_backup",
+        message=f"Owner backup exported to '{result['backup_file']}' (secrets excluded, not encrypted).",
+        source="AdminBackup",
+    ))
+    db.commit()
+    return result
 
 
-@app.post("/api/v1/admin/restore")
-def restore_backup(snapshot: Dict[str, Any], db: Session = Depends(get_db)):
-    return restore_sanctuary_backup(db, snapshot)
+@router.post("/admin/restore")
+async def restore_backup(
+    request: Request,
+    dry_run: bool = Query(default=False),
+    db: Session = Depends(get_db),
+):
+    _require_master_on(db, action="admin/restore")
+
+    # 1) Hard payload cap (works for Content-Length and chunked bodies alike).
+    declared = request.headers.get("content-length", "")
+    if declared.isdigit() and int(declared) > MAX_RESTORE_PAYLOAD_BYTES:
+        raise HTTPException(status_code=413, detail=f"Restore payload exceeds the {MAX_RESTORE_PAYLOAD_BYTES}-byte cap.")
+
+    chunks: list[bytes] = []
+    total = 0
+    async for chunk in request.stream():
+        total += len(chunk)
+        if total > MAX_RESTORE_PAYLOAD_BYTES:
+            raise HTTPException(status_code=413, detail=f"Restore payload exceeds the {MAX_RESTORE_PAYLOAD_BYTES}-byte cap.")
+        chunks.append(chunk)
+    raw = b"".join(chunks)
+
+    # 2) Strict JSON object parse.
+    try:
+        parsed = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        raise HTTPException(status_code=400, detail="Restore payload is not valid JSON.")
+    if not isinstance(parsed, dict):
+        raise HTTPException(status_code=400, detail="Restore payload must be a JSON object.")
+
+    # 3) Closed-schema validation — unknown tables/fields are rejected here.
+    try:
+        snap = BackupSnapshot.model_validate(parsed)
+    except ValidationError as exc:
+        # Loc/type only: never echo snapshot values back (they may be hostile).
+        summary = [{"loc": list(e["loc"]), "type": e["type"]} for e in exc.errors()[:10]]
+        raise HTTPException(
+            status_code=400,
+            detail={"error": "snapshot failed strict schema validation (unknown or mistyped fields)", "problems": summary, "total_issues": exc.error_count()},
+        )
+
+    # 4) Semantic validation (enums, references, duplicates).
+    problems = _semantic_backup_problems(snap, db)
+    if problems:
+        raise HTTPException(status_code=400, detail={"error": "snapshot failed semantic validation", "problems": problems[:20]})
+
+    # 5) Dry-run: validate and plan only — no mutation, no pre-backup.
+    if dry_run:
+        existing_mem = {m.id for m in db.query(MemoryRecord).all()}
+        existing_goal = {g.id for g in db.query(GoalRecord).all()}
+        skipped = sum(1 for m in snap.memories if m.is_sensitive or m.content == REDACTED_MARKER)
+        return {
+            "status": "dry_run",
+            "valid": True,
+            "would_restore": {
+                "world_state": 1 if db.query(NexusWorldState).filter_by(id=1).first() else 0,
+                "switches": len(snap.switches),
+                "memories_new": sum(1 for m in snap.memories if m.id not in existing_mem and not (m.is_sensitive or m.content == REDACTED_MARKER)),
+                "memories_skipped_sensitive": skipped,
+                "memories_present_unchanged": sum(1 for m in snap.memories if m.id in existing_mem and not (m.is_sensitive or m.content == REDACTED_MARKER)),
+                "goals_new": sum(1 for g in snap.goals if g.id not in existing_goal),
+                "goals_updated": sum(1 for g in snap.goals if g.id in existing_goal),
+            },
+            "kaggle_profiles": "reference only — credentials are never exported, so profiles are not restorable",
+        }
+
+    # 6) Automatic pre-restore safety backup — taken BEFORE any mutation.
+    pre = export_sanctuary_backup(db, filename_prefix="pre_restore")
+
+    # 7) Single transaction: apply everything, commit once, roll back fully on any error.
+    try:
+        counts = _apply_restore(db, snap)
+        db.commit()
+    except Exception:
+        db.rollback()
+        db.add(SecurityAuditEvent(
+            severity="critical",
+            category="admin_restore_failed",
+            message="Restore aborted mid-transaction; database rolled back completely (unchanged).",
+            source="AdminRestore",
+        ))
+        db.commit()
+        raise HTTPException(status_code=500, detail="Restore aborted — database unchanged (complete rollback applied).")
+
+    db.add(SecurityAuditEvent(
+        severity="info",
+        category="admin_restore_completed",
+        message=f"Owner restore completed ({counts}). Pre-restore safety backup: '{pre['backup_file']}'.",
+        source="AdminRestore",
+    ))
+    db.commit()
+    return {
+        "status": "restored",
+        "restored_counts": counts,
+        "pre_restore_backup_file": pre["backup_file"],
+        "kaggle_profiles": "not restorable — credentials are never exported",
+    }
 
 
 # ---------------------------------------------------------------------------
 # 12. Live WebSockets: Shared Embodiment (/ws/nexus) & Private Workers (/ws/worker)
 # ---------------------------------------------------------------------------
 
+# Mount the owner-authenticated REST router BEFORE the static bundle mount.
+app.include_router(router)
+
+
 @app.websocket("/ws/nexus")
 async def ws_nexus_embodiment(ws: WebSocket, device: str = Query(default="pc_browser")):
-    await world_hub.connect(ws, device_type=device)
+    """Shared embodiment & broadcast socket — Gate 0 Item 1 hardened.
+
+    Authentication happens BEFORE any world data is sent or the client joins
+    the broadcast hub. The client must send, as its FIRST message:
+      {"type": "auth", "ticket": "<from POST /api/v1/auth/ws-ticket>"}
+      or {"type": "auth", "token": "<JARVIS_OWNER_TOKEN>"}
+    The credential never travels in the URL (URLs get logged). Any failure —
+    wrong first message, invalid ticket/token, or silence past the timeout —
+    closes the socket with the policy-violation code 4401 and records a
+    SecurityAuditEvent.
+    """
+    await ws.accept()
+    authenticated = False
+    try:
+        raw = await asyncio.wait_for(ws.receive_text(), timeout=WS_AUTH_MESSAGE_TIMEOUT_SEC)
+        message = json.loads(raw) if isinstance(raw, str) else {}
+        authenticated = verify_ws_first_message(message)
+    except (asyncio.TimeoutError, WebSocketDisconnect, json.JSONDecodeError, ValueError, TypeError):
+        authenticated = False
+
+    if not authenticated:
+        ip = ws.client.host if ws.client else "unknown"
+        with SessionLocal() as db:
+            record_auth_failure(db, path="/ws/nexus", ip=ip, reason="missing or invalid first-message authentication")
+        try:
+            await ws.close(code=WS_POLICY_VIOLATION_CODE, reason="owner authentication required")
+        except Exception:
+            pass
+        return
+
+    await world_hub.register(ws, device_type=device)
     try:
         with SessionLocal() as db:
             await ws.send_text(json.dumps({

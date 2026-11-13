@@ -953,6 +953,23 @@ body.holo-mirror-active #nexus-canvas {
     gap: 6px;
     flex-wrap: wrap;
   }
+  /* 2026-11-13 mobile overflow fix: the single-row dialogue bar (3 status
+     buttons + input + interrupt/resume/transmit) needed ~476px on a 390px
+     screen with overflow visible — Transmit was unreachable. Wrap instead:
+     input takes a full row, every button shares the row(s) below, all 44px
+     targets stay reachable. */
+  .dialogue-bar {
+    flex-wrap: wrap;
+  }
+  #chat-input {
+    order: -1;
+    flex: 1 1 100%;
+    width: 100%;
+  }
+  .dock-btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
 }
 
 /* ------------------------------------------------------------------ */

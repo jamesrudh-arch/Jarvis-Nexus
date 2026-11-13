@@ -15,7 +15,7 @@
 
 2. **Modular Orchestration CORE (`backend/`)**
    - **Stack**: Python FastAPI, SQLAlchemy 2.0 ORM, WebSockets, Fernet AES-128-CBC+HMAC server-side secret encryption, SQLite for local dev/tests, and PostgreSQL + `pgvector` in production (`backend/migrations/001_initial_nexus_schema.sql`).
-   - **Epistemic Memory**: Ten typed memory categories with encrypted `sensitive` records and a hard guardrail (`HTTP 409`) preventing silent promotion of `hypothesis` records to `verified_fact` without explicit verification.
+   - **Epistemic Memory**: Ten typed memory categories with encrypted `sensitive` records and a hard guardrail (`HTTP 409`) preventing silent promotion of `hypothesis` records to `verified_fact` without explicit verification. Memory retrieval is LEXICAL — a deterministic character-trigram fingerprint (`lexical_fingerprint_json`) plus substring matching. It is **not** a semantic embedding and JARVIS NEXUS does **not** implement vector search (Option A, Gate 0 Item 5).
    - **Goals, Specialist Agents & Guarded Tools**: Priority/dependency-gated goals, bounded specialist agents with instant cancellation, and allowlisted tools with confirmation tokens for destructive actions.
    - **Seven Hardware-Grade Owner Switches**: `Master`, `Microphone`, `Camera`, `Autonomy`, `Remote Compute`, `Computer Control`, and `Embodiment`—enforced both server-side in CORE and client-side on browser `MediaStream` tracks.
 

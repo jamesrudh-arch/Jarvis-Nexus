@@ -1,19 +1,28 @@
 /**
- * JARVIS NEXUS — Inference provider registry (D6).
+ * JARVIS NEXUS — Inference provider registry (D6) — MERGED session 8.
  *
  * Ordered fallback chains per capability, configurable via environment:
- *   NEXUS_LLM_PROVIDERS="cloudflare_workers_ai,zai_cloud_route"  (comma-separated, first wins)
+ *   NEXUS_LLM_PROVIDERS="cloudflare_workers_ai,groq_cloud,openai,zai_cloud_route"
+ *   (comma-separated, first wins)
  *   NEXUS_TTS_PROVIDERS="zai_cloud_route"
- *   NEXUS_ASR_PROVIDERS="zai_cloud_route"
+ *   NEXUS_ASR_PROVIDERS="zai_cloud_route,groq_cloud"
  *
- * Session-7 default LLM chain: `cloudflare_workers_ai -> zai_cloud_route`.
- * Rationale: the z-ai platform API resolves to a PRIVATE address
- * (internal-api.z.ai → 172.25.x.x, verified 2026-11-13) so it can never serve
- * the Railway deployment, while the owner's Cloudflare credentials are
- * already in the production env — Workers AI's free 10,000 Neurons/day
- * (no card, no subscription, hard-stops instead of billing beyond the
- * allocation) activates the production LLM with ZERO new env vars. In the
- * dev sandbox (no Cloudflare token) the chain falls through to z-ai as before.
+ * Default LLM chain (free-tier-first, all genuinely free):
+ *   cloudflare_workers_ai -> groq_cloud -> zai_cloud_route
+ * - cloudflare_workers_ai: Workers AI free 10,000 Neurons/day (no card, no
+ *   subscription, requests beyond the allocation are REJECTED not billed) —
+ *   the owner's CLOUDFLARE_ACCOUNT_ID + token already live in production,
+ *   so the deploy alone activates the production LLM with zero new env vars.
+ * - groq_cloud: free gsk_ keys, rate-limited, no card, no billing (the
+ *   parallel-line genuinely-free production route; activates when
+ *   GROQ_API_KEY is set).
+ * - zai_cloud_route: sandbox-ambient only — internal-api.z.ai resolves to a
+ *   PRIVATE address (172.25.x.x, verified 2026-11-13) so it can never serve
+ *   the Railway deployment; it remains the dev-sandbox fallback.
+ * The opt-in `openai` provider (owner-supplied Phase-2 key, session 8) joins
+ * the chain ONLY via an explicit NEXUS_LLM_PROVIDERS override so no paid API
+ * is ever reached by accident; production carries
+ * NEXUS_LLM_PROVIDERS=cloudflare_workers_ai,openai,groq_cloud,zai_cloud_route.
  *
  * Adding a provider: implement the interfaces in ./types, register the id in
  * the resolvers below, add it to a chain via env. Nothing else changes —
@@ -58,7 +67,7 @@ export function getInferenceConfig(): InferenceConfig {
   return {
     llm: parseProviderChain(process.env.NEXUS_LLM_PROVIDERS, DEFAULT_CHAIN),
     tts: parseProviderChain(process.env.NEXUS_TTS_PROVIDERS, ['zai_cloud_route']),
-    asr: parseProviderChain(process.env.NEXUS_ASR_PROVIDERS, ['zai_cloud_route']),
+    asr: parseProviderChain(process.env.NEXUS_ASR_PROVIDERS, ['zai_cloud_route', 'groq_cloud']),
     face: parseProviderChain(process.env.NEXUS_FACE_PROVIDERS, ['audio2face_local']),
   };
 }
@@ -69,7 +78,7 @@ export function describeInferenceRoute(): string {
   return `${cfg.llm.join(' -> ')} (fallback chain)`;
 }
 
-const DEFAULT_CHAIN = ['cloudflare_workers_ai', 'zai_cloud_route'];
+const DEFAULT_CHAIN = ['cloudflare_workers_ai', 'groq_cloud', 'zai_cloud_route'];
 
 async function resolveLlm(id: string): Promise<LlmProvider | null> {
   if (id === 'zai_cloud_route') {
@@ -84,6 +93,9 @@ async function resolveLlm(id: string): Promise<LlmProvider | null> {
   if (id === 'openai') {
     return (await import('./openaiCompatible')).openaiLlm;
   }
+  if (id === 'groq_cloud') {
+    return (await import('./groqCloud')).groqLlm;
+  }
   return null;
 }
 
@@ -97,6 +109,9 @@ async function resolveTts(id: string): Promise<TtsProvider | null> {
 async function resolveAsr(id: string): Promise<AsrProvider | null> {
   if (id === 'zai_cloud_route') {
     return (await import('./zaiCloud')).zaiAsr;
+  }
+  if (id === 'groq_cloud') {
+    return (await import('./groqCloud')).groqAsr;
   }
   return null;
 }

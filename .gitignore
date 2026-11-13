@@ -64,4 +64,8 @@ server.log
 /tool-results/
 
 # EOS runtime credentials (generated per-host, never committed)
-unreal/Plugins/JarvisNexusEOS/jarvis_nexus_eos.json
+world/Unreal/Plugins/JarvisNexusEOS/jarvis_nexus_eos.json
+
+# Phase 3 hygiene (report section 2)
+package-lock.json
+__pycache__/

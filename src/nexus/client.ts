@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { NexusSanctuaryScene } from './world/NexusSanctuaryScene.js';
 import { SpeechSequencer, splitSentences } from './vendor/speechStream.mjs';
 import { WakeWordEngine, type WakeState } from './wakeWord';
+import { isOwnerAuthRejection, notifyAuthRequired, ownerKeyHeaders } from './ownerKeyClient';
 
 export interface WorldSnapshot {
   owner_name: string;
@@ -133,13 +134,18 @@ export interface SpeechRecognition extends EventTarget {
 
 async function api<T = Record<string, unknown>>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' };
-  const res = await fetch(path, { ...options, headers: { ...headers, ...(options.headers as Record<string, string> | undefined) } });
+  // Owner key (sessionStorage) rides on every call; public routes ignore it.
+  const res = await fetch(path, {
+    ...options,
+    headers: { ...headers, ...ownerKeyHeaders(), ...(options.headers as Record<string, string> | undefined) },
+  });
   if (!res.ok) {
     let detail = `HTTP ${res.status}`;
     try {
       const err = await res.json();
       detail = (err as { detail?: string }).detail || detail;
     } catch { /* ignore */ }
+    if (isOwnerAuthRejection(res, detail)) notifyAuthRequired();
     throw new Error(detail);
   }
   return (await res.json()) as T;

@@ -153,10 +153,10 @@ test('openaiCompatLlm: URL normalization (bare base, /v1 base, full endpoint)', 
   if (hadModel) process.env.LLM_OPENAI_COMPAT_MODEL = hadModel; else delete process.env.LLM_OPENAI_COMPAT_MODEL;
 });
 
-test('registry: default LLM chain is cloudflare_workers_ai -> zai_cloud_route', () => {
+test('registry: default LLM chain is free-tier-first (cloudflare_workers_ai -> groq_cloud -> zai_cloud_route)', () => {
   const had = process.env.NEXUS_LLM_PROVIDERS;
   delete process.env.NEXUS_LLM_PROVIDERS;
-  assert.deepEqual(getInferenceConfig().llm, ['cloudflare_workers_ai', 'zai_cloud_route']);
+  assert.deepEqual(getInferenceConfig().llm, ['cloudflare_workers_ai', 'groq_cloud', 'zai_cloud_route']);
   if (had) process.env.NEXUS_LLM_PROVIDERS = had; else delete process.env.NEXUS_LLM_PROVIDERS;
 });
 

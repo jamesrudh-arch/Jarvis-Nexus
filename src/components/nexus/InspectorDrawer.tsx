@@ -2,6 +2,12 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { NexusClient, Telemetry } from '@/nexus/client';
+import {
+  AUTH_RESOLVED_EVENT,
+  isOwnerAuthRejection,
+  notifyAuthRequired,
+  ownerKeyHeaders,
+} from '@/nexus/ownerKeyClient';
 
 type Tab = 'scenarios' | 'memory' | 'goals' | 'agents' | 'compute' | 'diagnostics';
 
@@ -44,18 +50,25 @@ interface IntegrationSnap {
 }
 
 async function jget<T>(url: string): Promise<T> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || `HTTP ${res.status}`);
+  const res = await fetch(url, { headers: { ...ownerKeyHeaders() } });
+  if (!res.ok) {
+    const detail = (await res.json().catch(() => ({}))).detail || `HTTP ${res.status}`;
+    if (isOwnerAuthRejection(res, detail)) notifyAuthRequired();
+    throw new Error(detail);
+  }
   return res.json();
 }
 async function jpost(url: string, body?: unknown, method = 'POST') {
   const res = await fetch(url, {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...ownerKeyHeaders() },
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+  if (!res.ok) {
+    if (isOwnerAuthRejection(res, data.detail)) notifyAuthRequired();
+    throw new Error(data.detail || `HTTP ${res.status}`);
+  }
   return data;
 }
 
@@ -115,6 +128,16 @@ export default function InspectorDrawer({
 
   useEffect(() => {
     if (open) void load(tab);
+  }, [open, tab, load]);
+
+  // After the owner unlocks (OwnerGate), re-fetch the current tab's guarded
+  // data — the earlier load may have been rejected with 403.
+  useEffect(() => {
+    const onKeySet = () => {
+      if (open) void load(tab);
+    };
+    window.addEventListener(AUTH_RESOLVED_EVENT, onKeySet);
+    return () => window.removeEventListener(AUTH_RESOLVED_EVENT, onKeySet);
   }, [open, tab, load]);
 
   if (!open) return null;
@@ -235,7 +258,14 @@ export default function InspectorDrawer({
                   <button
                     className="btn-chip btn-danger-outline"
                     onClick={async () => {
-                      await fetch(`/api/v1/memories/${m.id}`, { method: 'DELETE' });
+                      const res = await fetch(`/api/v1/memories/${m.id}`, {
+                        method: 'DELETE',
+                        headers: { ...ownerKeyHeaders() },
+                      });
+                      if (!res.ok) {
+                        const data = await res.json().catch(() => ({}));
+                        if (isOwnerAuthRejection(res, data.detail)) notifyAuthRequired();
+                      }
                       await load('memory');
                     }}
                   >
@@ -464,9 +494,14 @@ export default function InspectorDrawer({
                     try {
                       const res = await fetch('/api/v1/integrations', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', ...ownerKeyHeaders() },
                         body: JSON.stringify({ action: 'verify' }),
                       });
+                      if (!res.ok) {
+                        const data = await res.json().catch(() => ({}));
+                        if (isOwnerAuthRejection(res, data.detail || data.error)) notifyAuthRequired();
+                        throw new Error(data.error || data.detail || `HTTP ${res.status}`);
+                      }
                       setIntegrations(await res.json());
                     } catch (err) {
                       setNotice((err as Error).message);

@@ -58,3 +58,17 @@ def verify_worker_token(candidate: str) -> bool:
     if clean.lower().startswith("bearer "):
         clean = clean[7:].strip()
     return hmac.compare_digest(clean.encode("utf-8"), settings.WORKER_AUTH_TOKEN.encode("utf-8"))
+
+
+def verify_owner_token(candidate: str) -> bool:
+    """Constant-time verification of the owner token (Gate 0 Item 1).
+
+    Accepts either the raw token or an `Authorization: Bearer <token>` header
+    value. Returns False when no owner token is configured (fail closed).
+    """
+    if not candidate or not settings.OWNER_AUTH_TOKEN:
+        return False
+    clean = candidate.strip()
+    if clean.lower().startswith("bearer "):
+        clean = clean[7:].strip()
+    return hmac.compare_digest(clean.encode("utf-8"), settings.OWNER_AUTH_TOKEN.encode("utf-8"))

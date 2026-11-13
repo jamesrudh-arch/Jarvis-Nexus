@@ -1,0 +1,33 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "5.5",
+	"Category": "",
+	"Description": "JARVIS NEXUS - authoritative world project (Master Directive Part 5, blueprint world-topology.md 4.2).",
+	"Modules": [
+		{
+			"Name": "JarvisWorld",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "PythonScriptPlugin",
+			"Enabled": true
+		},
+		{
+			"Name": "EditorScriptingUtilities",
+			"Enabled": true
+		},
+		{
+			"Name": "JarvisNexusEOS",
+			"Enabled": true
+		},
+		{
+			"Name": "MetaHumanPlugin",
+			"Enabled": true,
+			"MarketplaceURL": "com.epicgames.launcher://apps/UE_5.5",
+			"TargetPlatforms": ["Windows"]
+		}
+	]
+}

@@ -2,8 +2,8 @@
  * JARVIS NEXUS → Unreal Engine 5 bridge client (CORE side).
  *
  * Sends whitelisted JSON commands to the in-editor HTTP bridge
- * (unreal/Python/jarvis_http_bridge.py, port 8765). The bridge must run on
- * the owner's UE workstation — see unreal/README.md for exact bring-up.
+ * (world/Unreal/Python/jarvis_http_bridge.py, port 8765). The bridge must run on
+ * the owner's UE workstation — see world/Unreal/README.md for exact bring-up.
  */
 export interface UnrealBridgeResult {
   ok: boolean;
@@ -33,7 +33,7 @@ export class UnrealBridgeClient {
     if (!base) {
       return {
         configured: false, reachable: false, engineVersion: null,
-        detail: 'UNREAL_BRIDGE_URL not configured — set it to the UE workstation address once unreal/Python/jarvis_http_bridge.py is running (see unreal/README.md).',
+        detail: 'UNREAL_BRIDGE_URL not configured — set it to the UE workstation address once world/Unreal/Python/jarvis_http_bridge.py is running (see world/Unreal/README.md).',
       };
     }
     const res = await this.command('ping', {}, 4000);

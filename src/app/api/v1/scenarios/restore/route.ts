@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { commandMoveToZone, serializeWorld, setScenarioRuntime } from '@/lib/nexus/worldHub';
+import { requireOwnerKey } from '@/lib/nexus/ownerGuard';
 
-export async function POST() {
+export async function POST(req: Request) {
+  const denied = await requireOwnerKey(req);
+  if (denied) return denied;
   try {
     setScenarioRuntime(null);
     const world = await commandMoveToZone({

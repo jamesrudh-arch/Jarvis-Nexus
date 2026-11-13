@@ -11,6 +11,7 @@ import ScenarioBar from './ScenarioBar';
 import HologramBar from './HologramBar';
 import InspectorDrawer from './InspectorDrawer';
 import DialogueDock from './DialogueDock';
+import OwnerGate from './OwnerGate';
 
 export default function NexusExperience() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -57,6 +58,10 @@ export default function NexusExperience() {
 
       {/* Hidden optical camera preview element (only live when CAM switch is ON) */}
       <video id="optical-cam-el" className="hidden" playsInline autoPlay muted ref={camElRef} />
+
+      {/* Gate 0: owner-key unlock panel — appears only when a privileged
+          call is rejected; key verified server-side, sessionStorage only. */}
+      <OwnerGate />
 
       {entered && snap?.ready !== false && snap && (
         <>

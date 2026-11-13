@@ -31,6 +31,15 @@ class WorldConnectionHub:
 
     async def connect(self, ws: WebSocket, device_type: str = "pc_browser") -> None:
         await ws.accept()
+        await self.register(ws, device_type=device_type)
+
+    async def register(self, ws: WebSocket, device_type: str = "pc_browser") -> None:
+        """Add an ALREADY ACCEPTED and AUTHENTICATED socket to the broadcast hub.
+
+        Gate 0 Item 1: /ws/nexus accepts the WebSocket, validates the first
+        auth message (owner token or short-lived ticket), and only then calls
+        register() — so no broadcast data ever reaches an unauthenticated client.
+        """
         async with self._lock:
             self.clients.add(ws)
             self.client_meta[ws] = {

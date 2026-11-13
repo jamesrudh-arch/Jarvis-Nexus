@@ -1,5 +1,5 @@
 {
-  "_comment": "Template for unreal/Plugins/JarvisNexusEOS/jarvis_nexus_eos.json. NEVER commit the real file (it is .gitignore'd). Generate it on the engine machine with: python3 scripts/write_eos_plugin_config.py",
+  "_comment": "Template for world/Unreal/Plugins/JarvisNexusEOS/jarvis_nexus_eos.json. NEVER commit the real file (it is .gitignore'd). Generate it on the engine machine with: python3 scripts/write_eos_plugin_config.py",
   "clientId": "xyza7891XXXXXXXXXXXXXXXXXXXXXXXX",
   "clientSecret": "PLACEHOLDER_EPIC_CLIENT_SECRET",
   "productId": "00000000000000000000000000000000",

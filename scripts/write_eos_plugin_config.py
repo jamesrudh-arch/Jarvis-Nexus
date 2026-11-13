@@ -2,7 +2,7 @@
 """
 JARVIS NEXUS — write the Unreal EOS plugin credential file from .env.local.
 
-Emits unreal/Plugins/JarvisNexusEOS/jarvis_nexus_eos.json (gitignored) from the
+Emits world/Unreal/Plugins/JarvisNexusEOS/jarvis_nexus_eos.json (gitignored) from the
 EPIC_* variables. Run this on the machine that launches the UE editor. The
 values are never printed.
 """
@@ -28,7 +28,7 @@ missing = [k for k, v in cfg.items() if not v]
 if missing:
     raise SystemExit(f"[abort] missing in .env.local: {missing}")
 
-out = os.path.join(ROOT, "unreal", "Plugins", "JarvisNexusEOS", "jarvis_nexus_eos.json")
+out = os.path.join(ROOT, "world", "Unreal", "Plugins", "JarvisNexusEOS", "jarvis_nexus_eos.json")
 with open(out, "w") as f:
     json.dump(cfg, f, indent=2)
 os.chmod(out, 0o600)

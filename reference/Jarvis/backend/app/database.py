@@ -51,6 +51,26 @@ def init_database_extensions() -> bool:
         return False
 
 
+def migrate_legacy_memory_embedding_column(target_engine=None) -> bool:
+    """Gate 0 Item 5: rename the legacy memory_records.embedding_json column to
+    lexical_fingerprint_json on databases created before the rename.
+
+    Best-effort and idempotent: on a fresh database (create_all already made
+    the new column) or an already-migrated one, the ALTER simply fails and is
+    swallowed. Works for both SQLite (>= 3.25) and PostgreSQL. Returns True
+    when a rename actually happened.
+    """
+    eng = target_engine or engine
+    try:
+        with eng.begin() as conn:
+            conn.execute(text(
+                "ALTER TABLE memory_records RENAME COLUMN embedding_json TO lexical_fingerprint_json"
+            ))
+        return True
+    except Exception:
+        return False
+
+
 def get_db() -> Generator[Session, None, None]:
     db = SessionLocal()
     try:

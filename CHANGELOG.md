@@ -2,6 +2,98 @@
 
 Format: date — change — why. Newest first. Full diffs: git log.
 
+## 2026-11-13 (session 9, continued) — PHASE 2: technology register (research only, zero installs)
+
+**Why:** Part 16 Phase 2 — licence-verified register for every mandatory repository and technology before any integration.
+
+- **Deliverable**: `docs/research/TECHNOLOGY_REGISTER.md` — 9 mandatory repository records (Part 7.1 A-I, all 13 directive fields) + 27 additional technologies (Part 7.2), every licence verified against official sources 2026-11-13 (sources cited inline).
+- **Decisions**: 11 ADOPT NOW (UE, Blender, PCG, Mass Entity, StateTree, LangGraph, Poly Haven, ambientCG, Kenney, Quaternius, KayKit) · 6 ADOPT LATER (FreeMoCap P7, Theatre.js P12, SUMO P9, OpenUSD P4-decision, Phoenix P14, Graphiti memory-phase) · 13 EVALUATE · 7 REJECT (CARLA, Cesium, OSM family, Blosm, OpenHands — reasons documented: fictional-world design, competing state authority, paid tier, security surface).
+- **Licence-risk register**: AGPL boundary (FreeMoCap standalone-tool; Theatre.js studio dev-only, never in production bundles), Phoenix ELv2 self-host terms, GPL standalone-tool boundary, UE EULA, ASAM, CC0, ODbL.
+- **Boundary**: research only — no installations, no code, no credentials beyond public pages. Phase 3 (Unreal Foundation) next; F-C1 ruling requested before the project layout is finalised (directive text wins absent a ruling).
+
+## 2026-11-13 (session 9, continued) — PHASE 1 SECURITY: switch enforcement + rate limiting + audit trail + backup/restore (production app)
+
+**Why:** Part 16 Phase 1 + Parts 13/14. Gate 0 (session 8b) closed authentication; Phase 1 closes ENFORCEMENT: the seven switches were stored but not enforced on the production app, there was no rate limiting, no audit trail for denials, and no backup/restore.
+
+- **3-layer guard** (`ownerGuard.ts`, now async — 27 call sites in 21 route files await it): rate limit (5 auth failures/60 s/IP → 429 + Retry-After, general 240/min cap) → owner key (403, audited, counts toward lockout) → Master switch (403, audited, FRESH DB read per request — a TTL cache was rejected mid-implementation because it opens a one-request hole; fail-closed on read error).
+- **Switch enforcement (Part 13 table)**: master OFF denies all privileged routes except the control plane (health, switches, auth/verify — ED-P1-1) and cascades mic/camera OFF + pauses agents + world standby; microphone gates asr (403 before audio processing); embodiment gates holographic/digital-human modes; computer_control gates ALL tool execution with an honest spoken block ("I have not executed any tools") — never silent. Autonomy/remote_compute enforcement points documented (no self-initiated work / worker queue exists yet — gates land with those features).
+- **New routes**: `GET /api/v1/auth/verify` (login surface surviving Master OFF — OwnerGate now verifies against it), `GET /api/v1/admin/backup` (secrets excluded, sensitive memory redacted), `POST /api/v1/admin/restore` (strict validation → 400, 4 MiB → 413, dry-run, pre-restore safety backup, ATOMIC interactive-transaction restore with in-transaction count verification — any failure rolls back completely).
+- **Verification 241/241**: unit 80/80 (+18 new: rateLimit ×7, backupValidation ×11); Gate 0 E2E 70/70 re-proven in the rate-limit era (unique client IPs per probe — ED-P1-7); NEW Phase 1 E2E 48/48 incl. fresh-DB cold-boot defaults (mic/camera OFF), master matrix, cascade, audit categories, backup→restore **on a separate copy** verified against backup counts, restart persistence, rate lockout; FastAPI CORE regression 43/43; tsc clean; build success.
+- **Docs**: ENGINEERING_DECISIONS ED-P1-1…P1-8 · ROUTE_INVENTORY Phase 1 section · `docs/phase-reports/PHASE-1-REPORT.md`. Production verification deferred until B1 (Railway) clears.
+
+## 2026-11-13 (session 9, continued) — PHASE 0B: verbatim blueprint intake (7 files) + findings register
+
+**Why:** owner GO "extract from directive" — the seven approved blueprint files named in Part 16 Phase 0B never existed as separate files; their content is embedded in the master directive. Extracted verbatim with a re-runnable verification engine.
+
+- **Blueprint files** (`docs/blueprint/`): world-topology.md (297 lines), city-plans.md (140), architecture-bible.md (123), population-animals-transport-economy.md (311), animation-and-blender-pipeline.md (192), laboratory-and-nexus.md (465), acceptance-and-evidence.md (196). 26 source sections, byte-verified against directive slices; coverage accounting closes exactly (1,705 extracted + 60 structural + 516 governance = 2,281 source lines, 0 unaccounted); all 6 diagrams + key tables confirmed in their consuming files; 8/8 Part 16 phase "Read:" cross-references resolve.
+- **`docs/blueprint/CHANGES.md`**: full source-to-destination mapping with line counts, 6 documented extraction decisions (D-B1..D-B6), findings register with 13 items NOT silently resolved — F-A1 roster sums 45 vs required 50, F-M1/M2 village+railway ID prefixes undefined, F-M3 atlas format unspecified, F-C1 `world/Unreal/JarvisWorld.uproject` vs existing `unreal/JarvisNexus.uproject`, F-C2 `world/Blender/` vs `blender/`, F-C3 five-route public status surface vs "only approved health endpoints public", F-A2/F-A3/F-M4/F-M5/F-E1..E3.
+- **Tooling**: `scripts/extract_blueprints.py` — extraction + dual byte-verification + coverage audit, re-runnable.
+- **Git**: branch `phase-0b-blueprint-intake`, intake commit `1e33f3d`, merged to main, tagged `phase-0b-done` (Part 19 protocol). Phase report: `docs/phase-reports/PHASE-0B-REPORT.md`.
+
+## 2026-11-13 (session 9) — PHASE 0 RE-AUDIT under the new Master Engineering Directive (Phase 0→15) — evidence-backed report, zero code changes
+
+**Why:** the owner supplied a new, more detailed Master Engineering Directive (phased build with mandatory blueprint intake, world atlas, vertical slice, 6 regions/6 cities, 50 inhabitants, Unreal/Blender pipelines, Laboratory, missions). Its FIRST ACTION mandates a complete repository + environment audit, a Phase 0 report, then STOP for owner GO. Documentation-only commit.
+
+- **Phase 0 report**: `docs/phase-reports/PHASE-0-REPORT.md` (canonical) + owner copies in `download/` (md + pdf). Component audit with exact status labels, environment inventory, live evidence trail, blockers, rollback.
+- **Verification re-run (fresh sandbox, Python deps reinstalled from requirements.txt)**: 62/62 Next.js unit tests (1006 ms), 43/43 FastAPI CORE tests (clean-env sqlite, 2.62 s), `tsc --noEmit` clean, `next build` SUCCESS, standalone runtime probe (health 200 in 37 ms, anon 403, correct key 200), guard matrix re-verified live on dev server AND standalone (both `X-Owner-Key` and `Bearer` forms), GitHub remote in sync at `040c91c`, Supabase 200/401.
+- **CRITICAL FINDING (B1)**: Railway production `jarvis-nexus.up.railway.app` returns `Application not found` (404) on ALL paths — was live and verified at end of session 8b. Railway API token already dead (owner-rotated), so diagnosis requires the owner's Railway dashboard. GitHub → Railway auto-deploy chain verified intact on the GitHub side.
+- **Blockers recorded**: B2 Unreal unavailable in sandbox (author-only until owner's UE machine), B3 Blender unavailable (headless attempt scheduled for Phase 4), B4 Groq key pending, B5 EOS portal association pending.
+- **Structural gaps vs new directive**: `docs/blueprint/` absent (Phase 0B needs owner GO + blueprint-file decision), `unreal/` is a skeleton (not `world/Unreal/`), `blender/` scripts-only (no `.blend` assets — Part 6 explicitly insufficient), no phase branches/tags yet.
+
+## 2026-11-13 (session 8b) — GATE 0 EXTENDED TO THE PRODUCTION APP: owner-key guard on every privileged route (Next.js)
+
+**Why:** session 7's audit rated the deployed app CRITICAL — every `/api/v1/*` route except `/api/v1/storage` was unauthenticated. Re-proven BEFORE hardening with a non-destructive anonymous create+delete cycle on production (both 200). This closes the production surface and completes Gate 0 across both codebases.
+
+- **Shared guard**: `src/lib/nexus/ownerAuth.ts` (pure: `X-Owner-Key` OR `Authorization: Bearer`, constant-time `timingSafeEqual`, deny-by-default when `OWNER_KEY` unset, reasons never echo key material) + `src/lib/nexus/ownerGuard.ts` (403 + `X-Auth-Required: owner-key`). Applied as the first statement of all 24 privileged handlers across 21 route files (memories GET/POST/PATCH/DELETE, goals, agents + dispatch, conversations/send, integrations, security/events, switches PATCH, asr, tts, storage refactor to the shared guard, and all world mutations). Public by design: health, world/switches/scenarios/telemetry GET (status-only boot surface).
+- **Client unlock flow**: `src/nexus/ownerKeyClient.ts` (sessionStorage only — never localStorage/cookies, cleared on tab close) + `OwnerGate.tsx` panel (key is VERIFIED against the server before storing; wrong key visibly rejected) wired into the `api()` transport, InspectorDrawer (`jget`/`jpost`/direct fetches + reload-on-unlock) and ModesDrawer. CSRF and inference-quota theft closed as side effects.
+- **Verification**: `tests/guard_e2e.sh` 70/70 against the real standalone server (5 public routes 200; 24 anonymous mutations 403 with the header; wrong key/Bearer 403; correct key 200 both forms; post-auth validation intact; memory create+delete round trip; switches state unchanged). `npm test` 62/62 (10 new ownerAuth unit tests). `tsc --noEmit` + build clean. `scripts/gate0_ui_verify.py` headless-Chromium UX proof: no data leak when locked, unlock works, key survives reload — screenshots VLM-verified (`download/screenshots/gate0_ui_*.png`).
+- **Docs**: `docs/security/ROUTE_INVENTORY.md` (BEFORE/AFTER table, guard contract, evidence, rollback, residual exposure).
+- **Note**: Railway API token no longer authorizes (owner rotated it per session-7 advisory — GitHub push still works); production deploy happens through the GitHub-main auto-deploy.
+
+## 2026-11-13 (session 8) — GATE 0 CLOSED: full security hardening of the FastAPI CORE (reference/Jarvis)
+
+**Why:** the Master Directive's Part 4 mandates Gate 0 (security + owner control) before any major feature expansion; session 7's audit had rated the CORE backend CRITICAL (47/48 REST routes + /ws/nexus unauthenticated, restore accepted hostile snapshots, worker packages embeddable with arbitrary URLs). All six items landed on the inner repo's `gate0-security` branch, evidence-complete, then fast-forward merged to its `main` (`4c73851`) and committed here.
+
+- **Item 1 — auth everywhere**: `require_owner` on the `/api/v1` router (health stays public, status-only); constant-time Bearer compare; production boot fail-closed without `JARVIS_OWNER_TOKEN`; `SecurityAuditEvent` on every failure (no token values in logs); 5 failures/60 s/IP → 429; `/ws/nexus` first-message auth with single-use 60 s tickets (close 4401 before any world data). New `backend/app/auth.py`.
+- **Item 2 — CORS**: explicit allowlist; production refuses wildcard at startup; Railway CORE + Vercel frontend split documented in `.env.example`.
+- **Item 3 — admin backup/restore hardened**: owner + Master-gated; 2 MiB cap (413); strict-schema + semantic validation (400 on unknown tables/fields/enums); dry-run (zero mutation); pre-restore safety backup; transactional restore; backup response states its secrets-exclusion policy (sensitive memory marker-only, Kaggle creds masked-only, keys never exported).
+- **Item 4 — worker packages**: secrets-free (token from Kaggle Secrets at runtime); `core_wss_url` strictly validated (wss-only, allowlisted host, no query/userinfo, exact path) or 400 — baseline probes showed six attack shapes returned 200 with the URL embedded; delete-after-download + 15-min TTL sweep.
+- **Item 5 — embedding honesty**: renamed to `lexical_fingerprint_json` / `_lexical_fingerprint` (zlib.crc32 — stable across restarts, unlike the old per-process-salted `hash()`); no vector-search claims anywhere; legacy-column migration verified on the real dev DB.
+- **Item 6 — acceptance evidence**: `docs/security/` — route_inventory (BEFORE/AFTER), THREAT_STATEMENT (12 protected points / still-exposed-by-design / honestly-UNVERIFIED), ROLLBACK_PLAN executed per-item on a disposable worktree (byte-identical reverts, era suites 23/23, 17/17, 8/8) with transparent incident log, sanctuary login render proof, clean-env final runs, fail_on_old_code.txt (new tests + behavioral probes FAIL on baseline `1fb4384`, PASS on hardened).
+- **Tests**: 8 baseline → 43/43 backend (35 new Gate 0 tests); frontend character checks PASS; production build ✓. Post-merge re-verified fresh this session. Secrets audit clean before every commit (untracked scan had only false-positive snake_case test names).
+- **Scope note**: this hardens the FastAPI CORE (reference/Jarvis). The Next.js production app's own route guard (session 7 recommendation #4: extend x-owner-key to conversations/send, switches, world mutations, memories, goals) remains the parallel hardening item on that codebase.
+
+## 2026-11-13 (session 7) — Black-void avatar fix (root cause found + proven), EOS credentials complete in production, Groq free LLM provider, mobile dock fix
+
+**Digital-human embodiment repaired — the missing avatar was a NaN-poisoned camera, not a missing asset**
+- Symptom (production + local): scene rendered, UI worked, models downloaded 200, `loaded:true` — but the viewport was a black void with a flat center strip. VLM-confirmed "no humanoid anywhere in frame".
+- Root cause PROVEN with a property-setter stack trap on `targetYaw`: `BehaviorDirector` inspect branch computed the POI approach yaw as `atan2(look[0]-stand[0], look[2]-stand[2])` — but `stand` is 2D `[x, z]`, so `stand[2]` is `undefined` → NaN yaw → `root.rotation.y` NaN → conversation camera preset NaN → view-projection NaN → THREE.js silently frustum-culled EVERY object (avatar + architecture). Every inspect dispatch (30% of autonomy rolls) blanked the sanctuary.
+- Fix in three layers: correct index (`stand[1]`); `navigateTo` rejects non-finite destinations + focusCamera turn guards non-finite camera deltas + root-transform self-heal; `CameraDirector` NaN-guards desiredPos/target/fov with living_presence fallbacks. +4 regression tests (including one documenting the old formula as NaN-producing). 52/52 pass.
+- Live verification: 5+ min autonomy soak zero NaN; local avatar VLM-confirmed walking with full environment; PRODUCTION verified after deploy (center strip 1→106 color buckets, humanoid skin cluster present; Reset View + hologram mode + embodiment mode all verified). Commit `4cc3def`.
+
+**EOS: all five credentials now configured in Railway production**
+- Owner supplied the Client Secret (previously proven missing by 12 invalid_client_credentials permutations). Live OAuth result CHANGED to `client_missing_application_id` (18160) — Epic ACCEPTED the credentials; the remaining blocker is portal-side: the client needs an Application/Client-Policy association (userless trusted-server) in the Developer Portal. Exact owner steps documented in PROJECT_STATE.
+- Railway v2 GraphQL API reverse-engineered (endpoint moved to backboard.railway.com/graphql/v2; variableUpsert now takes projectId + returns Boolean). `EPIC_CLIENT_SECRET` created + stale `EPIC_CLIENT_ID` corrected via API (skipDeploys, single redeploy).
+
+**Task 2 — production LLM: Groq free-tier provider (D6 registry)**
+- Research verdict: GitHub Models RETIRED 2026-07-30 (rejected); Groq genuinely free (no card, no trial, no billing; gsk_ keys, ~14,400 req/day llama-3.1-8b-instant, verified Oct 2026).
+- `src/lib/nexus/providers/groqCloud.ts`: OpenAI-compatible LLM + whisper-large-v3-turbo ASR via plain fetch, zero deps. Default chain now `groq_cloud -> zai_cloud_route -> honest fallback`. Live-verified: no key → falls through to z.ai (real conversation completed); bad key → honest throw → fall-through (unit-tested). ACTIVATION: owner adds `GROQ_API_KEY` to Railway (free, 1 minute).
+
+**Task 5 — mobile: dialogue dock overflow fix**
+- On 390px the single-row dock needed ~476px with overflow visible — Resume Work/Transmit unreachable. ≤860px: bar wraps (input full row, buttons share rows, 44px targets). iPhone 14 emulation verified: dockFits=true, no horizontal overflow. Mobile avatar render verified (full figure visible).
+
+**Credentials live-verified this session (real API calls; values never printed)**
+- GitHub (authenticated, push proven), Kaggle ×6 (datasets/list + kernels/list 200 each), Supabase data plane (service_role JWT: auth health + both buckets), Supabase sb_secret_ (storage 200; management API 401 = project-scoped key, documented expected), Railway (workspace token: projects/services/variables read + variableUpsert + serviceInstanceRedeploy executed), EOS (secret VALID, portal-side blocker documented).
+- Railway env audit: 37 variables, hash-compared against owner-supplied values; 2 upserted (EPIC_CLIENT_SECRET new, EPIC_CLIENT_ID corrected), 35 in sync.
+
+**Security findings (Task 6)**
+- Frontend bundles scanned (8 chunks, 1.5 MB): ZERO credential leakage (EOS values, API keys, service-role JWTs all absent).
+- CRITICAL (owner decision required): all `/api/v1/*` endpoints except `/api/v1/storage` are UNAUTHENTICATED — conversations/send, memories, goals, switches, world mutations accept anonymous calls (verified live). Storage is properly owner-key-guarded (deny-by-default). Recommendation: extend the x-owner-key guard to mutation routes.
+- Note: all secrets were shared in chat by the owner; rotate after setup.
+
+## Parallel line, sessions 7–8 (merged into this baseline by session 8)
+
+> Entries from the parallel development line, preserved verbatim by the session-8 merge:
 ## 2026-11-13 (session 7) — EOS OAuth REAL-verified, avatar black-screen root-caused+fixed, genuinely-free production LLM, voice round-trip, mobile fixes, security re-audit
 
 **EOS authentication complete (the final credential)**
@@ -41,7 +133,6 @@ Format: date — change — why. Newest first. Full diffs: git log.
 **Verification totals**: 64/64 unit tests (+18 new), typecheck clean, production build clean, EOS 8/8, LLM 15/15, voice 8/8, mobile 3/3 after, security 3/3 + probes, production E2E 7/7 (real Supabase tool loop live), scene render + reset view verified with VLM evidence
 
 **Blockers (new)**: the sandbox recycle destroyed the GITHUB_TOKEN + RAILWAY_API_TOKEN — session-7 commits are local-only and the EOS secret awaits one `sync_railway_env.py` run; exact owner runbook in PROJECT_STATE.md §Blocked.
-
 ## 2026-11-13 (session 6) — Storage backend live (Supabase), §6 real tool execution, honesty guard, EOS IDs complete
 
 **Credential integration finished with REAL operations** (final master directive: use them, verify them, demonstrate — audit register rewritten: docs/INTEGRATIONS.md)

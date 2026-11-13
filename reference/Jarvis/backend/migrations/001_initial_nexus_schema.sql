@@ -43,8 +43,10 @@ CREATE TABLE IF NOT EXISTS memory_records (
     confidence DOUBLE PRECISION NOT NULL DEFAULT 1.0,
     source_ref TEXT,
     project_tag VARCHAR(100),
-    embedding_json TEXT,
-    -- In PostgreSQL with pgvector: ALTER TABLE memory_records ADD COLUMN IF NOT EXISTS embedding vector(384);
+    -- Gate 0 Item 5: this is a LEXICAL fingerprint (deterministic character-trigram
+    -- hash), NOT a semantic embedding. It is used for local lexical ranking only.
+    -- JARVIS NEXUS does not implement vector search; no pgvector column is used.
+    lexical_fingerprint_json TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

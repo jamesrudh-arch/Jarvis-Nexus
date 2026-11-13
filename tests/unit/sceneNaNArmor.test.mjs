@@ -58,9 +58,10 @@ test('navigateTo rejects a NaN target yaw instead of poisoning the character', (
     fake, 2, 3, NaN, { posture: 'console_interaction' }
   );
   assert.equal(fake.targetYaw, 0.5, 'previous yaw must be kept when commanded yaw is NaN');
-  // The walk itself is still planned — only the poisoned yaw is ignored, and
-  // the locomotion turn recomputes a valid desiredYaw from the waypoint.
-  assert.equal(fake.waypoints.length, 1, 'goal waypoint still planned');
+  // Session-8 merge: the guard is FAIL-CLOSED (production-proven on the
+  // parallel line) — a NaN yaw refuses the whole command, so no waypoint is
+  // planned either. She keeps her current valid state entirely.
+  assert.equal(fake.waypoints.length, 0, 'goal waypoint refused on a NaN yaw (fail-closed)');
 });
 
 test('navigateTo with non-finite coordinates is ignored entirely', () => {
@@ -75,7 +76,10 @@ test('navigateTo with non-finite coordinates is ignored entirely', () => {
   JarvisCharacterController.prototype.navigateTo.call(
     fake, NaN, 3, 1.0, { posture: 'console_interaction' }
   );
-  assert.equal(fake.targetYaw, 1.0, 'finite yaw is accepted');
+  // Session-8 merge: fail-closed — a NaN destination refuses the entire
+  // command including the finite yaw (the parallel-line salvage variant that
+  // still accepted the yaw was superseded by this production-proven guard).
+  assert.equal(fake.targetYaw, 0.5, 'entire command refused, yaw untouched too');
   assert.equal(fake.waypoints.length, 0, 'no waypoint planned for a NaN destination');
 });
 

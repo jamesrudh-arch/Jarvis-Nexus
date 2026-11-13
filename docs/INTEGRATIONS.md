@@ -125,6 +125,17 @@ the 8.2k-char history-carrying system prompt; tool calling with honest
 
 | State | Evidence |
 |---|---|
+| Discovered | Owner-supplied 2026-11-13: Product `Jarvis nexus` (`EPIC_PRODUCT_ID`), `EPIC_CLIENT_ID` (xyza7891… format), `EPIC_DEPLOYMENT_ID`, `EPIC_SANDBOX_IDS` |
+| Configured | `.env.local` + Railway; consumed by `world/Unreal/Plugins/JarvisNexusEOS` (C++: EOS_Platform_Create + client-credentials login) via `src/lib/nexus/integrations/eos.ts` |
+| Authenticated (attempt) | **Real OAuth attempts** against `api.epicgames.dev/epic/oauth/v2/token`: all **12 client/secret permutations** of every supplied value (client ID, product ID, deployment ID, sandbox ID) → `400 errors.com.epicgames.account.invalid_client_credentials`. Established by attempt: the Client Secret is a distinct credential and is not among the supplied values |
+| Missing value | `EPIC_CLIENT_SECRET` — EOS Developer Portal → your product → Clients → Client Secret. This is the ONLY missing integration credential in the project. Everything else is wired: once supplied, `eos.ts` performs the live exchange automatically and the UE5 plugin config is complete |
+| Runtime consumer | world/Unreal/Plugins/JarvisNexusEOS (EOS SDK at engine runtime) + ios/JarvisNexus |
+
+## Parallel line, sessions 7–8 (merged into this baseline by session 8)
+
+> Live-verification evidence from the parallel development line, preserved verbatim
+> by the session-8 merge (EOS real-OAuth row supersedes the session-6 "missing secret"
+> state; LLM provider table unions cloudflare_workers_ai/openai with groq_cloud):
 | Discovered | Owner-supplied 2026-11-13: Product `Jarvis nexus` (`EPIC_PRODUCT_ID`), `EPIC_CLIENT_ID` (xyza7891… format), `EPIC_CLIENT_SECRET` (supplied session 7), `EPIC_DEPLOYMENT_ID`, `EPIC_SANDBOX_IDS`; Sandbox Type live, Deployment Name live |
 | Configured | `.env.local` (values never printed; sandbox copy rebuilt after the recycle). Railway: ships with `scripts/sync_railway_env.py` (UPSERT list includes EPIC_CLIENT_ID + EPIC_CLIENT_SECRET). Unreal plugin: template `jarvis_nexus_eos.example.json` + generator `scripts/write_eos_plugin_config.py` (real file gitignored, mode 600) |
 | Authenticated (REAL) | Client-credentials OAuth against the documented EOS Game-Services endpoint `https://api.epicgames.dev/auth/v1/oauth/token` → **HTTP 200 bearer JWT**, `expires_in 3599 s`, repeatable deployment-scoped + product-level grants. (Root cause of the session-6 400s: the EAS surface `/epic/oauth/v2/token` rejects client-credentials with `client_missing_application_id` — wrong endpoint, not wrong credentials.) |
@@ -132,7 +143,6 @@ the 8.2k-char history-carrying system prompt; tool calling with honest
 | Verification scripts | `scripts/verify_eos_oauth.py` (8-step protocol: locate → configure → real auth → claims → repeat grants → verify → record); `src/lib/nexus/integrations/eos.ts` performs the live exchange + claims checks (reports `authenticated: true` when the secret is present); `scripts/verify_integrations.py` `eos:oauth` row does the real exchange |
 | Exposure audit | Secret sha256[:12]=d4223dc3e5a7 — 0 hits in 436 tracked files, 0 in all 954 git-history objects, 0 in the local build output, 0 in the 8 live production JS bundles |
 | Runtime consumer | unreal/JarvisNexusEOS (EOS SDK at engine runtime) + ios/JarvisNexus |
-
 ## /api/v1/storage — REAL OPERATIONS VERIFIED (owner HTTP surface)
 
 Guarded surface over the Supabase backend: `GET` status (public metadata
@@ -147,8 +157,8 @@ only), `GET/PUT/DELETE ?key=` (require `X-Owner-Key` == server-side
 - `BLENDER_MCP_HOST=127.0.0.1`, `BLENDER_MCP_PORT=9876`; runtime client
   `blenderMcp.ts`; addon `blender/jarvis_blender`. Execution requires Blender
   4.2+ on any host (no credential to verify — local software).
-- `UNREAL_BRIDGE_URL` intentionally empty until the owner opens `unreal/` in
-  UE 5.5 and runs the whitelisted Python bridge (see `unreal/README.md`).
+- `UNREAL_BRIDGE_URL` intentionally empty until the owner opens `world/Unreal/` in
+  UE 5.5 and runs the whitelisted Python bridge (see `world/Unreal/README.md`).
 
 ## Security posture
 

@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireOwnerKey } from '@/lib/nexus/ownerGuard';
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const denied = await requireOwnerKey(req);
+  if (denied) return denied;
   try {
     const { id } = await ctx.params;
     const body = await req.json();
@@ -32,7 +35,9 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   }
 }
 
-export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const denied = await requireOwnerKey(req);
+  if (denied) return denied;
   try {
     const { id } = await ctx.params;
     await db.memoryRecord.delete({ where: { id } });

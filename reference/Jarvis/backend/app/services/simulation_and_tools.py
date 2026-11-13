@@ -359,8 +359,14 @@ class AgentCoordinator:
 agent_coordinator = AgentCoordinator()
 
 
-def export_sanctuary_backup(db: Session) -> Dict[str, Any]:
-    """Create a secret-scrubbed backup snapshot of persistent state, memories, goals, scenarios, and masked profiles."""
+def export_sanctuary_backup(db: Session, filename_prefix: str = "jarvis_nexus_backup") -> Dict[str, Any]:
+    """Create a secret-scrubbed backup snapshot of persistent state, memories, goals, scenarios, and masked profiles.
+
+    Gate 0 Item 3: `filename_prefix` lets the admin restore flow distinguish its
+    automatic pre-restore safety backup (`pre_restore_...`) from owner-initiated
+    exports. Secrets policy (unchanged): sensitive memory plaintext is EXCLUDED
+    (marker only), Kaggle credentials are EXCLUDED (masked identifiers only).
+    """
     state = db.query(NexusWorldState).filter_by(id=1).first()
     payload = {
         "schema_version": "1.0.0",
@@ -417,48 +423,16 @@ def export_sanctuary_backup(db: Session) -> Dict[str, Any]:
             for p in db.query(KaggleProfileRecord).order_by(KaggleProfileRecord.slot_index).all()
         ],
     }
-    fname = f"jarvis_nexus_backup_{int(time.time())}.json"
+    # time_ns (not time()): two restores inside the same second must not
+    # overwrite each other's pre-restore safety backups.
+    fname = f"{filename_prefix}_{time.time_ns()}.json"
     (BACKUPS_DIR / fname).write_text(json.dumps(payload, indent=2), encoding="utf-8")
     return {"backup_file": fname, "snapshot": payload}
 
 
-def restore_sanctuary_backup(db: Session, snapshot: Dict[str, Any]) -> Dict[str, Any]:
-    restored_counts = {"switches": 0, "memories": 0, "goals": 0}
-    ws_data = snapshot.get("world_state") or {}
-    state = db.query(NexusWorldState).filter_by(id=1).first()
-    if state and ws_data:
-        state.owner_name = ws_data.get("owner_name", state.owner_name)
-        state.reduced_motion = bool(ws_data.get("reduced_motion", state.reduced_motion))
-
-    for sw in snapshot.get("switches", []):
-        rec = db.query(OwnerSwitch).filter_by(switch_key=sw.get("switch_key")).first()
-        if rec is not None:
-            rec.enabled = bool(sw.get("enabled", rec.enabled))
-            restored_counts["switches"] += 1
-
-    for m in snapshot.get("memories", []):
-        if m.get("content") == "[REDACTED_SENSITIVE]":
-            continue
-        existing = db.query(MemoryRecord).filter_by(id=m.get("id")).first()
-        if not existing:
-            db.add(MemoryRecord(
-                id=m.get("id") or str(time.time_ns()),
-                category=m.get("category", "owner_fact"),
-                epistemic_status=m.get("epistemic_status", "owner_stated"),
-                title=m.get("title", "Restored Memory"),
-                content=m.get("content", ""),
-                confidence=float(m.get("confidence", 1.0)),
-                source_ref=m.get("source_ref"),
-                project_tag=m.get("project_tag"),
-            ))
-            restored_counts["memories"] += 1
-
-    for g in snapshot.get("goals", []):
-        existing_g = db.query(GoalRecord).filter_by(id=g.get("id")).first()
-        if existing_g:
-            existing_g.status = g.get("status", existing_g.status)
-            existing_g.progress = int(g.get("progress", existing_g.progress))
-            restored_counts["goals"] += 1
-
-    db.commit()
-    return {"status": "restored", "restored_counts": restored_counts}
+# NOTE (Gate 0 Item 3): the legacy restore_sanctuary_backup() service function
+# was REMOVED. It applied raw, unvalidated dict payloads with no schema checks,
+# no size cap, no pre-restore backup, and no rollback guarantee. Restore now
+# lives in backend/app/main.py (POST /api/v1/admin/restore) with strict
+# pydantic validation, semantic checks, automatic pre-restore backup, a single
+# transaction with complete rollback, and dry-run support.

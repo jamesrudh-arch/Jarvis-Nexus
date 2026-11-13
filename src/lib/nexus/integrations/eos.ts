@@ -132,7 +132,7 @@ export class EosIntegration {
           detail: `Live OAuth verified: ${auth.detail}. Token claims associate clientId + productId `
             + `+ deploymentId + sandboxId with this deployment ${assocOk ? '(all match)' : '(MISMATCH detected)'}. `
             + `env=${String(c.env)}, tokenType=${String(c.tokenType)}, ${features.length} EOS features.`,
-          consumer: 'unreal/JarvisNexusEOS (EOS SDK at engine runtime) + ios/JarvisNexus (EOS native on device)',
+          consumer: 'world/Unreal/Plugins/JarvisNexusEOS (EOS SDK at engine runtime) + ios/JarvisNexus (EOS native on device)',
         };
       }
       if (auth.ok && !auth.claims) {
@@ -142,7 +142,7 @@ export class EosIntegration {
           authenticated: true,
           missing: [],
           detail: `Live OAuth verified: ${auth.detail} (token claims not decodable).`,
-          consumer: 'unreal/JarvisNexusEOS (EOS SDK at engine runtime) + ios/JarvisNexus (EOS native on device)',
+          consumer: 'world/Unreal/Plugins/JarvisNexusEOS (EOS SDK at engine runtime) + ios/JarvisNexus (EOS native on device)',
         };
       }
       return {
@@ -151,7 +151,7 @@ export class EosIntegration {
         authenticated: false,
         missing: [],
         detail: `All credentials present but live OAuth failed: ${auth.detail}`,
-        consumer: 'unreal/JarvisNexusEOS (EOS SDK at engine runtime) + ios/JarvisNexus (EOS native on device)',
+        consumer: 'world/Unreal/Plugins/JarvisNexusEOS (EOS SDK at engine runtime) + ios/JarvisNexus (EOS native on device)',
       };
     }
     return {
@@ -163,7 +163,7 @@ export class EosIntegration {
         + `(client-credentials OAuth against https://api.epicgames.dev/auth/v1/oauth/token → HTTP 200 `
         + 'bearer JWT; claims associate product/deployment/sandbox). Obtain values from the EOS '
         + 'Developer Portal (your product → Clients / General Settings).',
-      consumer: 'unreal/JarvisNexusEOS (EOS SDK at engine runtime) + ios/JarvisNexus (EOS native on device)',
+      consumer: 'world/Unreal/Plugins/JarvisNexusEOS (EOS SDK at engine runtime) + ios/JarvisNexus (EOS native on device)',
     };
   }
 }

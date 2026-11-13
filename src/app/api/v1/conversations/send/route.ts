@@ -13,6 +13,7 @@ import {
   serializeWorld,
   setScenarioRuntime,
 } from '@/lib/nexus/worldHub';
+import { requireOwnerKey } from '@/lib/nexus/ownerGuard';
 
 /**
  * POST /api/v1/conversations/send
@@ -22,6 +23,8 @@ import {
  * alongside the reply for synchronized viseme lip-sync playback.
  */
 export async function POST(req: NextRequest) {
+  const denied = await requireOwnerKey(req);
+  if (denied) return denied;
   try {
     await ensureSeed();
     const body = await req.json();
@@ -82,9 +85,21 @@ export async function POST(req: NextRequest) {
     // explicit storage request (observed 2026-11-13: claimed deletion without
     // executing), the server force-executes it so the spoken reply matches
     // reality.
-    if (directive.tool_calls.length === 0) {
+    // Phase 1 (Part 13): the Computer Control switch gates ALL tool execution.
+    // OFF → tool calls are dropped and the reply states the switch is off
+    // (never silently, never pretending execution happened).
+    let toolExecutionBlocked = false;
+    if (!switchMap.computer_control) {
+      if (directive.tool_calls.length > 0) toolExecutionBlocked = true;
+      directive.tool_calls = [];
+    }
+    if (directive.tool_calls.length === 0 && !toolExecutionBlocked) {
       const implicit = detectImplicitStorageTool(content);
       if (implicit) directive.tool_calls = [implicit];
+      if (directive.tool_calls.length > 0 && !switchMap.computer_control) {
+        toolExecutionBlocked = true;
+        directive.tool_calls = [];
+      }
     }
     let toolResults: ToolResult[] = [];
     if (directive.tool_calls.length > 0) {
@@ -125,6 +140,11 @@ Tool results: ${JSON.stringify(toolResults)}`,
       } else if (deterministic) {
         directive.reply = deterministic.slice(0, 600);
       }
+    } else if (toolExecutionBlocked) {
+      // Honest block notice: the tool never ran; the owner must hear why.
+      directive.reply =
+        'Computer Control switch is OFF, Boss — I have not executed any tools. '
+        + 'Enable Computer Control to allow tool operations.';
     }
 
     // Persist durable memory writes from the directive

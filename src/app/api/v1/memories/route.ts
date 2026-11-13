@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { ensureSeed } from '@/lib/nexus/worldHub';
+import { requireOwnerKey } from '@/lib/nexus/ownerGuard';
 
 const VALID_CATEGORIES = new Set([
   'owner_fact', 'preference', 'conversation_context', 'commitment',
@@ -8,7 +9,9 @@ const VALID_CATEGORIES = new Set([
 ]);
 const VALID_STATUSES = new Set(['owner_stated', 'verified_fact', 'source_backed', 'hypothesis']);
 
-export async function GET() {
+export async function GET(req: Request) {
+  const denied = await requireOwnerKey(req);
+  if (denied) return denied;
   try {
     await ensureSeed();
     const rows = await db.memoryRecord.findMany({ orderBy: { createdAt: 'desc' } });
@@ -26,6 +29,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const denied = await requireOwnerKey(req);
+  if (denied) return denied;
   try {
     await ensureSeed();
     const body = await req.json();

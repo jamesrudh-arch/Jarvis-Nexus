@@ -12,19 +12,28 @@ from backend.app.config import settings
 from backend.app.main import app
 
 
+def make_client():
+    """Gate 0 Item 1: every /api/v1 route (except health) now requires the owner token."""
+    return TestClient(app, headers={"Authorization": f"Bearer {settings.OWNER_AUTH_TOKEN}"})
+
+
 def test_health_and_truthful_capabilities():
-    with TestClient(app) as client:
+    with make_client() as client:
         r = client.get("/api/v1/health")
         assert r.status_code == 200
         data = r.json()
         assert data["status"] == "ok"
-        assert data["inference"]["default_model"] == "huihui-ai/Qwen2.5-14B-Instruct-abliterated"
+        # Gate 0 Item 1: health is public and status-only (no capability detail leak).
+        assert set(data.keys()) == {"status", "service", "version", "uptime_sec"}
+        # Truthful inference reporting moved behind owner auth on /compute/status.
+        comp = client.get("/api/v1/compute/status").json()
+        assert comp["default_model"] == "huihui-ai/Qwen2.5-14B-Instruct-abliterated"
         # No GPU worker connected initially -> must truthfully report none_connected
-        assert data["inference"]["active_backend"] == "none_connected"
+        assert comp["active_backend"] == "none_connected"
 
 
 def test_world_locomotion_interruption_and_resumption():
-    with TestClient(app) as client:
+    with make_client() as client:
         # Move JARVIS to Research Area
         r = client.post("/api/v1/world/move", json={
             "zone_id": "research_area",
@@ -52,7 +61,7 @@ def test_world_locomotion_interruption_and_resumption():
 
 
 def test_seven_owner_switches_real_enforcement():
-    with TestClient(app) as client:
+    with make_client() as client:
         sw = client.get("/api/v1/switches").json()
         assert len(sw) == 7
         keys = [s["switch_key"] for s in sw]
@@ -92,7 +101,7 @@ def test_seven_owner_switches_real_enforcement():
 
 
 def test_memory_epistemic_integrity_and_sensitive_encryption():
-    with TestClient(app) as client:
+    with make_client() as client:
         # Create sensitive memory -> redacted by default, decrypted when reveal_sensitive=true
         r_sens = client.post("/api/v1/memories", json={
             "category": "sensitive",
@@ -137,7 +146,7 @@ def test_memory_epistemic_integrity_and_sensitive_encryption():
 
 
 def test_goal_dependency_enforcement():
-    with TestClient(app) as client:
+    with make_client() as client:
         # goal-stator-prototype depends on goal-cryo-forensics (currently 'active', not 'completed')
         r_block = client.patch("/api/v1/goals/goal-stator-prototype/status", json={"status": "active"})
         assert r_block.status_code == 409
@@ -151,7 +160,7 @@ def test_goal_dependency_enforcement():
 
 
 def test_scenarios_simulations_and_kaggle_packages():
-    with TestClient(app) as client:
+    with make_client() as client:
         # Activate Forensic Scenario
         act = client.post("/api/v1/scenarios/cryo_manifold_forensic/activate", json={
             "variables": {"line_pressure_mpa": 165, "relief_valve_ms": 45},
@@ -182,7 +191,7 @@ def test_scenarios_simulations_and_kaggle_packages():
         assert "abcdef123456" not in upd["masked_key"]
         assert upd["masked_key"].startswith("kg_")
 
-        pkg = client.get(f"/api/v1/compute/kaggle/profiles/{p0_id}/package?core_wss_url=wss://nexus.local/ws/worker")
+        pkg = client.get(f"/api/v1/compute/kaggle/profiles/{p0_id}/package?core_wss_url=wss://127.0.0.1:8000/ws/worker")
         assert pkg.status_code == 200
         zf = zipfile.ZipFile(io.BytesIO(pkg.content))
         names = set(zf.namelist())
@@ -198,7 +207,7 @@ def test_scenarios_simulations_and_kaggle_packages():
 
 
 def test_authenticated_private_worker_websocket_streaming():
-    with TestClient(app) as client:
+    with make_client() as client:
         # 1. Unauthenticated worker must be rejected
         try:
             with client.websocket_connect("/ws/worker") as ws_bad:

@@ -20,6 +20,10 @@ const state = {
   recordedChunks: [],
 };
 
+// Gate 0 Item 1: owner token kept in memory for the session only (never persisted to disk).
+let ownerToken = null;
+let sanctuaryStarted = false;
+
 const canvas = document.getElementById('nexus-canvas');
 const labelsLayer = document.getElementById('spatial-labels-layer');
 const uploadedVideoEl = document.getElementById('uploaded-video-el');
@@ -45,10 +49,16 @@ function coreWsBase() {
 
 async function api(path, options = {}) {
   const headers = options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' };
+  if (ownerToken) headers.Authorization = `Bearer ${ownerToken}`;
   const res = await fetch(coreHttpUrl(path), {
     ...options,
     headers: { ...headers, ...(options.headers || {}) },
   });
+  if (res.status === 401) {
+    // Gate 0 Item 1: token missing/expired — re-show the sign-in gate.
+    showOwnerAuthGate();
+    throw new Error('Owner authentication required.');
+  }
   if (!res.ok) {
     let detail = `HTTP ${res.status}`;
     try {
@@ -60,8 +70,23 @@ async function api(path, options = {}) {
   return res.json();
 }
 
+// Fetch a binary asset (media file, worker ZIP) with the owner token attached.
+async function authedBlobUrl(path, fallbackName = 'download.bin') {
+  const res = await fetch(coreHttpUrl(path), { headers: { Authorization: `Bearer ${ownerToken}` } });
+  if (res.status === 401) {
+    showOwnerAuthGate();
+    throw new Error('Owner authentication required.');
+  }
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = fallbackName;
+  return a.href;
+}
+
 // ---------------------------------------------------------------------------
-// 1. Boot & Continuity Initialization
+// 1. Boot, Owner Sign-In Gate & Continuity Initialization (Gate 0 Item 1)
 // ---------------------------------------------------------------------------
 async function bootstrap() {
   const activityEl = document.getElementById('jarvis-activity-text');
@@ -76,8 +101,51 @@ async function bootstrap() {
     activityEl.textContent = `Character asset warning: ${err.message}`;
   }
 
-  const [worldSnap, scenariosRes, mediaRes] = await Promise.all([
-    api('/api/v1/world'),
+  // Every /api/v1 call (except health) now requires the owner token — gate first.
+  bindOwnerAuthGate();
+  showOwnerAuthGate();
+}
+
+function bindOwnerAuthGate() {
+  const form = document.getElementById('owner-auth-form');
+  const input = document.getElementById('owner-token-input');
+  const errEl = document.getElementById('owner-auth-error');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const candidate = (input.value || '').trim();
+    if (!candidate) return;
+    ownerToken = candidate;
+    errEl.classList.add('hidden');
+    try {
+      // Validate the token against a protected route before entering the sanctuary.
+      const worldSnap = await api('/api/v1/world');
+      document.getElementById('owner-auth-gate').classList.add('hidden');
+      if (!sanctuaryStarted) {
+        sanctuaryStarted = true;
+        await startSanctuary(worldSnap);
+      } else {
+        // Re-authenticated after a 4401 close: just rejoin the live socket.
+        connectNexusWebSocket();
+      }
+    } catch (err) {
+      ownerToken = null;
+      errEl.textContent = `Access denied: ${err.message}`;
+      errEl.classList.remove('hidden');
+    }
+  });
+}
+
+function showOwnerAuthGate() {
+  const gate = document.getElementById('owner-auth-gate');
+  if (gate.classList.contains('hidden')) {
+    gate.classList.remove('hidden');
+    document.getElementById('owner-auth-error').classList.add('hidden');
+    document.getElementById('owner-token-input').focus();
+  }
+}
+
+async function startSanctuary(worldSnap) {
+  const [scenariosRes, mediaRes] = await Promise.all([
     api('/api/v1/scenarios'),
     api('/api/v1/media'),
   ]);
@@ -112,9 +180,18 @@ function connectNexusWebSocket() {
   const ws = new WebSocket(wsUrl);
   state.ws = ws;
 
-  ws.onopen = () => dot.classList.remove('offline');
-  ws.onclose = () => {
+  ws.onopen = () => {
+    dot.classList.remove('offline');
+    // Gate 0 Item 1: authenticate as the FIRST message — the token never travels in the URL.
+    ws.send(JSON.stringify({ type: 'auth', token: ownerToken }));
+  };
+  ws.onclose = (ev) => {
     dot.classList.add('offline');
+    if (ev.code === 4401) {
+      // Auth rejected by policy: stop the retry loop and ask for the token again.
+      showOwnerAuthGate();
+      return;
+    }
     setTimeout(connectNexusWebSocket, 3500);
   };
   ws.onmessage = (ev) => {
@@ -622,7 +699,7 @@ async function renderInspectorTab(tab) {
           <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap">
             <button class="btn-chip" data-kaggle-select="${p.id}" data-kname="${p.profile_name}" data-kmodel="${p.preferred_model}" data-kgpu="${p.gpu_accelerator}">Select Active</button>
             <button class="btn-chip btn-cyan-outline" data-kaggle-test="${p.id}">Test Auth</button>
-            <a class="btn-chip" style="text-decoration:none" href="${coreHttpUrl(`/api/v1/compute/kaggle/profiles/${p.id}/package?core_wss_url=${encodeURIComponent(`${coreWsBase()}/ws/worker`)}`)}" download>Download Worker ZIP</a>
+            <button class="btn-chip" data-kaggle-package="${p.id}">Download Worker ZIP</button>
           </div>
         </div>
       `).join('')}
@@ -986,7 +1063,8 @@ function bindMediaPanelHandlers(curMedia) {
     const fd = new FormData(e.target);
     const uploaded = await api('/api/v1/media/upload', { method: 'POST', body: fd });
     uploadedVideoEl.crossOrigin = 'anonymous';
-    uploadedVideoEl.src = coreHttpUrl(uploaded.url);
+    // Gate 0 Item 1: media files now require the owner token — load via authorized blob URL.
+    uploadedVideoEl.src = await authedBlobUrl(uploaded.url, `${uploaded.title || 'clip'}.webm`);
     await uploadedVideoEl.play().catch(() => {});
     sanctuary.setExternalVideoTexture(uploadedVideoEl);
     renderInspectorTab('media');
@@ -1120,6 +1198,25 @@ function bindKaggleHandlers() {
     const body = Object.fromEntries(fd.entries());
     await api('/api/v1/compute/kaggle/profiles', { method: 'POST', body: JSON.stringify(body) });
     renderInspectorTab('compute');
+  });
+
+  // Gate 0 Item 1: worker ZIP download now requires the owner token — fetch as authorized blob.
+  document.querySelectorAll('[data-kaggle-package]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      try {
+        const wssUrl = `${coreWsBase()}/ws/worker`;
+        const href = await authedBlobUrl(
+          `/api/v1/compute/kaggle/profiles/${btn.dataset.kagglePackage}/package?core_wss_url=${encodeURIComponent(wssUrl)}`,
+          'jarvis_worker_package.zip',
+        );
+        const a = document.createElement('a');
+        a.href = href;
+        a.download = 'jarvis_worker_package.zip';
+        a.click();
+      } catch (err) {
+        alert(err.message);
+      }
+    });
   });
 }
 

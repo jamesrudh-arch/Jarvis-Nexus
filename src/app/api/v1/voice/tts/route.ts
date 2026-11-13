@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { synthesizeVoice } from '@/lib/nexus/brain';
+import { requireOwnerKey } from '@/lib/nexus/ownerGuard';
 
 /**
  * POST /api/v1/voice/tts
@@ -11,6 +12,8 @@ import { synthesizeVoice } from '@/lib/nexus/brain';
  * unless a gateway is configured.
  */
 export async function POST(req: Request) {
+  const denied = await requireOwnerKey(req);
+  if (denied) return denied;
   try {
     const body = await req.json().catch(() => null);
     const text = typeof body?.text === 'string' ? body.text : '';
