@@ -106,9 +106,9 @@ export class EosIntegration {
         authenticated: auth.ok,
         missing: [],
         detail: auth.ok
-          ? `Live OAuth verified: ${auth.detail}. SDK runtime consumer: ${'unreal/JarvisNexusEOS'}.`
+          ? `Live OAuth verified: ${auth.detail}. SDK runtime consumer: ${'world/Unreal/Plugins/JarvisNexusEOS'}.`
           : `All credentials present but live OAuth failed: ${auth.detail}`,
-        consumer: 'unreal/JarvisNexusEOS (EOS SDK at engine runtime) + ios/JarvisNexus (EOS native on device)',
+        consumer: 'world/Unreal/Plugins/JarvisNexusEOS (EOS SDK at engine runtime) + ios/JarvisNexus (EOS native on device)',
       };
     }
     return {
@@ -120,7 +120,7 @@ export class EosIntegration {
         + 'Live sweep 2026-11-13: all 12 client/secret permutations of the supplied values answered '
         + '400 invalid_client_credentials — the Client Secret is a distinct value from the EOS '
         + 'Developer Portal (your product → Clients).',
-      consumer: 'unreal/JarvisNexusEOS (EOS SDK at engine runtime) + ios/JarvisNexus (EOS native on device)',
+      consumer: 'world/Unreal/Plugins/JarvisNexusEOS (EOS SDK at engine runtime) + ios/JarvisNexus (EOS native on device)',
     };
   }
 }

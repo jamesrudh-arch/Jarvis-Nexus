@@ -118,10 +118,10 @@ LLM API key) to the Railway env and registering it in
 | State | Evidence |
 |---|---|
 | Discovered | Owner-supplied 2026-11-13: Product `Jarvis nexus` (`EPIC_PRODUCT_ID`), `EPIC_CLIENT_ID` (xyza7891… format), `EPIC_DEPLOYMENT_ID`, `EPIC_SANDBOX_IDS` |
-| Configured | `.env.local` + Railway; consumed by `unreal/Plugins/JarvisNexusEOS` (C++: EOS_Platform_Create + client-credentials login) via `src/lib/nexus/integrations/eos.ts` |
+| Configured | `.env.local` + Railway; consumed by `world/Unreal/Plugins/JarvisNexusEOS` (C++: EOS_Platform_Create + client-credentials login) via `src/lib/nexus/integrations/eos.ts` |
 | Authenticated (attempt) | **Real OAuth attempts** against `api.epicgames.dev/epic/oauth/v2/token`: all **12 client/secret permutations** of every supplied value (client ID, product ID, deployment ID, sandbox ID) → `400 errors.com.epicgames.account.invalid_client_credentials`. Established by attempt: the Client Secret is a distinct credential and is not among the supplied values |
 | Missing value | `EPIC_CLIENT_SECRET` — EOS Developer Portal → your product → Clients → Client Secret. This is the ONLY missing integration credential in the project. Everything else is wired: once supplied, `eos.ts` performs the live exchange automatically and the UE5 plugin config is complete |
-| Runtime consumer | unreal/JarvisNexusEOS (EOS SDK at engine runtime) + ios/JarvisNexus |
+| Runtime consumer | world/Unreal/Plugins/JarvisNexusEOS (EOS SDK at engine runtime) + ios/JarvisNexus |
 
 ## /api/v1/storage — REAL OPERATIONS VERIFIED (owner HTTP surface)
 
@@ -137,8 +137,8 @@ only), `GET/PUT/DELETE ?key=` (require `X-Owner-Key` == server-side
 - `BLENDER_MCP_HOST=127.0.0.1`, `BLENDER_MCP_PORT=9876`; runtime client
   `blenderMcp.ts`; addon `blender/jarvis_blender`. Execution requires Blender
   4.2+ on any host (no credential to verify — local software).
-- `UNREAL_BRIDGE_URL` intentionally empty until the owner opens `unreal/` in
-  UE 5.5 and runs the whitelisted Python bridge (see `unreal/README.md`).
+- `UNREAL_BRIDGE_URL` intentionally empty until the owner opens `world/Unreal/` in
+  UE 5.5 and runs the whitelisted Python bridge (see `world/Unreal/README.md`).
 
 ## Security posture
 

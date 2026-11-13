@@ -197,3 +197,39 @@ Phase 4→architecture-bible+animation ✓, Phase 5→world-topology+city-plans 
 Phase 6→city-plans+architecture-bible ✓, Phase 7→population+animation ✓,
 Phase 12/13→laboratory-and-nexus ✓, Phase 14→laboratory-and-nexus+
 acceptance-and-evidence ✓, Phase 1→acceptance-and-evidence ✓).
+
+---
+
+## Entry 002 — 2026-11-13 — PHASE 3 F-C1 DISPOSITION (Unreal project path)
+
+**Action:** resolved F-C1 per the Phase 2 register's recorded plan under the
+owner's Phase 3 GO. Directive text wins: the authoritative Unreal project now
+lives at the directive-mandated `world/Unreal/JarvisWorld.uproject` (full C++
+project, modules, geo/identity libraries, automation tests, WP config).
+
+- `unreal/Plugins/JarvisNexusEOS/**` → `world/Unreal/Plugins/JarvisNexusEOS/**`
+  (`git mv`, content unchanged, history preserved; plugin stays in documented
+  no-SDK mode while B5 is open).
+- `unreal/Python/jarvis_http_bridge.py` → `world/Unreal/Python/jarvis_http_bridge.py`
+  (`git mv`, content unchanged).
+- REMOVED `unreal/JarvisNexus.uproject` + `unreal/Config/DefaultEngine.ini` —
+  the legacy `.uproject` declared a `JarvisNexus` module that never existed in
+  `Source/` and could not compile; superseded by the real project.
+- `unreal/README.md` rewritten as a tombstone pointing at `world/Unreal/`.
+- Path references updated in `src/lib/nexus/integrations/eos.ts`,
+  `src/lib/nexus/integrations/unrealBridge.ts`, `docs/INTEGRATIONS.md`,
+  `.gitignore` (EOS credentials path).
+
+**Verification:** `git status --short` shows pure renames (R) for the migrated
+files; `grep -rn "unreal/" src/ docs/INTEGRATIONS.md` returns no legacy paths;
+the legacy tombstone no longer claims any buildable project.
+
+**Note (session recovery):** Phase 3 was originally committed as merge
+`af94759` (tag `phase-3-authored`) but the push was blocked (B6) and the
+sandbox recycle lost the local history before the token was re-supplied. The
+work was re-authored this session from the Phase 3 report's complete
+specification and re-pushed; this entry records the disposition that BOTH the
+original and the restoration performed identically.
+
+**Status:** executed; FORMAL OWNER RULING on F-C1 still requested (recorded as
+REQUIRES OWNER APPROVAL in the Phase 3 report requirement table).
