@@ -1,0 +1,52 @@
+{
+  "runtime": "bpy 5.0.1 (headless module)",
+  "threading": "socket thread enqueues; interpreter main thread executes all bpy calls (the addon contract)",
+  "results": [
+    {
+      "tool": "ping",
+      "ok": true
+    },
+    {
+      "tool": "get_scene",
+      "ok": true
+    },
+    {
+      "tool": "create_sanctuary_reference_scene",
+      "ok": true
+    },
+    {
+      "tool": "apply_pbr_material",
+      "ok": true
+    },
+    {
+      "tool": "validate_scene",
+      "ok": true
+    },
+    {
+      "tool": "export_glb",
+      "ok": true
+    },
+    {
+      "tool": "import_glb",
+      "ok": true
+    },
+    {
+      "tool": "validate_rig",
+      "ok": true
+    },
+    {
+      "tool": "export_usd_for_unreal",
+      "ok": true
+    },
+    {
+      "tool": "unknown tool rejected",
+      "ok": true
+    },
+    {
+      "tool": "invalid-json",
+      "ok": true
+    }
+  ],
+  "passed": 11,
+  "total": 11
+}

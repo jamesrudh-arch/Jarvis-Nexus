@@ -1,0 +1,89 @@
+{
+  "generated_utc": "2026-11-13T17:07:34.564714Z",
+  "assets": [
+    {
+      "asset": "House",
+      "blend": "architecture/SM_House.blend",
+      "triangles_LOD0": 31612,
+      "lods": [
+        {
+          "name": "SM_House_LOD1",
+          "triangles": 15806,
+          "ratio_of_lod0": 0.5
+        },
+        {
+          "name": "SM_House_LOD2",
+          "triangles": 6322,
+          "ratio_of_lod0": 0.2
+        }
+      ],
+      "collision": [
+        "COL_House_Body",
+        "COL_House_RoofL",
+        "COL_House_RoofR",
+        "COL_House_RoofPeak",
+        "COL_House_Chimney",
+        "COL_House_Porch"
+      ],
+      "dimensions_m": [
+        16.08,
+        13.482,
+        15.443
+      ]
+    },
+    {
+      "asset": "Shop",
+      "blend": "architecture/SM_Shop.blend",
+      "triangles_LOD0": 31764,
+      "lods": [
+        {
+          "name": "SM_Shop_LOD1",
+          "triangles": 15882,
+          "ratio_of_lod0": 0.5
+        },
+        {
+          "name": "SM_Shop_LOD2",
+          "triangles": 6352,
+          "ratio_of_lod0": 0.2
+        }
+      ],
+      "collision": [
+        "COL_Shop_Body",
+        "COL_Shop_Parapet",
+        "COL_Shop_Awning"
+      ],
+      "dimensions_m": [
+        11.0,
+        10.622,
+        4.675
+      ]
+    },
+    {
+      "asset": "Prop_StreetLamp",
+      "blend": "assets/SM_Prop_StreetLamp.blend",
+      "triangles_LOD0": 4128,
+      "lods": [
+        {
+          "name": "SM_Prop_StreetLamp_LOD1",
+          "triangles": 2064,
+          "ratio_of_lod0": 0.5
+        },
+        {
+          "name": "SM_Prop_StreetLamp_LOD2",
+          "triangles": 824,
+          "ratio_of_lod0": 0.2
+        }
+      ],
+      "collision": [
+        "COL_Prop_StreetLamp_Pole",
+        "COL_Prop_StreetLamp_Head",
+        "COL_Prop_StreetLamp_Base"
+      ],
+      "dimensions_m": [
+        1.03,
+        0.48,
+        4.6
+      ]
+    }
+  ]
+}

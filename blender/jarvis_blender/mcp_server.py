@@ -35,7 +35,11 @@ TOOLS = {
     "ping": lambda a: {"pong": True, "blender": bpy.app.version_string},
     "get_scene": lambda a: {"scene": bpy.context.scene.name,
                             "objects": len(bpy.data.objects)},
-    "create_sanctuary_reference_scene": operators.create_sanctuary_reference_scene,
+    # (protocol test 2026-11-14 caught a real bug here: the bare function
+    # reference received the whole args DICT as `scale_m` -> 14.5 * {} blew
+    # up; wrapped to unpack args explicitly like every other tool)
+    "create_sanctuary_reference_scene": lambda a: operators.create_sanctuary_reference_scene(
+        float(a.get("scale_m", 1.0))),
     "import_glb": lambda a: operators.import_glb(a["path"]),
     "export_glb": lambda a: operators.export_glb(a["path"], bool(a.get("selected_only", False))),
     "export_usd_for_unreal": lambda a: operators.export_usd_for_unreal(a["path"]),

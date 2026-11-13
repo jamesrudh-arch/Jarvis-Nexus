@@ -48,11 +48,18 @@ for sha, path in blobs:
     cat = subprocess.run(["git", "-C", ROOT, "cat-file", "-p", sha],
                          capture_output=True, text=True, errors="replace")
     for name, pat in PATTERNS:
-        if pat.search(cat.stdout or ""):
-            # The EOS client id pattern also matches docs mentioning the masked
-            # form? xyza7891… is 32 chars total; masked forms don't match 24+.
+        for m in pat.finditer(cat.stdout or ""):
+            val = m.group(0)
+            # Placeholder detector (2026-11-14): templates like
+            # xyza7891XXXXXXXXXXXXXXXXXXXXXXXX (the EOS example config) and
+            # 0000…0 product ids are FORMAT EXAMPLES, not credential values.
+            # A run of 20+ identical characters never occurs in real tokens.
+            import re as _re
+            if _re.search(r"(.)\1{19,}", val):
+                continue
             hits += 1
             print(f"  HISTORY HIT: {name} in {path or sha[:10]}")
+            break
 check("S1 full git history free of credential values", hits == 0, f"{len(blobs)} objects scanned")
 
 # --- S2: exact EOS secret absent everywhere ---------------------------------

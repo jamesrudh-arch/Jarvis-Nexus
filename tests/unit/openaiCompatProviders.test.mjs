@@ -82,7 +82,7 @@ test('cfWorkersAiLlm: posts to the OpenAI-compatible endpoint with Bearer auth',
     'https://api.cloudflare.com/client/v4/accounts/acct42/ai/v1/chat/completions'
   );
   assert.equal(captured.headers.Authorization, 'Bearer tok42');
-  assert.equal(captured.body.model, '@cf/meta/llama-3.1-8b-instruct');
+  assert.equal(captured.body.model, '@cf/meta/llama-3.3-70b-instruct-fp8-fast');
   assert.deepEqual(captured.body.messages, [
     { role: 'assistant', content: 'system prompt' },
     { role: 'user', content: 'hi' },

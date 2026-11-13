@@ -20,6 +20,9 @@ def create_sanctuary_reference_scene(scale_m: float = 1.0):
     mesh = bpy.data.meshes.new("JN_Floor")
     bm = bmesh.new()
     bmesh.ops.create_circle(bm, segments=64, radius=14.5 * scale_m)
+    # fill the wire circle into a real disc (protocol test 2026-11-14: the
+    # scene validator honestly flagged the empty mesh before this fix)
+    bmesh.ops.contextual_create(bm, geom=bm.edges[:])
     bm.to_mesh(mesh)
     bm.free()
     floor = bpy.data.objects.new("JN_Floor", mesh)

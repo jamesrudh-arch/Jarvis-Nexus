@@ -85,7 +85,11 @@ async function openAiChat(
 // ---------------------------------------------------------------------------
 
 export const CF_WORKERS_AI_ID = 'cloudflare_workers_ai';
-export const CF_WORKERS_AI_DEFAULT_MODEL = '@cf/meta/llama-3.1-8b-instruct';
+// 2026-11-14: @cf/meta/llama-3.1-8b-instruct was DEPRECATED by Cloudflare
+// (HTTP 410, retired 2026-05-30 — caught by the real production LLM test);
+// llama-3.3-70b-instruct-fp8-fast is the verified live replacement
+// (HTTP 200 + real completion against the owner's account, 2026-11-14).
+export const CF_WORKERS_AI_DEFAULT_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 
 /** Free-tier guardrail: the Workers Free plan includes 10,000 Neurons/day at
  *  no charge. We cap requests per UTC day (in-memory, per process) so a

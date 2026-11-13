@@ -1,0 +1,33 @@
+{
+  "asset": "Prop_StreetLamp",
+  "author": "JARVIS NEXUS procedural asset pipeline (Blender 5.x)",
+  "licence": "Proprietary \u2014 JARVIS NEXUS project asset (owner: jamesrudh-arch)",
+  "source": "procedural \u2014 world/Blender/scripts/nexusblender/props.py",
+  "triangle_count": {
+    "LOD0": 4128,
+    "1": 2064,
+    "2": 824
+  },
+  "dimensions_m": [
+    1.03,
+    0.48,
+    4.6
+  ],
+  "scale": "1 unit = 1 metre (Blender metres; Unreal 1 UU = 1 cm via x100 on import)",
+  "export_format": "glTF 2.0 (.glb) \u2014 chosen over FBX/USD for the Blender->Unreal ",
+  "materials": [
+    "M_Prop_StreetLamp_Glass",
+    "M_Prop_StreetLamp_LED",
+    "M_Prop_StreetLamp_Metal"
+  ],
+  "textures": [
+    "T_Prop_StreetLampMetal_BaseColor",
+    "T_Prop_StreetLampMetal_Rough"
+  ],
+  "generated_utc": "2026-11-13T17:09:11.237429Z",
+  "collision": [
+    "COL_Prop_StreetLamp_Pole",
+    "COL_Prop_StreetLamp_Head",
+    "COL_Prop_StreetLamp_Base"
+  ]
+}

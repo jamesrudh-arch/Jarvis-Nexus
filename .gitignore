@@ -69,3 +69,7 @@ world/Unreal/Plugins/JarvisNexusEOS/jarvis_nexus_eos.json
 # Phase 3 hygiene (report section 2)
 package-lock.json
 __pycache__/
+
+# session 8: real-Blender runtime + editor backups never enter git
+.venvs/
+*.blend1
