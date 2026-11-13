@@ -71,3 +71,15 @@ high-neck top, hair bun, cyan/teal holographic language — and the app screensh
 | Q2 | Which streaming TTS engine preserves Tongtong identity best? | P2 evaluation with same reference scripts (D3) |
 | Q3 | Does the pyramid-mode bloom look correct on a real external display (Pepper's Ghost rig)? | Device test (B11 residual) |
 | Q4 | z-ai SDK streaming support for TTS? | Re-check at P2; if absent, chain stays batch for z-ai and streaming comes from an added provider |
+
+---
+
+## Phase 2 — Technology Register (2026-11-13)
+
+The directive-mandated technology register (Part 7: nine mandatory repositories
+with full integration records + 27 additional evaluations, every licence
+verified against official sources on 2026-11-13) lives at
+**`docs/research/TECHNOLOGY_REGISTER.md`** — the canonical Phase 2 deliverable.
+Decisions: 11 ADOPT NOW · 6 ADOPT LATER · 13 EVALUATE · 7 REJECT (each with
+documented reason). Licence-risk register for AGPL/ELv2/GPL/UE-EULA/ASAM/CC0/
+ODbL included there.
