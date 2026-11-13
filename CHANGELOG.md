@@ -2,6 +2,15 @@
 
 Format: date — change — why. Newest first. Full diffs: git log.
 
+## 2026-11-13 (session 9, continued) — PHASE 0B: verbatim blueprint intake (7 files) + findings register
+
+**Why:** owner GO "extract from directive" — the seven approved blueprint files named in Part 16 Phase 0B never existed as separate files; their content is embedded in the master directive. Extracted verbatim with a re-runnable verification engine.
+
+- **Blueprint files** (`docs/blueprint/`): world-topology.md (297 lines), city-plans.md (140), architecture-bible.md (123), population-animals-transport-economy.md (311), animation-and-blender-pipeline.md (192), laboratory-and-nexus.md (465), acceptance-and-evidence.md (196). 26 source sections, byte-verified against directive slices; coverage accounting closes exactly (1,705 extracted + 60 structural + 516 governance = 2,281 source lines, 0 unaccounted); all 6 diagrams + key tables confirmed in their consuming files; 8/8 Part 16 phase "Read:" cross-references resolve.
+- **`docs/blueprint/CHANGES.md`**: full source-to-destination mapping with line counts, 6 documented extraction decisions (D-B1..D-B6), findings register with 13 items NOT silently resolved — F-A1 roster sums 45 vs required 50, F-M1/M2 village+railway ID prefixes undefined, F-M3 atlas format unspecified, F-C1 `world/Unreal/JarvisWorld.uproject` vs existing `unreal/JarvisNexus.uproject`, F-C2 `world/Blender/` vs `blender/`, F-C3 five-route public status surface vs "only approved health endpoints public", F-A2/F-A3/F-M4/F-M5/F-E1..E3.
+- **Tooling**: `scripts/extract_blueprints.py` — extraction + dual byte-verification + coverage audit, re-runnable.
+- **Git**: branch `phase-0b-blueprint-intake`, intake commit `1e33f3d`, merged to main, tagged `phase-0b-done` (Part 19 protocol). Phase report: `docs/phase-reports/PHASE-0B-REPORT.md`.
+
 ## 2026-11-13 (session 9) — PHASE 0 RE-AUDIT under the new Master Engineering Directive (Phase 0→15) — evidence-backed report, zero code changes
 
 **Why:** the owner supplied a new, more detailed Master Engineering Directive (phased build with mandatory blueprint intake, world atlas, vertical slice, 6 regions/6 cities, 50 inhabitants, Unreal/Blender pipelines, Laboratory, missions). Its FIRST ACTION mandates a complete repository + environment audit, a Phase 0 report, then STOP for owner GO. Documentation-only commit.
