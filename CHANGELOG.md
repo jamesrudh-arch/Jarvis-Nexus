@@ -2,6 +2,17 @@
 
 Format: date — change — why. Newest first. Full diffs: git log.
 
+## Session 8 (2026-11-14) — CONTINUATION: lines merged, production LLM live, Blender assets real, residents live
+
+- **MERGE**: remote main carried the parallel 8b/9 workstream (Gate 0, Phases 0-3, Groq) — merged with sessions 7/8 local line; 9 conflicts resolved preserving both; avatar guard unified fail-closed; provider registry = union; unreal/ -> world/Unreal/ adopted (AutoExposure + MetaHumanPlugin + EOS config salvaged into JarvisWorld).
+- **PRODUCTION LLM LIVE**: Cloudflare deprecated @cf/meta/llama-3.1-8b-instruct (HTTP 410, retired 2026-05-30) — the silent killer of the session-7 plan. Verified replacement @cf/meta/llama-3.3-70b-instruct-fp8-fast (HTTP 200 + real completions on the owner's free tier). Production conversations now genuinely reason (5 MW arithmetic + Paris + "Boss"); inference_source: cloudflare_workers_ai. Production chain: openai,cloudflare_workers_ai,groq_cloud,zai_cloud_route (owner-supplied OpenAI key first — it is INVALID/truncated (28 chars), proven by the chain falling through; CF catches).
+- **Blender Part 6 (REAL assets)**: world/Blender full blueprint structure + nexusblender library; 3 real .blend assets within budget (House 38,756 / Shop 31,764 / Lamp 4,128 LOD0 tris; LODs exact 50%/20%; COL_ collision; packed 512^2 PBR T_ maps; META_* JSON) under real Blender 5.0.1 (bpy wheel); executable validator exit 0 (9 blueprint checks x 3 assets); GLB + .meta.json exports; Unreal import script authored; Cycles CPU evidence previews. Headless gotchas fixed: mesh.subdivide is not axis-limited (memory bomb -> primitive_grid+Solidify); smart_project segfaults in module mode (-> bmesh box-projection UV); per-asset subprocess isolation (Blender never frees memory).
+- **Blender MCP 11/11** under real Blender: real TCP + JSON protocol + main-thread bpy execution (the addon contract); 2 real addon bugs found+fixed (args-dict dispatcher; empty wire floor disc).
+- **Living residents (directive s4)**: ResidentDirector (4 holographic residents, deterministic personalities, autonomous wander, separation steering, real-time clock); persistence: residentsJson column + defensive runtime ALTER TABLE (production volume) + /api/v1/world/residents (GET public / PATCH owner-key) + client 45s + pagehide persist; sep.y/sep.z NaN bug caught by the new unit suite; live verification 5/5; persistence round-trip proven browser->server->browser.
+- **EOS external regression**: verified 8/8 early in the session, then 401 client_not_found from sandbox AND Railway with fingerprint-identical credentials — Epic-side change; eos.ts now caches client tokens EOS-SDK-style (no per-request OAuth churn) + honest cached-verdict reporting. OWNER ACTION: check the EOS Developer Portal (product Jarvis nexus -> Clients).
+- **Security**: deep audit 3/3 (1,448 git objects; placeholder-aware scanner — 20+ identical chars = template); secrets clean before every push.
+- **Verification**: 106/106 unit, tsc clean, build clean, FastAPI CORE 43/43, MCP 11/11, residents E2E + live 5/5, production: health 200 / conversation 200 real-LLM / integrations honest.
+
 ## 2026-11-13 (session 9, continued) — PHASE 2: technology register (research only, zero installs)
 
 **Why:** Part 16 Phase 2 — licence-verified register for every mandatory repository and technology before any integration.

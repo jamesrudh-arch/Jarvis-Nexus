@@ -62,6 +62,17 @@ export function bootTime(): number {
 
 /** Idempotently initialize world state, switches, memories, goals, agents, and scenarios. */
 export async function ensureSeed(): Promise<void> {
+  // Session 8 (residents): production's persistent /data/custom.db predates the
+  // residentsJson column. SQLite ALTER TABLE ADD COLUMN is cheap and safe; the
+  // try/catch makes this idempotent ("duplicate column" on fresh DBs).
+  try {
+    await db.$executeRawUnsafe(
+      'ALTER TABLE "NexusWorldState" ADD COLUMN "residentsJson" TEXT'
+    );
+  } catch {
+    /* column already exists (or the DB is already current) — expected */
+  }
+
   const existing = await db.nexusWorldState.findUnique({ where: { id: 1 } });
   if (!existing) {
     await db.nexusWorldState.create({ data: { id: 1 } });
@@ -174,6 +185,8 @@ export async function serializeWorld() {
     interrupted_task_stack: stack,
     active_camera_preset: state?.activeCameraPreset ?? 'living_presence',
     reduced_motion: state?.reducedMotion ?? false,
+    // living residents (directive s4): base roster + persisted positions
+    residents: serializeResidents(state?.residentsJson),
     switches: Object.fromEntries(switches.map((s) => [s.switchKey, s.enabled])),
     active_scenario: scenarioRuntime(),
     active_video: videoRuntime(),
@@ -181,6 +194,51 @@ export async function serializeWorld() {
     zones: SPATIAL_ZONES,
     modes: OPERATIONAL_MODES,
   };
+}
+
+/** Resident roster shared with the client (src/nexus/world/ResidentDirector.js).
+ *  Positions/activities persist in residentsJson; the roster itself is
+ *  versioned in code (adding a resident = code change + persisted state
+ *  merges by id). */
+export const RESIDENTS = [
+  { id: 'echo',   name: 'Echo',   role: 'Archivist',     hue: 0.55, home: [6.5, -3.2],  pace: 0.85 },
+  { id: 'vector', name: 'Vector', role: 'Analyst',       hue: 0.08, home: [-6.8, 2.4],  pace: 1.15 },
+  { id: 'mira',   name: 'Mira',   role: 'Cartographer',  hue: 0.78, home: [3.8, 5.6],   pace: 0.95 },
+  { id: 'delta',  name: 'Delta',  role: 'Sentinel',      hue: 0.42, home: [-4.6, -5.8], pace: 0.70 },
+] as const;
+
+function serializeResidents(json: string | null | undefined) {
+  let saved: Array<{ id: string; x?: number; z?: number; yaw?: number; activity?: string }> = [];
+  try {
+    saved = JSON.parse(json || '[]');
+  } catch {
+    saved = [];
+  }
+  const byId = new Map(saved.map((r) => [r.id, r]));
+  return RESIDENTS.map((spec) => {
+    const s = byId.get(spec.id);
+    return {
+      ...spec,
+      x: Number.isFinite(s?.x) ? s!.x : spec.home[0],
+      z: Number.isFinite(s?.z) ? s!.z : spec.home[1],
+      yaw: Number.isFinite(s?.yaw) ? s!.yaw : 0,
+      activity: s?.activity || 'observing',
+    };
+  });
+}
+
+/** Persist the residents' live state (client PATCHes periodically + on unload). */
+export async function persistResidents(
+  list: Array<{ id: string; x: number; z: number; yaw: number; activity: string }>
+): Promise<{ ok: boolean; stored: number }> {
+  const valid = list.filter((r) =>
+    typeof r?.id === 'string' && Number.isFinite(r.x) && Number.isFinite(r.z)
+  );
+  await db.nexusWorldState.update({
+    where: { id: 1 },
+    data: { residentsJson: JSON.stringify(valid) },
+  });
+  return { ok: true, stored: valid.length };
 }
 
 export interface MoveOptions {

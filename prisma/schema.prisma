@@ -28,6 +28,10 @@ model NexusWorldState {
   interruptedTaskStackJson  String   @default("[]")
   activeCameraPreset        String   @default("living_presence")
   reducedMotion             Boolean  @default(false)
+  /// Living residents (directive s4): serialized positions/activities of the
+  /// holographic residents — persisted so the sanctuary population survives
+  /// sessions and deploys.
+  residentsJson             String?
   updatedAt                 DateTime @updatedAt
 }
 

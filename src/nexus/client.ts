@@ -17,6 +17,9 @@ export interface WorldSnapshot {
   active_mode: string;
   current_zone: string;
   position: { x: number; y: number; z: number; yaw: number };
+  residents?: Array<{ id: string; name: string; role: string; hue: number;
+    home: [number, number]; pace: number; x: number; z: number; yaw: number;
+    activity: string }>;
   locomotion_state: string;
   posture: string;
   emotional_state: string;
@@ -186,6 +189,7 @@ export class NexusClient {
   private recordedChunks: Blob[] = [];
   private animClock = new THREE.Clock();
   private telemetryTimer: ReturnType<typeof setInterval> | null = null;
+  private residentsTimer: ReturnType<typeof setInterval> | null = null;
   /** Sentence-chunked TTS player: chunk i speaks while i+1 synthesizes. */
   private speechSequencer: SpeechSequencer | null = null;
   private conversationEmotion = 'neutral';
@@ -364,6 +368,15 @@ export class NexusClient {
     });
 
     // Telemetry poll
+    // Living residents: persist their state every 45 s while the tab is
+    // visible (plus a final keepalive push on pagehide) so the population
+    // survives reloads and deploys. Owner-key attached by this.api().
+    this.residentsTimer = setInterval(() => {
+      if (document.visibilityState === 'hidden') return;
+      this.persistResidents().catch(() => {});
+    }, 45_000);
+    const onPageHide = () => { this.persistResidents(true).catch(() => {}); };
+    window.addEventListener('pagehide', onPageHide);
     this.telemetryTimer = setInterval(async () => {
       try {
         this.telemetry = await api<Telemetry>('/api/v1/telemetry');
@@ -390,7 +403,27 @@ export class NexusClient {
     this.speechSequencer?.stop(true);
     this.wakeEngine?.destroy();
     if (this.telemetryTimer) clearInterval(this.telemetryTimer);
+    if (this.residentsTimer) clearInterval(this.residentsTimer);
     this.sanctuary?.renderer.setAnimationLoop(null);
+  }
+
+  /** Persist the living residents' current state (directive s4).
+   *  `final` uses a keepalive fetch so the state lands even while the page
+   *  unloads. Owner key attached by ownerKeyHeaders() when unlocked. */
+  private async persistResidents(final = false) {
+    const list = this.sanctuary?.residentDirector?.serialize();
+    if (!list || list.length === 0) return;
+    const body = JSON.stringify({ residents: list });
+    if (final && typeof navigator.sendBeacon === 'function') {
+      // sendBeacon cannot set headers; the owner-key PATCH would 403 — use a
+      // keepalive fetch instead so the auth header travels.
+    }
+    await fetch('/api/v1/world/residents', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...ownerKeyHeaders() },
+      body,
+      keepalive: final,
+    }).catch(() => {});
   }
 
   // ------------------------------------------------------------------
@@ -401,6 +434,9 @@ export class NexusClient {
     this.world = snap;
     const sanctuary = this.sanctuary;
     sanctuary.reducedMotion = Boolean(snap.reduced_motion);
+    // Living residents (directive s4): roster + persisted positions arrive
+    // with every world snapshot; applyState merges by id (NaN-safe inside).
+    sanctuary.residentDirector?.applyState(snap.residents);
 
     const zoneInfo = snap.zones?.[snap.current_zone];
     if (zoneInfo?.look_target) {

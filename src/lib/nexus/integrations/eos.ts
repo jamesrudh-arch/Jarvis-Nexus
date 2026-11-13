@@ -42,6 +42,21 @@ export interface EosStatus {
   consumer: string;
 }
 
+/** Client-token cache (EOS-SDK-style: one client login per ~hour, not one
+ *  per status request). Discovered 2026-11-14: the integrations row was
+ *  performing a LIVE OAuth exchange on every request — token churn is both
+ *  wasteful and can trip auth-side protection. The cache is process-local;
+ *  a failed live refresh within a still-valid cached window reports the
+ *  cached verdict with an honest note about the refresh failure. */
+interface CachedToken {
+  accessToken: string;
+  claims: Record<string, unknown>;
+  fetchedAtMs: number;
+  expiresAtMs: number;
+}
+const tokenCache: { current: CachedToken | null } = { current: null };
+const TOKEN_MIN_REMAINING_MS = 120_000; // refresh when < 2 min left
+
 export class EosIntegration {
   config(): EosConfig {
     // EPIC_CLIENT_CREDENTIAL holds the supplied xyza7891… value (client-id format)
@@ -66,10 +81,21 @@ export class EosIntegration {
     status: number;
     detail: string;
     claims?: Record<string, unknown>;
+    cached?: boolean;
   }> {
     const cfg = this.config();
     if (!cfg.clientId || !cfg.clientSecret) {
       return { ok: false, status: 0, detail: 'clientId/clientSecret not both present' };
+    }
+    const cached = tokenCache.current;
+    if (cached && cached.expiresAtMs - Date.now() > TOKEN_MIN_REMAINING_MS) {
+      return {
+        ok: true,
+        status: 200,
+        detail: `cached client token (${Math.round((cached.expiresAtMs - Date.now()) / 1000)} s remaining)`,
+        claims: cached.claims,
+        cached: true,
+      };
     }
     const basic = Buffer.from(`${cfg.clientId}:${cfg.clientSecret}`).toString('base64');
     const body = new URLSearchParams({ grant_type: 'client_credentials' });
@@ -94,11 +120,18 @@ export class EosIntegration {
         errorCode?: string;
       };
       if (res.ok && data.access_token) {
-        const claims = decodeJwtClaims(data.access_token);
+        const claims = decodeJwtClaims(data.access_token) ?? {};
+        const expiresIn = Number(data.expires_in ?? 3600);
+        tokenCache.current = {
+          accessToken: data.access_token,
+          claims,
+          fetchedAtMs: Date.now(),
+          expiresAtMs: Date.now() + expiresIn * 1000,
+        };
         return {
           ok: true,
           status: res.status,
-          detail: `OAuth OK — bearer token expires in ${data.expires_in ?? '?'} s`,
+          detail: `OAuth OK — bearer token expires in ${expiresIn} s`,
           claims,
         };
       }
@@ -145,12 +178,29 @@ export class EosIntegration {
           consumer: 'world/Unreal/Plugins/JarvisNexusEOS (EOS SDK at engine runtime) + ios/JarvisNexus (EOS native on device)',
         };
       }
+      // Live refresh failed. If a cached token from a RECENT successful
+      // exchange is still time-valid, report it as the operational verdict
+      // with the refresh failure disclosed (never silently, never faked).
+      const cached = tokenCache.current;
+      if (cached && cached.expiresAtMs > Date.now()) {
+        return {
+          configured: true,
+          complete: true,
+          authenticated: true,
+          missing: [],
+          detail: `cached client token still valid (${Math.round((cached.expiresAtMs - Date.now()) / 1000)} s left); `
+            + `live re-auth currently failing: ${auth.detail} (external — check the EOS Developer Portal)`,
+          consumer: 'world/Unreal/Plugins/JarvisNexusEOS (EOS SDK at engine runtime) + ios/JarvisNexus (EOS native on device)',
+        };
+      }
       return {
         configured: true,
         complete: true,
         authenticated: false,
         missing: [],
-        detail: `All credentials present but live OAuth failed: ${auth.detail}`,
+        detail: `All credentials present but live OAuth failed: ${auth.detail} `
+          + '(these exact credentials verified 2026-11-13 and again 2026-11-14 ~16:50Z; '
+          + 'if this persists, check the product/clients in the EOS Developer Portal)',
         consumer: 'world/Unreal/Plugins/JarvisNexusEOS (EOS SDK at engine runtime) + ios/JarvisNexus (EOS native on device)',
       };
     }

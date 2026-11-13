@@ -43,6 +43,7 @@ import { JarvisCharacterController } from './JarvisCharacterController.js';
 import { ScenarioDirector3D, HoloScanMaterial } from './ScenarioDirector3D.js';
 import { CameraDirector } from './CameraDirector.js';
 import { BehaviorDirector } from './BehaviorDirector.js';
+import { ResidentDirector } from './ResidentDirector.js';
 
 const CYAN_HEX = 0x62e6f2;
 
@@ -162,6 +163,12 @@ export class NexusSanctuaryScene {
     this.jarvis = new JarvisCharacterController(this.scene);
     this.behaviorDirector = new BehaviorDirector(this.jarvis);
 
+    // Living residents (directive s4): holographic residents with autonomous
+    // wander + separation steering; state persists via /api/v1/world/residents.
+    this.residentDirector = new ResidentDirector(this.scene, {
+      jarvisPos: this.jarvis.root.position,
+    });
+
     // Dev-only diagnosability hook: exposes the live character state so
     // lip-sync / gesture work can be verified from the console or automation
     // without reaching into the module graph. No-op in production bundles.
@@ -188,6 +195,10 @@ export class NexusSanctuaryScene {
         return {
           loaded: j.loaded,
           isSpeaking: j.isSpeaking,
+          // living residents (directive s4): automation/evidence surface
+          residents: this.residentDirector
+            ? this.residentDirector.serialize()
+            : [],
           hasAnalyser: Boolean(j.voiceAnalyser),
           audioCtxState: j._audioCtx ? j._audioCtx.state : 'none',
           speechEnergy: Number((j._speechEnergy || 0).toFixed(3)),
@@ -1214,6 +1225,7 @@ export class NexusSanctuaryScene {
     this.scenarioDirector.update(dt);
     this.jarvis.update(dt, this.camera.position, this.reducedMotion);
     this.behaviorDirector.update(dt, this.camera.position);
+    this.residentDirector.update(dt, this.reducedMotion);
     this.cameraDirector.update(dt, this.jarvis, this.reducedMotion);
 
     // 2b. Adaptive resolution: step the DPR down when the device can't hold it

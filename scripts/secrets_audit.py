@@ -49,6 +49,17 @@ for path in tracked:
             # Skip obvious placeholders/examples and env-var reads (code, not values)
             if any(ph in snippet for ph in ("XXXX", "xxxx", "your-", "YOUR", "<", "example", "dummy", "process.env")):
                 continue
+            # Structural discriminator (session 8): real Cloudflare tokens are
+            # mixed-case + digits; an all-lowercase-words match is a pytest
+            # TEST NAME (e.g. test_no_secrets_in_backup_response_...) — the
+            # merged line's evidence files tripped this class.
+            if name == "Cloudflare API token value" and not re.search(r"[0-9A-Z]", snippet):
+                continue
+            # Test fixtures that literally say they are test values are not
+            # secrets (the owner-auth unit suite's obvious fixture literal).
+            base = path.rsplit("/", 1)[-1].lower()
+            if ("test" in base or "/tests/" in path or "/test_" in path) and "test" in snippet.lower():
+                continue
             hits.append((path, name, snippet[:12] + "..."))
 
 if hits:

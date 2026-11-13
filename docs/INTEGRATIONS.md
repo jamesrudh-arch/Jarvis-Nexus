@@ -59,13 +59,17 @@ Verified end-to-end 2026-11-13 BOTH locally (LLM present) and ON PRODUCTION
   (46/46); retrieval force-executes on explicit "read back <key>" phrasing
   instead of quoting dialogue history.
 
-**Production LLM provider note (RESOLVED session 7):** the `zai_cloud_route`
-provider authenticates via the z-ai SDK's ambient credentials, which exist in
-the development sandbox but NOT on the Railway deployment — and provably
-CANNOT: `internal-api.z.ai` resolves to a private address (172.25.x.x,
-verified 2026-11-13), so no credential could ever make it serve production.
-The D6 resolution shipped in session 7: the default LLM chain is now
-`cloudflare_workers_ai -> zai_cloud_route`.
+**Production LLM provider note (RESOLVED session 8, LIVE):** the production
+LLM is **cloudflare_workers_ai** — verified live on Railway 2026-11-14 with
+real reasoning (arithmetic + world knowledge). Session-7's plan silently
+failed on a model retirement: Cloudflare DEPRECATED
+`@cf/meta/llama-3.1-8b-instruct` (HTTP 410, retired 2026-05-30); the
+verified live replacement is `@cf/meta/llama-3.3-70b-instruct-fp8-fast`
+(NEXUS_CF_AI_MODEL). Production chain: `openai,cloudflare_workers_ai,groq_cloud,zai_cloud_route`
+— the owner-supplied OpenAI key sits first but is INVALID (28 chars,
+truncated in transit; the chain falls through it definitively) — **owner
+action: re-supply the full sk-proj- key**. zai_cloud_route remains
+sandbox-only (internal-api.z.ai → 172.25.x.x private, verified 2026-11-13).
 
 | Provider | Config | Free tier (verified sources) | Activation |
 |---|---|---|---|
@@ -179,3 +183,24 @@ only), `GET/PUT/DELETE ?key=` (require `X-Owner-Key` == server-side
   server-side only (Node runtime routes).
 - Standing recommendation (unchanged): rotate the GitHub PAT and the
   re-supplied tokens after development stabilizes; they were pasted in chat.
+
+
+## Living residents (directive s4) — LIVE, PERSISTENCE VERIFIED (session 8)
+
+| State | Evidence |
+|---|---|
+| Implemented | `src/nexus/world/ResidentDirector.js` (4 holographic residents: Echo/Vector/Mira/Delta — deterministic seeded personalities, autonomous wander/idle, separation steering, real-time clock) + `NexusSanctuaryScene` wiring + client apply/persist (45 s interval + pagehide keepalive) |
+| Persisted | `NexusWorldState.residentsJson` (schema + defensive runtime `ALTER TABLE` for the production volume); `/api/v1/world/residents` GET public / PATCH owner-key guarded; round-trip proven: server-PATCHed position visible in the browser scene after reload |
+| Verified | unit 6/6 (incl. a NaN-velocity bug the suite caught pre-ship: separationForce returns {x,z}, wiring read .y); live-scene 5/5 (`scripts/verify_residents_live.py`: present/finite/autonomously-moving/NaN-armor-intact/zero-page-errors); E2E guard matrix anon 403 / wrong key 403 / stored / reflected; evidence screenshot `download/screenshots/living_residents.png` |
+
+## EOS — current state (session 8): externally regressed, cached-token honest reporting
+
+The credentials verified 8/8 EARLY in session 8 (same fingerprints as
+Railway) began answering `401 errors.com.epicgames.eos.auth.client_not_found`
+from BOTH the sandbox and Railway later the same day — an Epic-side change
+(client state in the Dev Portal), not a code/config regression. eos.ts now
+caches client tokens EOS-SDK-style (one exchange per ~hour instead of one
+per status request) and, when a live refresh fails inside a still-valid
+cached window, reports the cached verdict WITH the refresh failure
+disclosed. **Owner action: check the EOS Developer Portal → product
+"Jarvis nexus" → Clients (does the client still exist / is it active?).**
