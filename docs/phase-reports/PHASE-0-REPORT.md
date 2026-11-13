@@ -31,7 +31,7 @@ per directive, implementation phases follow owner GO).
 None newly integrated in Phase 0 (audit phase). Existing integrations re-verified live —
 see §8.
 
-## 4. COMMANDS EXECECUTED (verbatim evidence trail)
+## 4. COMMANDS EXECUTED (verbatim evidence trail)
 
 | # | Command | Result |
 | --- | --- | --- |
