@@ -2,6 +2,15 @@
 
 Format: date — change — why. Newest first. Full diffs: git log.
 
+## 2026-11-13 (session 9, continued) — PHASE 2: technology register (research only, zero installs)
+
+**Why:** Part 16 Phase 2 — licence-verified register for every mandatory repository and technology before any integration.
+
+- **Deliverable**: `docs/research/TECHNOLOGY_REGISTER.md` — 9 mandatory repository records (Part 7.1 A-I, all 13 directive fields) + 27 additional technologies (Part 7.2), every licence verified against official sources 2026-11-13 (sources cited inline).
+- **Decisions**: 11 ADOPT NOW (UE, Blender, PCG, Mass Entity, StateTree, LangGraph, Poly Haven, ambientCG, Kenney, Quaternius, KayKit) · 6 ADOPT LATER (FreeMoCap P7, Theatre.js P12, SUMO P9, OpenUSD P4-decision, Phoenix P14, Graphiti memory-phase) · 13 EVALUATE · 7 REJECT (CARLA, Cesium, OSM family, Blosm, OpenHands — reasons documented: fictional-world design, competing state authority, paid tier, security surface).
+- **Licence-risk register**: AGPL boundary (FreeMoCap standalone-tool; Theatre.js studio dev-only, never in production bundles), Phoenix ELv2 self-host terms, GPL standalone-tool boundary, UE EULA, ASAM, CC0, ODbL.
+- **Boundary**: research only — no installations, no code, no credentials beyond public pages. Phase 3 (Unreal Foundation) next; F-C1 ruling requested before the project layout is finalised (directive text wins absent a ruling).
+
 ## 2026-11-13 (session 9, continued) — PHASE 1 SECURITY: switch enforcement + rate limiting + audit trail + backup/restore (production app)
 
 **Why:** Part 16 Phase 1 + Parts 13/14. Gate 0 (session 8b) closed authentication; Phase 1 closes ENFORCEMENT: the seven switches were stored but not enforced on the production app, there was no rate limiting, no audit trail for denials, and no backup/restore.
