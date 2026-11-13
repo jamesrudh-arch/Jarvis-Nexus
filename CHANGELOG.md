@@ -2,6 +2,19 @@
 
 Format: date — change — why. Newest first. Full diffs: git log.
 
+## 2026-11-13 (session 8) — GATE 0 CLOSED: full security hardening of the FastAPI CORE (reference/Jarvis)
+
+**Why:** the Master Directive's Part 4 mandates Gate 0 (security + owner control) before any major feature expansion; session 7's audit had rated the CORE backend CRITICAL (47/48 REST routes + /ws/nexus unauthenticated, restore accepted hostile snapshots, worker packages embeddable with arbitrary URLs). All six items landed on the inner repo's `gate0-security` branch, evidence-complete, then fast-forward merged to its `main` (`4c73851`) and committed here.
+
+- **Item 1 — auth everywhere**: `require_owner` on the `/api/v1` router (health stays public, status-only); constant-time Bearer compare; production boot fail-closed without `JARVIS_OWNER_TOKEN`; `SecurityAuditEvent` on every failure (no token values in logs); 5 failures/60 s/IP → 429; `/ws/nexus` first-message auth with single-use 60 s tickets (close 4401 before any world data). New `backend/app/auth.py`.
+- **Item 2 — CORS**: explicit allowlist; production refuses wildcard at startup; Railway CORE + Vercel frontend split documented in `.env.example`.
+- **Item 3 — admin backup/restore hardened**: owner + Master-gated; 2 MiB cap (413); strict-schema + semantic validation (400 on unknown tables/fields/enums); dry-run (zero mutation); pre-restore safety backup; transactional restore; backup response states its secrets-exclusion policy (sensitive memory marker-only, Kaggle creds masked-only, keys never exported).
+- **Item 4 — worker packages**: secrets-free (token from Kaggle Secrets at runtime); `core_wss_url` strictly validated (wss-only, allowlisted host, no query/userinfo, exact path) or 400 — baseline probes showed six attack shapes returned 200 with the URL embedded; delete-after-download + 15-min TTL sweep.
+- **Item 5 — embedding honesty**: renamed to `lexical_fingerprint_json` / `_lexical_fingerprint` (zlib.crc32 — stable across restarts, unlike the old per-process-salted `hash()`); no vector-search claims anywhere; legacy-column migration verified on the real dev DB.
+- **Item 6 — acceptance evidence**: `docs/security/` — route_inventory (BEFORE/AFTER), THREAT_STATEMENT (12 protected points / still-exposed-by-design / honestly-UNVERIFIED), ROLLBACK_PLAN executed per-item on a disposable worktree (byte-identical reverts, era suites 23/23, 17/17, 8/8) with transparent incident log, sanctuary login render proof, clean-env final runs, fail_on_old_code.txt (new tests + behavioral probes FAIL on baseline `1fb4384`, PASS on hardened).
+- **Tests**: 8 baseline → 43/43 backend (35 new Gate 0 tests); frontend character checks PASS; production build ✓. Post-merge re-verified fresh this session. Secrets audit clean before every commit (untracked scan had only false-positive snake_case test names).
+- **Scope note**: this hardens the FastAPI CORE (reference/Jarvis). The Next.js production app's own route guard (session 7 recommendation #4: extend x-owner-key to conversations/send, switches, world mutations, memories, goals) remains the parallel hardening item on that codebase.
+
 ## 2026-11-13 (session 7) — Black-void avatar fix (root cause found + proven), EOS credentials complete in production, Groq free LLM provider, mobile dock fix
 
 **Digital-human embodiment repaired — the missing avatar was a NaN-poisoned camera, not a missing asset**

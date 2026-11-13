@@ -341,6 +341,62 @@ async def test_kaggle_profile_auth(db: Session, profile: KaggleProfileRecord) ->
     return {"status": profile.last_auth_status, "detail": profile.last_auth_detail}
 
 
+def validate_core_wss_url(raw: str) -> Optional[str]:
+    """Gate 0 Item 4 — the generated Kaggle notebook dials OUT to core_wss_url,
+    so before that value is embedded in a downloadable package it must be a
+    wss:// URL whose host is explicitly allowlisted. Returns a human-readable
+    error message, or None when the URL is acceptable."""
+    from urllib.parse import urlparse
+
+    candidate = (raw or "").strip()
+    if not candidate:
+        return "core_wss_url is required (the notebook dials out to your CORE)."
+    try:
+        parsed = urlparse(candidate)
+    except ValueError:
+        return "core_wss_url is not a valid URL."
+    if parsed.scheme != "wss":
+        return f"core_wss_url must use wss:// (TLS WebSocket); got '{parsed.scheme or '(none)'}://'."
+    host = (parsed.hostname or "").lower()
+    if not host:
+        return "core_wss_url has no host."
+    if parsed.username or parsed.password:
+        return "core_wss_url must not embed credentials in the URL (tokens never travel in URLs)."
+    allowlist = {h.strip().lower() for h in settings.ALLOWED_WORKER_HOSTS if h.strip()}
+    dev_note = ""
+    if settings.IS_DEVELOPMENT:
+        allowlist |= {"localhost", "127.0.0.1", "::1"}
+        dev_note = "; loopback hosts are additionally permitted in development"
+    if host not in allowlist:
+        return (
+            f"core_wss_url host '{host}' is not in the worker-dial allowlist "
+            f"(JARVIS_ALLOWED_WORKER_HOSTS{dev_note})."
+        )
+    if not (parsed.path or "").endswith("/ws/worker"):
+        return "core_wss_url path must point at the /ws/worker endpoint."
+    if parsed.query or parsed.fragment:
+        return "core_wss_url must not carry a query string or fragment (tokens never travel in URLs)."
+    return None
+
+
+WORKER_PACKAGE_TTL_SEC = 15 * 60
+
+
+def sweep_stale_worker_packages(max_age_sec: int = WORKER_PACKAGE_TTL_SEC) -> int:
+    """Delete worker packages older than the TTL (leftovers from interrupted or
+    never-finished downloads). Returns the number of files removed."""
+    cutoff = time.time() - max_age_sec
+    removed = 0
+    for pkg in WORKER_PKG_DIR.glob("*.zip"):
+        try:
+            if pkg.stat().st_mtime < cutoff:
+                pkg.unlink(missing_ok=True)
+                removed += 1
+        except OSError:
+            continue
+    return removed
+
+
 def build_kaggle_worker_package(profile: KaggleProfileRecord, core_wss_url: str) -> Path:
     """Create a downloadable ZIP containing jarvis_worker.py, a guided Kaggle GPU .ipynb notebook, and setup docs.
     Never embeds raw secrets in the notebook—instructs loading JARVIS_WORKER_TOKEN from Kaggle Secrets!
@@ -410,7 +466,9 @@ def build_kaggle_worker_package(profile: KaggleProfileRecord, core_wss_url: str)
     )
 
     safe_slug = "".join(c if c.isalnum() or c in "-_" else "_" for c in profile.profile_name)
-    out_path = WORKER_PKG_DIR / f"jarvis_worker_{safe_slug}.zip"
+    # Unique per-build filename: concurrent downloads must never overwrite
+    # each other, and each file is single-use (deleted after download).
+    out_path = WORKER_PKG_DIR / f"jarvis_worker_{safe_slug}_{uuid.uuid4().hex[:8]}.zip"
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.writestr("jarvis_worker.py", worker_src)

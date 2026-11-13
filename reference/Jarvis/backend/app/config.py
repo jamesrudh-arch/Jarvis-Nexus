@@ -47,11 +47,19 @@ def normalize_database_url(raw_url: str) -> str:
     return url
 
 
+ENV_MODE = (os.getenv("JARVIS_ENV", "development").strip().lower() or "development")
+IS_DEVELOPMENT = ENV_MODE == "development"
+
+
 def _load_or_create_secrets() -> Dict[str, str]:
-    """Load or generate server-side master encryption key and worker auth token.
+    """Load or generate server-side master encryption key, worker auth token, and
+    owner auth token.
     Prioritizes environment variables (Railway / Render / Docker) so encrypted
     Supabase data survives stateless container redeploys; falls back to
     .jarvis_secret_key (gitignored, 0600 permissions) in local dev.
+    The owner token file fallback exists for development only — in production the
+    token MUST come from the JARVIS_OWNER_TOKEN environment variable (see
+    validate_runtime_security below: the server refuses to start otherwise).
     """
     data: Dict[str, str] = {}
     if SECRET_KEY_FILE.exists():
@@ -65,6 +73,7 @@ def _load_or_create_secrets() -> Dict[str, str]:
         or os.getenv("JARVIS_SECRET_KEY", "").strip()
     )
     env_worker = os.getenv("JARVIS_WORKER_TOKEN", "").strip()
+    env_owner = os.getenv("JARVIS_OWNER_TOKEN", "").strip()
 
     changed = False
     if env_secret:
@@ -81,6 +90,15 @@ def _load_or_create_secrets() -> Dict[str, str]:
         data["WORKER_AUTH_TOKEN"] = f"jnx_wk_{secrets.token_urlsafe(32)}"
         changed = True
 
+    if env_owner:
+        data["OWNER_AUTH_TOKEN"] = env_owner
+    elif IS_DEVELOPMENT and "OWNER_AUTH_TOKEN" not in data:
+        # Development convenience: strong random owner token, persisted to the
+        # same 0600 secrets file as the worker token. Never generated for
+        # production (fail-closed: production requires the env variable).
+        data["OWNER_AUTH_TOKEN"] = f"jnx_owner_{secrets.token_urlsafe(32)}"
+        changed = True
+
     if changed:
         try:
             content = (
@@ -88,6 +106,8 @@ def _load_or_create_secrets() -> Dict[str, str]:
                 f"FERNET_MASTER_KEY={data['FERNET_MASTER_KEY']}\n"
                 f"WORKER_AUTH_TOKEN={data['WORKER_AUTH_TOKEN']}\n"
             )
+            if "OWNER_AUTH_TOKEN" in data:
+                content += f"OWNER_AUTH_TOKEN={data['OWNER_AUTH_TOKEN']}\n"
             SECRET_KEY_FILE.write_text(content, encoding="utf-8")
             os.chmod(SECRET_KEY_FILE, 0o600)
         except OSError:
@@ -112,11 +132,26 @@ class Settings:
 
     HOST: str = os.getenv("JARVIS_HOST", "0.0.0.0")
     PORT: int = int(os.getenv("PORT") or os.getenv("JARVIS_PORT", "8000"))
-    CORS_ORIGINS: list[str] = [
-        o.strip()
-        for o in os.getenv("CORS_ORIGINS", "*").split(",")
-        if o.strip()
-    ] or ["*"]
+    # Gate 0 Item 2: explicit origin allowlist — no wildcard default.
+    # Unset CORS_ORIGINS resolves to the local Vite dev-server origins only.
+    # A '*' entry in a non-development environment refuses to start
+    # (see validate_runtime_security).
+    CORS_ORIGINS: list[str] = (
+        [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
+        or [
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+        ]
+    )
+
+    # Gate 0 Item 4: hosts the generated Kaggle notebook is allowed to dial out
+    # to (the core_wss_url host). Explicit allowlist — in a non-development
+    # environment an empty list means every package request is refused until
+    # the owner sets JARVIS_ALLOWED_WORKER_HOSTS (see .env.example). In
+    # development, loopback hosts are additionally permitted at validation time.
+    ALLOWED_WORKER_HOSTS: list[str] = [
+        h.strip() for h in os.getenv("JARVIS_ALLOWED_WORKER_HOSTS", "").split(",") if h.strip()
+    ]
 
     DEFAULT_MODEL: str = os.getenv(
         "JARVIS_DEFAULT_MODEL",
@@ -132,6 +167,15 @@ class Settings:
 
     FERNET_MASTER_KEY: str = _SECRETS["FERNET_MASTER_KEY"]
     WORKER_AUTH_TOKEN: str = os.getenv("JARVIS_WORKER_TOKEN", "").strip() or _SECRETS["WORKER_AUTH_TOKEN"]
+    # Gate 0 Item 1: owner token. Env var always wins; the secrets-file fallback
+    # is development-only, so a production deployment without JARVIS_OWNER_TOKEN
+    # resolves to "" and the server refuses to start (validate_runtime_security).
+    OWNER_AUTH_TOKEN: str = os.getenv("JARVIS_OWNER_TOKEN", "").strip() or (
+        _SECRETS.get("OWNER_AUTH_TOKEN", "") if IS_DEVELOPMENT else ""
+    )
+
+    ENV_MODE: str = ENV_MODE
+    IS_DEVELOPMENT: bool = IS_DEVELOPMENT
 
     @property
     def is_postgres(self) -> bool:
@@ -157,4 +201,30 @@ class Settings:
         }
 
 
+def validate_runtime_security() -> None:
+    """Fail-closed startup checks (Gate 0). Called at import time so uvicorn
+    refuses to boot when a non-development environment is misconfigured.
+    """
+    if IS_DEVELOPMENT:
+        return
+    problems: list[str] = []
+    if not os.getenv("JARVIS_OWNER_TOKEN", "").strip():
+        problems.append(
+            "JARVIS_OWNER_TOKEN is not set. The server refuses to start in a "
+            "non-development environment without an explicit owner token (fail closed)."
+        )
+    cors_origins = [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
+    if "*" in cors_origins:
+        problems.append(
+            "CORS_ORIGINS contains the wildcard '*'. The server refuses to start "
+            "in a non-development environment with a wildcard CORS origin "
+            "(fail closed). Set an explicit origin list, e.g. "
+            "CORS_ORIGINS=https://jarvis-nexus.vercel.app,https://your-domain.com."
+        )
+    if problems:
+        raise RuntimeError("Refusing to start — security configuration invalid: " + " | ".join(problems))
+
+
 settings = Settings()
+
+validate_runtime_security()

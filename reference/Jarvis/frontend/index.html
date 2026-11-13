@@ -5,8 +5,51 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>JARVIS NEXUS — Embodied Spatial Sanctuary</title>
     <link rel="stylesheet" href="/src/styles/nexus.css" />
+    <!-- Gate 0 Item 1: minimal owner sign-in gate styles (self-contained; no other UI changed) -->
+    <style>
+      #owner-auth-gate {
+        position: fixed; inset: 0; z-index: 9999;
+        display: flex; align-items: center; justify-content: center;
+        background: radial-gradient(ellipse at center, rgba(6, 14, 18, 0.92), rgba(2, 6, 8, 0.985));
+      }
+      #owner-auth-gate.hidden { display: none; }
+      #owner-auth-form {
+        width: min(380px, calc(100vw - 48px)); padding: 30px 28px;
+        border: 1px solid rgba(0, 229, 255, 0.28); border-radius: 12px;
+        background: rgba(8, 18, 24, 0.94);
+        box-shadow: 0 0 42px rgba(0, 229, 255, 0.12);
+        display: flex; flex-direction: column; gap: 12px;
+      }
+      #owner-auth-form h2 { margin: 0; font-size: 15px; letter-spacing: 0.22em; color: #7fdcff; }
+      #owner-auth-form p { margin: 0; font-size: 11.5px; line-height: 1.55; color: #8fa8b2; }
+      #owner-token-input {
+        width: 100%; box-sizing: border-box; padding: 10px 12px;
+        background: rgba(2, 8, 12, 0.9); color: #d7f4ff;
+        border: 1px solid rgba(0, 229, 255, 0.35); border-radius: 6px;
+        font-family: inherit; font-size: 13px;
+      }
+      #btn-owner-auth {
+        padding: 10px 12px; cursor: pointer;
+        background: rgba(0, 229, 255, 0.14); color: #9beaff;
+        border: 1px solid rgba(0, 229, 255, 0.5); border-radius: 6px;
+        font-family: inherit; font-size: 12.5px; letter-spacing: 0.08em;
+      }
+      #btn-owner-auth:hover { background: rgba(0, 229, 255, 0.24); }
+      #owner-auth-error { color: #ffb454 !important; }
+      #owner-auth-error.hidden { display: none; }
+    </style>
   </head>
   <body>
+    <!-- Gate 0 Item 1: owner sign-in. Token is held in memory for the session only. -->
+    <div id="owner-auth-gate">
+      <form id="owner-auth-form" autocomplete="off">
+        <h2>JARVIS NEXUS</h2>
+        <p>Owner access token required. The token is kept in memory for this session only, attached to every request and the Sanctuary WebSocket, and never written to disk or the URL.</p>
+        <input type="password" id="owner-token-input" placeholder="Owner access token" autocomplete="off" required />
+        <button type="submit" id="btn-owner-auth">Unlock Sanctuary</button>
+        <p id="owner-auth-error" class="hidden"></p>
+      </form>
+    </div>
     <!-- Full-Bleed Real-Time 3D WebGL Sanctuary -->
     <div id="viewport-root">
       <canvas id="nexus-canvas"></canvas>

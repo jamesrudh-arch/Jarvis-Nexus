@@ -67,7 +67,10 @@ class MemoryRecord(Base):
     confidence: Mapped[float] = mapped_column(Float, default=1.0)
     source_ref: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     project_tag: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    embedding_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Gate 0 Item 5: honest name. This is a deterministic LEXICAL fingerprint
+    # (character-trigram hash) for local ranking — NOT a semantic embedding.
+    # JARVIS NEXUS does not implement vector search.
+    lexical_fingerprint_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
