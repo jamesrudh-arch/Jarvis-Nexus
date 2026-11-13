@@ -6,12 +6,22 @@
 > decisions > engineering baseline > ENGINEERING_DECISIONS.md > ARCHITECTURE.md >
 > IMPLEMENTATION_BACKLOG.md > PROJECT_STATE.md > CHANGELOG.md > RESEARCH_REGISTER.md.
 
-**Last session:** 2026-11-13 (session 9) — PHASE 0 RE-AUDIT under the NEW Master Engineering Directive (Phase 0→15 structure): 105/105 tests pass across both codebases (62 Next.js unit + 43 FastAPI CORE, clean-env sqlite), tsc clean, production build SUCCESS, standalone runtime probe verified (health 200 in 37 ms; anon 403; correct key 200), owner-key guard re-verified live on both the dev server and a fresh standalone build, GitHub remote in sync at `040c91c` (token valid), Supabase live (200 authed / 401 unauthed). **CRITICAL NEW FINDING: the Railway production deployment is DOWN** — `jarvis-nexus.up.railway.app` returns `Application not found` (404) on all paths; it was LIVE at end of session 8b; Railway API token already rotated (dead) so the agent cannot diagnose — OWNER MUST CHECK THE RAILWAY DASHBOARD (app deleted / plan expired / domain changed?). Full evidence: `docs/phase-reports/PHASE-0-REPORT.md`. Stopped as directed; Phase 0B (blueprint intake) awaits owner GO + the blueprint-file decision.
-**Overall state:** Phase 0 (audit) COMPLETE AND VERIFIED under the new directive; Gate 0 (security) complete on both codebases from sessions 7–8b; integrations layer real-operations-verified; **production deployment DOWN (owner action required — see B1)**; LLM production activation pending one free Groq key; EOS OAuth pending one Dev Portal client-policy association. Next stage: Phase 0B blueprint intake (7 files — owner must upload them or approve verbatim extraction from the master directive), then Phases 1–15 per the new directive.
+**Last session:** 2026-11-13 (session 9, continued) — PHASE 0B COMPLETE (owner GO "extract from directive"): 7 approved blueprint files extracted VERBATIM from the Master Directive into `docs/blueprint/` (26 source sections, 1,705 content lines, byte-verified by re-runnable `scripts/extract_blueprints.py`; coverage accounting closes exactly 1,705+60+516=2,281; all 6 diagrams + key tables confirmed in their consuming files). `CHANGES.md` carries the full source-to-destination mapping, 6 documented extraction decisions, and 13 findings NOT silently resolved (F-A1 roster 45 vs 50; F-M1/M2 village+railway ID prefixes; F-C1 `world/Unreal/JarvisWorld.uproject` vs existing `unreal/JarvisNexus.uproject`; F-C3 public-surface tension; etc.). Branch `phase-0b-blueprint-intake`, intake commit `1e33f3d`, tagged `phase-0b-done`. PROCEEDING TO PHASE 1 (Security) per owner GO.
+**Overall state:** Phase 0 + Phase 0B COMPLETE AND VERIFIED; Gate 0 (security hardening) complete on both codebases from sessions 7–8b; Phase 1 (security: rate limiting, switch enforcement, backup/restore on the production Next.js app) IN PROGRESS. **Production deployment DOWN (B1 — owner Railway dashboard action required)**; Groq key pending (B4); EOS portal association pending (B5). Owner rulings needed before Phase 5/7: F-A1, F-M1, F-M2, F-M4; before Phase 3: F-C1.
 
 ---
 
-## What works (verified this session — session 9 — Phase 0 re-audit under the new directive)
+## What works (verified this session — Phase 0B blueprint intake)
+
+- **Verbatim extraction**: world-topology.md (297 lines), city-plans.md (140), architecture-bible.md (123), population-animals-transport-economy.md (311), animation-and-blender-pipeline.md (192), laboratory-and-nexus.md (465), acceptance-and-evidence.md (196). Byte-identical to directive source slices; zero summarisation or invention.
+- **Verification engine**: `scripts/extract_blueprints.py` — dual byte-check (written file vs constructed expectation AND independent re-extraction), line-count table, full coverage accounting (every one of the 2,281 source lines classified as extracted content / structural separator / governance).
+- **Cross-reference integrity**: every Part 16 phase "Read:" target (8/8) resolves to a blueprint file that contains the required sections.
+
+---
+
+## Prior session 9 first half (Phase 0 re-audit under the new directive)
+
+## What works (verified session 9 — Phase 0 re-audit under the new directive)
 
 - **Test suites**: `npm test` 62/62 (1006 ms); `env -u DATABASE_URL python3 -m pytest -q` 43/43 (2.62 s); `tsc --noEmit` 0 errors; `npm run build` SUCCESS (30 API routes). First pytest attempt failed collection due to an inherited `DATABASE_URL` in the shell — re-run with the documented clean-env invocation, not a test defect.
 - **Guard matrix (live, re-verified)**: dev server (:3000) AND a fresh standalone build (:3100): anonymous 403, wrong key 403, correct key 200 via both `X-Owner-Key` and `Bearer`; health/switches/world/scenarios/telemetry GET remain public-by-design status surface.
