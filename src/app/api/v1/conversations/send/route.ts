@@ -13,6 +13,7 @@ import {
   serializeWorld,
   setScenarioRuntime,
 } from '@/lib/nexus/worldHub';
+import { requireOwnerKey } from '@/lib/nexus/ownerGuard';
 
 /**
  * POST /api/v1/conversations/send
@@ -22,6 +23,8 @@ import {
  * alongside the reply for synchronized viseme lip-sync playback.
  */
 export async function POST(req: NextRequest) {
+  const denied = requireOwnerKey(req);
+  if (denied) return denied;
   try {
     await ensureSeed();
     const body = await req.json();

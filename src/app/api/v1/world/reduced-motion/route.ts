@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { serializeWorld } from '@/lib/nexus/worldHub';
+import { requireOwnerKey } from '@/lib/nexus/ownerGuard';
 
 export async function POST(req: NextRequest) {
+  const denied = requireOwnerKey(req);
+  if (denied) return denied;
   try {
     const enabled = req.nextUrl.searchParams.get('enabled') === 'true';
     await db.nexusWorldState.update({

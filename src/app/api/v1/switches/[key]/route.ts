@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { ensureSeed, serializeWorld } from '@/lib/nexus/worldHub';
+import { requireOwnerKey } from '@/lib/nexus/ownerGuard';
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ key: string }> }) {
+  const denied = requireOwnerKey(req);
+  if (denied) return denied;
   try {
     await ensureSeed();
     const { key } = await ctx.params;

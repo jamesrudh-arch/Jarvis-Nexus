@@ -1,6 +1,7 @@
 'use client';
 
 import type { NexusClient, NexusSnapshot } from '@/nexus/client';
+import { isOwnerAuthRejection, notifyAuthRequired, ownerKeyHeaders } from '@/nexus/ownerKeyClient';
 
 const QUICK_MOVES: Array<[string, string, boolean]> = [
   ['central_operations', 'Walk: Central Ops', false],
@@ -28,7 +29,7 @@ export default function ModesDrawer({
     try {
       const res = await fetch('/api/v1/world/move', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...ownerKeyHeaders() },
         body: JSON.stringify({
           zone_id: zoneId,
           activity: urgent
@@ -39,6 +40,11 @@ export default function ModesDrawer({
           ...(urgent ? { mode_override: 'defensive_security' } : {}),
         }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (isOwnerAuthRejection(res, data.detail)) notifyAuthRequired();
+        return;
+      }
       const data = await res.json();
       if (res.ok) client?.applyWorldState(data, false);
     } catch { /* ignore */ }

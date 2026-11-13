@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { OPERATIONAL_MODES } from '@/lib/nexus/seed';
 import { commandMoveToZone, serializeWorld } from '@/lib/nexus/worldHub';
+import { requireOwnerKey } from '@/lib/nexus/ownerGuard';
 
 export async function POST(req: NextRequest) {
+  const denied = requireOwnerKey(req);
+  if (denied) return denied;
   try {
     const body = await req.json();
     const modeId = String(body.mode_id || '');

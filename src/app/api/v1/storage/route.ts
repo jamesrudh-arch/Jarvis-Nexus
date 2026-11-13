@@ -5,6 +5,7 @@ import {
   STORAGE_QUOTA_LIMIT_BYTES,
 } from '@/lib/nexus/integrations/supabase';
 import { sanitizeStorageKey } from '@/lib/nexus/tools';
+import { requireOwnerKey } from '@/lib/nexus/ownerGuard';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -23,14 +24,6 @@ export const dynamic = 'force-dynamic';
  */
 
 const supabase = new SupabaseClient();
-
-function ownerKeyOk(req: NextRequest): { ok: boolean; reason?: string } {
-  const required = process.env.OWNER_KEY;
-  if (!required) return { ok: false, reason: 'OWNER_KEY not configured on the server — storage mutations are locked' };
-  const supplied = req.headers.get('x-owner-key');
-  if (!supplied || supplied !== required) return { ok: false, reason: 'invalid or missing X-Owner-Key' };
-  return { ok: true };
-}
 
 export async function GET(req: NextRequest) {
   const key = req.nextUrl.searchParams.get('key');
@@ -51,8 +44,8 @@ export async function GET(req: NextRequest) {
         detail: status.detail,
       });
     }
-    const guard = ownerKeyOk(req);
-    if (!guard.ok) return NextResponse.json({ detail: guard.reason }, { status: 403 });
+    const denied = requireOwnerKey(req);
+    if (denied) return denied;
     const clean = sanitizeStorageKey(key);
     if (!clean) return NextResponse.json({ detail: 'Invalid key.' }, { status: 400 });
     const res = await supabase.getObject(clean);
@@ -69,8 +62,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  const guard = ownerKeyOk(req);
-  if (!guard.ok) return NextResponse.json({ detail: guard.reason }, { status: 403 });
+  const denied = requireOwnerKey(req);
+  if (denied) return denied;
   const key = req.nextUrl.searchParams.get('key');
   const clean = sanitizeStorageKey(key);
   if (!clean) return NextResponse.json({ detail: 'Invalid key (relative path, [A-Za-z0-9._-/], ≤ 128 chars).' }, { status: 400 });
@@ -95,8 +88,8 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const guard = ownerKeyOk(req);
-  if (!guard.ok) return NextResponse.json({ detail: guard.reason }, { status: 403 });
+  const denied = requireOwnerKey(req);
+  if (denied) return denied;
   const key = req.nextUrl.searchParams.get('key');
   const clean = sanitizeStorageKey(key);
   if (!clean) return NextResponse.json({ detail: 'Invalid key.' }, { status: 400 });

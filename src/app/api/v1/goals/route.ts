@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { ensureSeed } from '@/lib/nexus/worldHub';
+import { requireOwnerKey } from '@/lib/nexus/ownerGuard';
 
 function serializeGoal(g: {
   id: string; title: string; description: string; priority: number; status: string;
@@ -17,7 +18,9 @@ function serializeGoal(g: {
   };
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const denied = requireOwnerKey(req);
+  if (denied) return denied;
   try {
     await ensureSeed();
     const rows = await db.goalRecord.findMany({ orderBy: [{ priority: 'asc' }] });
@@ -37,6 +40,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const denied = requireOwnerKey(req);
+  if (denied) return denied;
   try {
     await ensureSeed();
     const body = await req.json();

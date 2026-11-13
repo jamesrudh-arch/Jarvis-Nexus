@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { transcribeAudio } from '@/lib/nexus/brain';
+import { requireOwnerKey } from '@/lib/nexus/ownerGuard';
 
 export async function POST(req: NextRequest) {
+  const denied = requireOwnerKey(req);
+  if (denied) return denied;
   try {
     const body = await req.json();
     const audioBase64 = String(body.audio_base64 || '');

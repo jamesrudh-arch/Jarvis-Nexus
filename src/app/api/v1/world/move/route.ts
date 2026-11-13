@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { commandMoveToZone } from '@/lib/nexus/worldHub';
 import { SPATIAL_ZONES } from '@/lib/nexus/seed';
+import { requireOwnerKey } from '@/lib/nexus/ownerGuard';
 
 export async function POST(req: NextRequest) {
+  const denied = requireOwnerKey(req);
+  if (denied) return denied;
   try {
     const body = await req.json();
     const zoneId = String(body.zone_id || 'central_operations');

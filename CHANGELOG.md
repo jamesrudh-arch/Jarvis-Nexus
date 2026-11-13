@@ -2,6 +2,16 @@
 
 Format: date — change — why. Newest first. Full diffs: git log.
 
+## 2026-11-13 (session 8b) — GATE 0 EXTENDED TO THE PRODUCTION APP: owner-key guard on every privileged route (Next.js)
+
+**Why:** session 7's audit rated the deployed app CRITICAL — every `/api/v1/*` route except `/api/v1/storage` was unauthenticated. Re-proven BEFORE hardening with a non-destructive anonymous create+delete cycle on production (both 200). This closes the production surface and completes Gate 0 across both codebases.
+
+- **Shared guard**: `src/lib/nexus/ownerAuth.ts` (pure: `X-Owner-Key` OR `Authorization: Bearer`, constant-time `timingSafeEqual`, deny-by-default when `OWNER_KEY` unset, reasons never echo key material) + `src/lib/nexus/ownerGuard.ts` (403 + `X-Auth-Required: owner-key`). Applied as the first statement of all 24 privileged handlers across 21 route files (memories GET/POST/PATCH/DELETE, goals, agents + dispatch, conversations/send, integrations, security/events, switches PATCH, asr, tts, storage refactor to the shared guard, and all world mutations). Public by design: health, world/switches/scenarios/telemetry GET (status-only boot surface).
+- **Client unlock flow**: `src/nexus/ownerKeyClient.ts` (sessionStorage only — never localStorage/cookies, cleared on tab close) + `OwnerGate.tsx` panel (key is VERIFIED against the server before storing; wrong key visibly rejected) wired into the `api()` transport, InspectorDrawer (`jget`/`jpost`/direct fetches + reload-on-unlock) and ModesDrawer. CSRF and inference-quota theft closed as side effects.
+- **Verification**: `tests/guard_e2e.sh` 70/70 against the real standalone server (5 public routes 200; 24 anonymous mutations 403 with the header; wrong key/Bearer 403; correct key 200 both forms; post-auth validation intact; memory create+delete round trip; switches state unchanged). `npm test` 62/62 (10 new ownerAuth unit tests). `tsc --noEmit` + build clean. `scripts/gate0_ui_verify.py` headless-Chromium UX proof: no data leak when locked, unlock works, key survives reload — screenshots VLM-verified (`download/screenshots/gate0_ui_*.png`).
+- **Docs**: `docs/security/ROUTE_INVENTORY.md` (BEFORE/AFTER table, guard contract, evidence, rollback, residual exposure).
+- **Note**: Railway API token no longer authorizes (owner rotated it per session-7 advisory — GitHub push still works); production deploy happens through the GitHub-main auto-deploy.
+
 ## 2026-11-13 (session 8) — GATE 0 CLOSED: full security hardening of the FastAPI CORE (reference/Jarvis)
 
 **Why:** the Master Directive's Part 4 mandates Gate 0 (security + owner control) before any major feature expansion; session 7's audit had rated the CORE backend CRITICAL (47/48 REST routes + /ws/nexus unauthenticated, restore accepted hostile snapshots, worker packages embeddable with arbitrary URLs). All six items landed on the inner repo's `gate0-security` branch, evidence-complete, then fast-forward merged to its `main` (`4c73851`) and committed here.

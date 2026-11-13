@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { ensureSeed } from '@/lib/nexus/worldHub';
+import { requireOwnerKey } from '@/lib/nexus/ownerGuard';
 
-export async function GET() {
+export async function GET(req: Request) {
+  const denied = requireOwnerKey(req);
+  if (denied) return denied;
   try {
     await ensureSeed();
     const rows = await db.specialistAgent.findMany();

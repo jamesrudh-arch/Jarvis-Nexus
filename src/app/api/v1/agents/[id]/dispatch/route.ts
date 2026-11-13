@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { ensureSeed } from '@/lib/nexus/worldHub';
 import { runLlm } from '@/lib/nexus/providers/registry';
+import { requireOwnerKey } from '@/lib/nexus/ownerGuard';
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const denied = requireOwnerKey(req);
+  if (denied) return denied;
   try {
     await ensureSeed();
     const { id } = await ctx.params;
