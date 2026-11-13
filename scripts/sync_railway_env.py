@@ -28,6 +28,11 @@ UPSERT = [
     "EPIC_CLIENT_ID", "EPIC_CLIENT_SECRET",
     "EPIC_PRODUCT_ID", "EPIC_DEPLOYMENT_ID", "EPIC_SANDBOX_IDS",
     "OWNER_KEY", "NEXUS_STORAGE_BUCKET",
+    # session 8: Phase 2 cognition (owner-supplied OpenAI key, re-supplied
+    # Railway token) + explicit provider chain. Chain order documented in
+    # docs/INTEGRATIONS.md: free tier first, owner OpenAI key second, z-ai
+    # (sandbox-only) last. All skipDeploys=True — the git push deploys once.
+    "OPENAI_API_KEY", "OPENAI_MODEL", "NEXUS_LLM_PROVIDERS",
     # refresh these too (same values the owner re-supplied today)
     "SUPABASE_ACCESS_TOKEN", "CLOUDFLARE_API_TOKEN", "RAILWAY_API_TOKEN",
 ] + [f"KAGGLE_API_TOKEN_{i}" for i in range(1, 7)]

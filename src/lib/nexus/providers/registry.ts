@@ -81,6 +81,9 @@ async function resolveLlm(id: string): Promise<LlmProvider | null> {
   if (id === 'openai_compatible') {
     return (await import('./openaiCompatible')).openaiCompatLlm;
   }
+  if (id === 'openai') {
+    return (await import('./openaiCompatible')).openaiLlm;
+  }
   return null;
 }
 

@@ -176,3 +176,41 @@ export const openaiCompatLlm: LlmProvider = {
     return { ...result, providerId: OPENAI_COMPAT_ID };
   },
 };
+
+// ---------------------------------------------------------------------------
+// 3. OpenAI (official API, owner-supplied key — session 8, Phase 2 cognition)
+// ---------------------------------------------------------------------------
+
+export const OPENAI_ID = 'openai';
+export const OPENAI_DEFAULT_MODEL = 'gpt-4o-mini';
+
+/**
+ * The owner explicitly supplied an OpenAI API key for Phase 2 cognition
+ * (session-8 continuation directive). This is an OPT-IN provider: it only
+ * activates when OPENAI_API_KEY is set AND `openai` appears in
+ * NEXUS_LLM_PROVIDERS — the default chain stays free-tier-first
+ * (cloudflare_workers_ai -> zai_cloud_route) per the standing "genuinely
+ * free" directive, so no paid API can ever be reached by accident.
+ * Model via OPENAI_MODEL (default gpt-4o-mini); base URL via OPENAI_BASE_URL
+ * (default https://api.openai.com/v1). Strictly server-side.
+ */
+function openAiOfficialConfig(): { url: string; key: string; model: string } | null {
+  const key = (process.env.OPENAI_API_KEY || '').trim();
+  if (!key) return null;
+  const model = (process.env.OPENAI_MODEL || '').trim() || OPENAI_DEFAULT_MODEL;
+  const base = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, '');
+  return { url: `${base}/chat/completions`, key, model };
+}
+
+export const openaiLlm: LlmProvider = {
+  id: OPENAI_ID,
+  async available(): Promise<boolean> {
+    return openAiOfficialConfig() !== null;
+  },
+  async chat(req: ChatCompletionRequest): Promise<ChatCompletionResult> {
+    const cfg = openAiOfficialConfig();
+    if (!cfg) throw new Error('openai: OPENAI_API_KEY not configured');
+    const result = await openAiChat(cfg.url, cfg.key, cfg.model, req);
+    return { ...result, providerId: OPENAI_ID };
+  },
+};
