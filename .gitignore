@@ -1,6 +1,7 @@
 # secrets — never commit
 .env
 .env.*
+credentials.env
 
 # dependencies & builds
 node_modules/

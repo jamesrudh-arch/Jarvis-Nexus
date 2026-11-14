@@ -117,6 +117,15 @@
         "@nexus/model-fabric": "workspace:*",
       },
     },
+    "packages/railway": {
+      "name": "@nexus/railway",
+      "version": "0.1.0",
+      "dependencies": {
+        "@nexus/contracts": "workspace:*",
+        "@nexus/core": "workspace:*",
+        "@nexus/db": "workspace:*",
+      },
+    },
     "packages/world": {
       "name": "@nexus/world",
       "version": "0.1.0",
@@ -153,6 +162,8 @@
     "@nexus/observability": ["@nexus/observability@workspace:packages/observability"],
 
     "@nexus/orchestrator": ["@nexus/orchestrator@workspace:packages/orchestrator"],
+
+    "@nexus/railway": ["@nexus/railway@workspace:packages/railway"],
 
     "@nexus/world": ["@nexus/world@workspace:packages/world"],
 

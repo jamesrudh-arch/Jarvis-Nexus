@@ -18,7 +18,8 @@ import { WorldRuntime, createWorld } from "@nexus/world";
 import { McpGateway, TEST_MCP_SERVER_NAME, testMcpServerScript } from "@nexus/mcp-gateway";
 import { NexusLogger, HealthRegistry, MetricsCollector, newCorrelationId } from "@nexus/observability";
 import { ok, err, safeJsonStringify, NexusError } from "@nexus/core";
-import { CreateObjectiveRequest, CreateNaeiTaskRequest, AdvanceWorldRequest, CreateMemoryRequest, CONTRACT_VERSION } from "@nexus/contracts";
+import { railwayFromEnv, introspectLiveFields, diffContract, contractIsCompatible, BackupService } from "@nexus/railway";
+import { CreateObjectiveRequest, CreateNaeiTaskRequest, AdvanceWorldRequest, CreateMemoryRequest, CONTRACT_VERSION, RailwayDiagnoseRequest, RailwayRecoveryPlanRequest, RailwayExecuteRequest, RailwayAuthorizationRequestSchema } from "@nexus/contracts";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { join } from "node:path";
@@ -27,6 +28,8 @@ export interface NexusApiConfig {
   dbPath: string;
   workspaceRoot: string;
   env: Record<string, string | undefined>;
+  /** Test seam: inject a MOCKED Railway transport (never used in production wiring). */
+  railwayFetchFn?: typeof fetch;
 }
 
 export function createApp(cfg: NexusApiConfig) {
@@ -68,7 +71,7 @@ export function createApp(cfg: NexusApiConfig) {
   if (naei.agents.list().length === 0) naei.agents.seedDefaultRoster();
 
   // JARVIS tool executor — internal capabilities + MCP + NAEI delegation
-  const CONSEQUENTIAL_TOOLS = new Set(["world.construct", "mcp.invoke"]);
+  const CONSEQUENTIAL_TOOLS = new Set(["world.construct", "mcp.invoke", "railway.recovery.execute"]);
   const tools: ToolExecutor = {
     listTools: () => [
       "memory.store", "memory.search",
@@ -76,6 +79,7 @@ export function createApp(cfg: NexusApiConfig) {
       "naei.delegate",
       "mcp.invoke",
       "models.list",
+      "railway.status", "railway.intelligence", "railway.diagnose", "railway.recovery.execute",
     ],
     requiresApproval: (tool) => CONSEQUENTIAL_TOOLS.has(tool),
     async execute(tool, params, ctx) {
@@ -147,6 +151,33 @@ export function createApp(cfg: NexusApiConfig) {
         }
         case "models.list":
           return ok(fabric.listModels().map((m) => ({ id: m.id, taskTypes: m.capabilities.taskTypes })));
+        case "railway.status": {
+          // L1 read-only: cached monitoring snapshot; never blocks on the API.
+          const report = railway.latestMonitoring();
+          if (!report) return err(new NexusError("DEPENDENCY_ERROR", "railway monitoring not yet executed (no cached report)"));
+          return ok({ overall: report.overall, dimensions: report.dimensions.map((d) => ({ dimension: d.dimension, status: d.status, detail: d.detail })) });
+        }
+        case "railway.intelligence": {
+          const answer = await railway.intelligence.ask(String(params.question ?? "what is happening with my infrastructure"));
+          return answer.ok ? ok(answer.value) : err(new NexusError("DEPENDENCY_ERROR", answer.error.message));
+        }
+        case "railway.diagnose": {
+          const inv = await railway.diagnostics.investigate({
+            kind: (String(params.trigger ?? "manual") as never),
+            resourceIds: (params.resourceIds as string[]) ?? [],
+            note: params.note ? String(params.note) : undefined,
+          });
+          return inv.ok
+            ? ok({ investigationId: inv.value.id, classification: inv.value.causeClassification, rootCause: inv.value.rootCause, confidence: inv.value.confidence, recommendations: inv.value.recommendations.map((r) => ({ action: r.action, operationId: r.operationId, requiredLevel: r.requiredLevel })) })
+            : err(new NexusError("DEPENDENCY_ERROR", inv.error.message));
+        }
+        case "railway.recovery.execute": {
+          // Consequential: the orchestrator approval gate stalls plans here
+          // until the owner approves, AND the railway authorization layer
+          // still requires a single-use owner grant — two independent gates.
+          const r = await railway.recovery.execute(String(params.planId), String(params.grantId), ctx.approvedBy ?? "agent");
+          return r.ok ? ok(r.value) : err(new NexusError("UNAUTHORIZED", r.error.message));
+        }
         default:
           return err(new NexusError("VALIDATION_ERROR", `unknown tool: ${tool}`));
       }
@@ -162,6 +193,28 @@ export function createApp(cfg: NexusApiConfig) {
       // by the owner-authenticated /jarvis/tasks/:id/approve route. Without
       // this, the approve endpoint could never release a consequential task.
       return { required: consequential, granted: Boolean(opts?.approvedBy), by: opts?.approvedBy };
+    },
+  });
+
+  // Railway infrastructure intelligence (owner directive 2026-11-15).
+  // Credential isolation: the Railway token stays inside @nexus/railway —
+  // it is never forwarded to MCP servers, NAEI workspaces or tool params.
+  const railway = railwayFromEnv({
+    db, env: cfg.env,
+    fetchFn: cfg.railwayFetchFn,
+    memory: (m) => {
+      try {
+        memory.create({
+          scope: "railway", tier: "operational", kind: "fact",
+          title: m.title, content: m.content,
+          importance: m.importance, confidence: 0.9,
+          source: "observation", sourceId: m.sourceId,
+        });
+      } catch { /* memory failures must never break monitoring */ }
+    },
+    metrics: {
+      increment: (name, labels, by) => metrics.increment(name, labels, by),
+      gauge: (name, value, labels) => metrics.gauge(name, value, labels),
     },
   });
 
@@ -222,6 +275,12 @@ export function createApp(cfg: NexusApiConfig) {
     detail: `${naei.agents.list().length} agents registered`,
     checkedAt: new Date().toISOString(),
   }));
+  // Railway intelligence probe — cached + non-blocking (never calls the API
+  // on the health path); unconfigured is DEGRADED, never healthy (fail-visible).
+  health.register("railway", () => {
+    const h = railway.healthComponent();
+    return { component: h.component, status: h.status, detail: h.detail, checkedAt: h.checkedAt };
+  });
 
   // ---- HTTP app ---------------------------------------------------------------
   const app = new Hono();
@@ -252,7 +311,7 @@ export function createApp(cfg: NexusApiConfig) {
     c.set("correlationId", correlationId);
     // bounded label: fixed route allowlist. Labelling by any raw path component
     // would let any client mint unbounded metric rows (one per unique URL).
-    const KNOWN_ROUTES = new Set(["health", "world", "jarvis", "naei", "mcp", "memory", "metrics", "models"]);
+    const KNOWN_ROUTES = new Set(["health", "world", "jarvis", "naei", "mcp", "memory", "metrics", "models", "railway"]);
     const firstSegment = new URL(c.req.url).pathname.split("/")[1] ?? "";
     const route = KNOWN_ROUTES.has(firstSegment) ? firstSegment : "other";
     metrics.increment("http_requests_total", { route });
@@ -263,7 +322,7 @@ export function createApp(cfg: NexusApiConfig) {
     service: "NEXUS API",
     version: "1.0.0",
     contractVersion: CONTRACT_VERSION,
-    subsystems: ["jarvis", "naei", "world", "mcp", "memory", "models", "observability"],
+    subsystems: ["jarvis", "naei", "world", "mcp", "memory", "models", "observability", "railway"],
   }));
 
   app.get("/health", async (c) => {
@@ -441,7 +500,117 @@ export function createApp(cfg: NexusApiConfig) {
   app.get("/models/catalog", (c) => c.json({ data: fabric.listModels() }));
   app.get("/models/health", (c) => c.json({ data: fabric.providerHealth() }));
 
-  return { app, db, orchestrator, naei, worldRuntime, mcp, memory, fabric, logger, metrics, health };
+  // -- RAILWAY (infrastructure intelligence) -----------------------------------------
+  // Public: cached monitoring snapshot (non-blocking, fail-visible).
+  app.get("/railway/status", (c) => {
+    const report = railway.latestMonitoring();
+    if (!report) return c.json({ data: null, note: "no monitoring cycle executed yet — POST /railway/monitor (owner) to run one" });
+    return c.json({ data: report });
+  });
+  app.post("/railway/monitor", requireOwner, async (c) => {
+    const report = await railway.runMonitoringCycle();
+    return c.json({ data: report });
+  });
+  app.get("/railway/discovery", requireOwner, async (c) => {
+    const r = await railway.discovery.discoverAll();
+    return r.ok ? c.json({ data: r.value }) : c.json({ error: r.error.toJSON() }, 502);
+  });
+  app.get("/railway/usage", requireOwner, async (c) => {
+    const snap = await railway.discovery.discoverAll();
+    const r = await railway.usage.report(snap.ok ? snap.value : null);
+    return r.ok ? c.json({ data: r.value }) : c.json({ error: r.error.toJSON() }, 502);
+  });
+  app.get("/railway/credentials/status", requireOwner, (c) =>
+    c.json({ data: railway.credentials.fullStatus(), mode: railway.mode }));
+  app.post("/railway/contract/check", requireOwner, async (c) => {
+    const live = await introspectLiveFields(railway.client);
+    if (!live.ok) return c.json({ error: live.error.toJSON() }, 502);
+    const drifts = diffContract(live.value);
+    return c.json({ data: { compatible: contractIsCompatible(drifts), drifts } });
+  });
+  app.get("/railway/events", requireOwner, (c) =>
+    c.json({ data: railway.events.list({ limit: Number(c.req.query("limit") ?? 100) }) }));
+  app.get("/railway/audit", requireOwner, (c) => {
+    const chainVerification = c.req.query("verify") === "true" ? railway.audit.verify() : undefined;
+    return c.json({ data: railway.audit.query({ limit: Number(c.req.query("limit") ?? 100) }), chainVerification });
+  });
+  app.get("/railway/backups", requireOwner, async (c) => {
+    const snap = await railway.discovery.discoverAll();
+    if (!snap.ok) return c.json({ error: snap.error.toJSON() }, 502);
+    return c.json({ data: await railway.backup.report(snap.value) });
+  });
+  app.post("/railway/backup/export", requireOwner, (c) => {
+    // app-level logical backup of THIS deployment's own store + isolated restore verification
+    const doc = BackupService.exportLogicalBackup(db);
+    const verification = BackupService.verifyLogicalBackup(doc);
+    const dir = join(cfg.workspaceRoot, "backups");
+    mkdirSync(dir, { recursive: true });
+    const file = join(dir, `${doc.exportedAt.replace(/[:.]/g, "-")}.json`);
+    writeFileSync(file, JSON.stringify(doc));
+    return c.json({ data: { file, tables: doc.tables.length, rows: doc.tables.reduce((n, t) => n + t.rows, 0), verification } }, 201);
+  });
+  app.post("/railway/reconcile", requireOwner, async (c) => {
+    const r = await railway.reconciliation.reconcile();
+    return r.ok ? c.json({ data: r.value }) : c.json({ error: r.error.toJSON() }, 502);
+  });
+  app.get("/railway/reconciliation", requireOwner, (c) => c.json({ data: railway.reconciliation.history() }));
+  app.post("/railway/diagnose", requireOwner, async (c) => {
+    const parse = RailwayDiagnoseRequest.safeParse(await c.req.json().catch(() => ({})));
+    if (!parse.success) return c.json({ error: "validation", issues: parse.error.issues }, 400);
+    const r = await railway.diagnostics.investigate({ kind: parse.data.trigger, resourceIds: parse.data.resourceIds, note: parse.data.note });
+    return r.ok ? c.json({ data: r.value }, 201) : c.json({ error: r.error.toJSON() }, 502);
+  });
+  app.get("/railway/investigations/:id", requireOwner, (c) => {
+    const inv = railway.diagnostics.getInvestigation(c.req.param("id"));
+    return inv ? c.json({ data: inv }) : c.json({ error: "not_found" }, 404);
+  });
+  app.post("/railway/intelligence", requireOwner, async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const r = await railway.intelligence.ask(String(body?.question ?? ""));
+    return r.ok ? c.json({ data: r.value }) : c.json({ error: r.error.toJSON() }, 502);
+  });
+  app.get("/railway/operations", requireOwner, (c) =>
+    c.json({ data: railway.authorization.listOperations(), readOnly: railway.authorization.isReadOnly() }));
+  app.post("/railway/recovery/plan", requireOwner, async (c) => {
+    const parse = RailwayRecoveryPlanRequest.safeParse(await c.req.json().catch(() => ({})));
+    if (!parse.success) return c.json({ error: "validation", issues: parse.error.issues }, 400);
+    const inv = railway.diagnostics.getInvestigation(parse.data.investigationId);
+    if (!inv) return c.json({ error: "not_found" }, 404);
+    const r = railway.recovery.createPlan(inv);
+    return r.ok ? c.json({ data: r.value }, 201) : c.json({ error: r.error.toJSON() }, 400);
+  });
+  app.post("/railway/recovery/authorize", requireOwner, async (c) => {
+    // The principal is ALWAYS the owner (this route is owner-bearer-authenticated);
+    // a client-supplied principal claim must never be trusted.
+    const parse = RailwayAuthorizationRequestSchema.omit({ principal: true }).safeParse(await c.req.json().catch(() => ({})));
+    if (!parse.success) return c.json({ error: "validation", issues: parse.error.issues }, 400);
+    const decision = railway.authorization.requestAuthorization({ ...parse.data, principal: { type: "user", id: "owner" } });
+    return c.json({ data: decision }, decision.granted ? 201 : 403);
+  });
+  app.post("/railway/recovery/execute", requireOwner, async (c) => {
+    const parse = RailwayExecuteRequest.safeParse(await c.req.json().catch(() => ({})));
+    if (!parse.success) return c.json({ error: "validation", issues: parse.error.issues }, 400);
+    const r = await railway.recovery.execute(parse.data.planId, parse.data.grantId, "owner");
+    return r.ok ? c.json({ data: r.value }) : c.json({ error: r.error.toJSON() }, r.error.kind === "READ_ONLY" || r.error.kind === "PERMISSION" ? 403 : 400);
+  });
+  app.get("/railway/recovery/plans/:id", requireOwner, (c) => {
+    const plan = railway.recovery.getPlan(c.req.param("id"));
+    return plan ? c.json({ data: plan }) : c.json({ error: "not_found" }, 404);
+  });
+  app.post("/railway/webhook", async (c) => {
+    // Authenticated by the per-project webhook secret (constant-time), not the
+    // owner bearer key: Railway's webhook sender cannot present the owner key.
+    // Events are prompts, not truth — each is reconciled against the API.
+    const body = await c.req.text();
+    const r = await railway.webhook.handle({ "x-webhook-secret": c.req.header("X-Webhook-Secret") }, body);
+    if (!r.ok) {
+      const status = r.error.kind === "AUTH" ? 401 : r.error.kind === "UNCONFIGURED" ? 503 : r.error.kind === "VALIDATION" ? 400 : 500;
+      return c.json({ error: r.error.toJSON() }, status as 401 | 503 | 400 | 500);
+    }
+    return c.json({ data: r.value }, r.value.duplicate ? 200 : 202);
+  });
+
+  return { app, db, orchestrator, naei, worldRuntime, mcp, memory, fabric, logger, metrics, health, railway, tools };
 }
 
 export type NexusApp = ReturnType<typeof createApp>;

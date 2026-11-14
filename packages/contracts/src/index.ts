@@ -575,6 +575,73 @@ export const EnvelopeSchema = <T extends z.ZodTypeAny>(inner: T) =>
   z.object({ data: inner, meta: z.object({ requestId: z.string().optional(), at: IsoTimestamp.optional() }).optional() });
 
 // ===========================================================================
+// Railway infrastructure intelligence (owner directive 2026-11-15)
+// ===========================================================================
+
+/** Verified DeploymentStatus enum (live schema, 13 values) + unknown fallback. */
+export const RailwayDeploymentStatusSchema = z.enum([
+  "BUILDING", "CRASHED", "DEPLOYING", "FAILED", "INITIALIZING", "NEEDS_APPROVAL",
+  "QUEUED", "REMOVED", "REMOVING", "SKIPPED", "SLEEPING", "SUCCESS", "WAITING", "UNKNOWN",
+]);
+
+export const RailwayWebhookEventSchema = z.object({
+  /** e.g. "Deployment.failed" (official docs payload shape, 2026-11-15). */
+  type: z.string().min(1).max(120),
+  details: z.object({
+    id: z.string().optional(),
+    source: z.string().optional(),
+    status: z.string().optional(),
+    branch: z.string().optional(),
+    commitHash: z.string().optional(),
+    commitAuthor: z.string().optional(),
+    commitMessage: z.string().optional(),
+  }).passthrough(),
+  resource: z.object({
+    workspace: z.object({ id: z.string(), name: z.string().optional() }).optional(),
+    project: z.object({ id: z.string(), name: z.string().optional() }).optional(),
+    environment: z.object({ id: z.string(), name: z.string().optional(), isEphemeral: z.boolean().optional() }).optional(),
+    service: z.object({ id: z.string(), name: z.string().optional() }).optional(),
+    deployment: z.object({ id: z.string() }).optional(),
+  }),
+  severity: z.enum(["INFO", "NOTICE", "WARNING", "CRITICAL"]),
+  timestamp: IsoTimestamp,
+});
+
+export const RailwayPermissionLevelSchema = z.enum(["L1", "L2", "L3", "L4"]);
+
+export const RailwayAuthorizationRequestSchema = z.object({
+  operationId: z.string().min(1).max(80),
+  resourceIds: z.array(z.string().min(1).max(120)).max(10),
+  scope: z.string().min(1).max(200),
+  justification: z.string().max(500).optional(),
+  principal: z.object({
+    type: z.enum(["user", "agent"]),
+    id: z.string().min(1).max(80),
+  }),
+});
+
+/** Diagnostic triggers (directive §7). */
+export const RailwayDiagnosticTriggerKindSchema = z.enum([
+  "deployment_failure", "app_outage", "credential_failure",
+  "infrastructure_discrepancy", "usage_anomaly", "manual",
+]);
+
+export const RailwayDiagnoseRequest = z.object({
+  trigger: RailwayDiagnosticTriggerKindSchema,
+  resourceIds: z.array(z.string().min(1).max(120)).max(10).default([]),
+  note: z.string().max(500).optional(),
+});
+
+export const RailwayRecoveryPlanRequest = z.object({
+  investigationId: IdSchema,
+});
+
+export const RailwayExecuteRequest = z.object({
+  planId: IdSchema,
+  grantId: IdSchema,
+});
+
+// ===========================================================================
 // Versions — contract compatibility (directive §12.4)
 // ===========================================================================
 
@@ -616,3 +683,8 @@ export type McpInvocationResult = z.infer<typeof McpInvocationResultSchema>;
 export type McpAuditEntry = z.infer<typeof McpAuditEntrySchema>;
 export type HealthStatus = z.infer<typeof HealthStatusSchema>;
 export type Metric = z.infer<typeof MetricSchema>;
+export type RailwayDeploymentStatus = z.infer<typeof RailwayDeploymentStatusSchema>;
+export type RailwayWebhookEvent = z.infer<typeof RailwayWebhookEventSchema>;
+export type RailwayPermissionLevel = z.infer<typeof RailwayPermissionLevelSchema>;
+export type RailwayAuthorizationRequest = z.infer<typeof RailwayAuthorizationRequestSchema>;
+export type RailwayDiagnosticTriggerKind = z.infer<typeof RailwayDiagnosticTriggerKindSchema>;

@@ -236,7 +236,7 @@
         "real tool operation through gateway",
         "schema rejection",
         "audit entries",
-        "\u00a74.4 acceptance met"
+        "§4.4 acceptance met"
       ],
       "status": "DONE",
       "tests": [
@@ -387,7 +387,7 @@
       ],
       "filesAffected": [],
       "acceptanceCriteria": [
-        "every blocker documented with exact limitation + minimum additional capability (directive \u00a720)"
+        "every blocker documented with exact limitation + minimum additional capability (directive §20)"
       ],
       "status": "BLOCKED",
       "tests": [],
@@ -455,7 +455,7 @@
         "money conservation holds for all purchase kinds",
         "approval-gate release path works (approve endpoint effective)",
         "full security matrix green (unauth 401s, bounded metrics, fail-visible health)",
-        "registry honest: \u00a720 five-point blockers, \u00a722 four-category acceptance, dropped blueprint scope restored",
+        "registry honest: §20 five-point blockers, §22 four-category acceptance, dropped blueprint scope restored",
         "CI green on the remediation commit"
       ],
       "status": "DONE",
@@ -466,6 +466,74 @@
       ],
       "commit": "de428c3",
       "notes": "Registry/ledger/docs updates referencing this task are committed separately (the commit that contains this line)."
+    },
+    {
+      "taskId": "T-017",
+      "requirementIds": [
+        "INFRA-4",
+        "INFRA-5",
+        "INFRA-6",
+        "INFRA-7",
+        "INFRA-8",
+        "INFRA-9",
+        "INFRA-10",
+        "INFRA-11",
+        "INFRA-12",
+        "INFRA-13",
+        "INFRA-14",
+        "INFRA-15",
+        "INFRA-16",
+        "INFRA-17",
+        "INFRA-18",
+        "INFRA-19",
+        "INFRA-20",
+        "INFRA-21",
+        "INFRA-22",
+        "INFRA-23",
+        "INFRA-24",
+        "INFRA-25",
+        "INFRA-26"
+      ],
+      "scope": "Railway infrastructure intelligence: packages/railway (client, credentials, contract, discovery, monitoring, usage, diagnostics, authorization, recovery, events, reconciliation, audit, backup, intelligence, threat model) + contracts schemas + db migration 3 + nexus-api routes/tools/health + tests",
+      "dependencies": [
+        "T-001",
+        "T-013"
+      ],
+      "filesAffected": [
+        "packages/railway/**",
+        "packages/contracts/src/index.ts",
+        "packages/db/src/index.ts",
+        "packages/core/src/index.ts",
+        "apps/nexus-api/src/index.ts",
+        "tsconfig.json",
+        "tests/helpers/railway-mocks.ts",
+        "tests/unit/railway-*.test.ts",
+        "tests/integration/railway-*.test.ts",
+        "tests/scenarios/railway-exercises.test.ts",
+        "registry/*.json",
+        "docs/RAILWAY_INTELLIGENCE.md"
+      ],
+      "acceptanceCriteria": [
+        "typecheck clean; full suite 162 pass / 4 pre-existing skips / 0 fail",
+        "LIVE read-only verification against production Railway API (auth, discovery, monitoring, usage, contract)",
+        "zero mutations executed against production; read-only refusal tested with live credentials",
+        "every acceptance-matrix capability has test evidence or an honest BLOCKED entry"
+      ],
+      "status": "DONE",
+      "tests": [
+        "tests/unit/railway-client.test.ts",
+        "tests/unit/railway-credentials.test.ts",
+        "tests/unit/railway-contract.test.ts",
+        "tests/unit/railway-authorization.test.ts",
+        "tests/unit/railway-webhook.test.ts",
+        "tests/unit/railway-audit.test.ts",
+        "tests/unit/railway-reconciliation.test.ts",
+        "tests/unit/railway-diagnostics.test.ts",
+        "tests/integration/railway-routes.test.ts",
+        "tests/integration/railway-live.test.ts",
+        "tests/scenarios/railway-exercises.test.ts"
+      ],
+      "notes": "Owner directive 2026-11-15 (Railway infrastructure intelligence). Production stayed READ-ONLY throughout; deployment of the new capability awaits owner authorization (INFRA-24)."
     }
   ]
 }

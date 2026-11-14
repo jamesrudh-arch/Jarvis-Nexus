@@ -1,0 +1,14 @@
+{
+  "name": "@nexus/railway",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@nexus/core": "workspace:*",
+    "@nexus/contracts": "workspace:*",
+    "@nexus/db": "workspace:*"
+  }
+}

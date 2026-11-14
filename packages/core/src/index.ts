@@ -31,6 +31,10 @@ export const ID_PREFIXES = {
   audit: "aud",
   snapshot: "snap",
   workspace: "ws",
+  railway: "rwy",
+  grant: "gnt",
+  investigation: "inv",
+  plan: "plan",
 } as const;
 
 // ---------------------------------------------------------------------------

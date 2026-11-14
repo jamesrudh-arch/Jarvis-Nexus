@@ -284,6 +284,51 @@ CREATE INDEX IF NOT EXISTS idx_mcp_audit_at ON mcp_audit(at DESC);
 CREATE INDEX IF NOT EXISTS idx_txn_event_ref ON transactions(event_ref);
 `,
   },
+  {
+    id: 3,
+    name: "railway_intelligence",
+    sql: `
+-- Railway infrastructure intelligence (2026-11-15): append-only event intake
+-- (webhook + polling, dedup by source id), tamper-evident hash-chained audit
+-- trail, and a state table for snapshots/cursors/checkpoints. INSERT-only by
+-- convention: no repo method updates or deletes from railway_events or
+-- railway_audit.
+CREATE TABLE railway_events (
+  seq INTEGER PRIMARY KEY AUTOINCREMENT,
+  id TEXT NOT NULL UNIQUE,
+  kind TEXT NOT NULL,
+  source TEXT NOT NULL,
+  at TEXT NOT NULL,
+  doc TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX idx_railway_events_at ON railway_events(at DESC);
+CREATE INDEX idx_railway_events_kind ON railway_events(kind);
+
+CREATE TABLE railway_audit (
+  seq INTEGER PRIMARY KEY AUTOINCREMENT,
+  id TEXT NOT NULL UNIQUE,
+  at TEXT NOT NULL,
+  category TEXT NOT NULL,
+  severity TEXT NOT NULL,
+  resource TEXT,
+  component TEXT NOT NULL,
+  outcome TEXT NOT NULL,
+  principal TEXT,
+  evidence TEXT NOT NULL,
+  prev_hash TEXT,
+  hash TEXT NOT NULL
+);
+CREATE INDEX idx_railway_audit_at ON railway_audit(at DESC);
+CREATE INDEX idx_railway_audit_category ON railway_audit(category);
+
+CREATE TABLE railway_state (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+`,
+  },
 ];
 
 export function migrate(db: NexusDb): { applied: number[]; skipped: number[] } {
