@@ -7,6 +7,9 @@ credentials.env
 node_modules/
 dist/
 *.tsbuildinfo
+__pycache__/
+*.pyc
+*.pyo
 
 # runtime data (SQLite lives on Railway volume /data in production)
 data/
