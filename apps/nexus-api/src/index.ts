@@ -20,7 +20,7 @@ import { NexusLogger, HealthRegistry, MetricsCollector, newCorrelationId } from 
 import { ok, err, safeJsonStringify, NexusError } from "@nexus/core";
 import { railwayFromEnv, introspectLiveFields, diffContract, contractIsCompatible, BackupService } from "@nexus/railway";
 import { CreateObjectiveRequest, CreateNaeiTaskRequest, AdvanceWorldRequest, CreateMemoryRequest, CONTRACT_VERSION, RailwayDiagnoseRequest, RailwayRecoveryPlanRequest, RailwayExecuteRequest, RailwayAuthorizationRequestSchema } from "@nexus/contracts";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync, readdirSync, statSync, rmSync } from "node:fs";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { join } from "node:path";
 
@@ -646,17 +646,16 @@ export function createApp(cfg: NexusApiConfig) {
   app.get("/railway/backups", requireOwner, async (c) => {
     const snap = await railway.discovery.discoverAll();
     if (!snap.ok) return c.json({ error: snap.error.toJSON() }, 502);
-    return c.json({ data: await railway.backup.report(snap.value) });
+    const volumeReport = await railway.backup.report(snap.value);
+    // Layer 2 (Stage 2 Phase 4): application-level logical backup status —
+    // schedule, retention, history and last verification outcome.
+    const logical = listLogicalBackups();
+    return c.json({ data: { ...volumeReport, logical } });
   });
   app.post("/railway/backup/export", requireOwner, (c) => {
     // app-level logical backup of THIS deployment's own store + isolated restore verification
-    const doc = BackupService.exportLogicalBackup(db);
-    const verification = BackupService.verifyLogicalBackup(doc);
-    const dir = join(cfg.workspaceRoot, "backups");
-    mkdirSync(dir, { recursive: true });
-    const file = join(dir, `${doc.exportedAt.replace(/[:.]/g, "-")}.json`);
-    writeFileSync(file, JSON.stringify(doc));
-    return c.json({ data: { file, tables: doc.tables.length, rows: doc.tables.reduce((n, t) => n + t.rows, 0), verification } }, 201);
+    const result = runLogicalBackup();
+    return c.json({ data: result }, 201);
   });
   app.post("/railway/reconcile", requireOwner, async (c) => {
     const r = await railway.reconciliation.reconcile();
@@ -706,6 +705,76 @@ export function createApp(cfg: NexusApiConfig) {
     const plan = railway.recovery.getPlan(c.req.param("id"));
     return plan ? c.json({ data: plan }) : c.json({ error: "not_found" }, 404);
   });
+  // -- BACKUP SCHEDULER (Stage 2 Phase 4) -------------------------------------------
+  // Application-level logical backups on a schedule: export -> REAL isolated
+  // restore-verify -> write to volume -> retention prune. In-process timer is
+  // correct for this single-instance deployment; a future multi-instance
+  // topology must externalise the schedule (documented in the backup report).
+  const backupDir = join(cfg.workspaceRoot, "backups");
+  const BACKUP_INTERVAL_HOURS = Math.max(0, Number(cfg.env.NEXUS_BACKUP_INTERVAL_HOURS ?? 24));
+  const BACKUP_RETENTION = Math.max(1, Number(cfg.env.NEXUS_BACKUP_RETENTION ?? 14));
+  let lastBackupRun: { at: string; file: string | null; tables: number; rows: number; rowsMatched: boolean; pruned: number } | null = null;
+
+  const runLogicalBackup = (): { file: string; tables: number; rows: number; verification: ReturnType<typeof BackupService.verifyLogicalBackup>; pruned: number } => {
+    const doc = BackupService.exportLogicalBackup(db);
+    const verification = BackupService.verifyLogicalBackup(doc);
+    mkdirSync(backupDir, { recursive: true });
+    const file = join(backupDir, `${doc.exportedAt.replace(/[:.]/g, "-")}.json`);
+    writeFileSync(file, JSON.stringify(doc));
+    // retention: keep the newest BACKUP_RETENTION files, prune the rest
+    const files = readdirSync(backupDir)
+      .filter((f) => f.endsWith(".json"))
+      .map((f) => ({ f, mtime: statSync(join(backupDir, f)).mtimeMs }))
+      .sort((a, b) => b.mtime - a.mtime);
+    let pruned = 0;
+    for (const old of files.slice(BACKUP_RETENTION)) {
+      rmSync(join(backupDir, old.f), { force: true });
+      pruned += 1;
+    }
+    lastBackupRun = {
+      at: doc.exportedAt, file, tables: doc.tables.length,
+      rows: doc.tables.reduce((n, t) => n + t.rows, 0),
+      rowsMatched: verification.rowsMatched, pruned,
+    };
+    logger.info("backup", "logical backup executed", {
+      file, rowsMatched: verification.rowsMatched, pruned,
+      rows: doc.tables.reduce((n, t) => n + t.rows, 0),
+    });
+    return { file, tables: doc.tables.length, rows: doc.tables.reduce((n, t) => n + t.rows, 0), verification, pruned };
+  };
+
+  const listLogicalBackups = () => {
+    let history: Array<{ file: string; bytes: number; at: string }> = [];
+    try {
+      history = readdirSync(backupDir)
+        .filter((f) => f.endsWith(".json"))
+        .map((f) => ({ file: f, bytes: statSync(join(backupDir, f)).size, at: statSync(join(backupDir, f)).mtime.toISOString() }))
+        .sort((a, b) => b.at.localeCompare(a.at));
+    } catch { /* directory may not exist yet — no backups taken */ }
+    return {
+      schedule: {
+        intervalHours: BACKUP_INTERVAL_HOURS,
+        enabled: BACKUP_INTERVAL_HOURS > 0,
+        retentionCount: BACKUP_RETENTION,
+        note: "in-process scheduler (single-instance); volume backup schedules are reported in the volumes layer",
+      },
+      lastRun: lastBackupRun,
+      historyCount: history.length,
+      history: history.slice(0, 20),
+      rpo: { objectiveHours: BACKUP_INTERVAL_HOURS, meaning: "maximum acceptable data loss window = one backup interval (plus any unexported writes)" },
+      rto: { objectiveMinutes: 15, meaning: "logical restore = redeploy image + mount volume + import JSON; verified by isolated restore in CI and at every backup run" },
+    };
+  };
+
+  let backupTimer: ReturnType<typeof setInterval> | null = null;
+  if (BACKUP_INTERVAL_HOURS > 0) {
+    // first backup shortly after boot (staggered to avoid boot-latency impact), then on interval
+    const firstRunMs = 30_000;
+    setTimeout(() => { try { runLogicalBackup(); } catch (e) { logger.error?.("backup", "scheduled backup failed", { error: String(e) }); } }, firstRunMs).unref?.();
+    backupTimer = setInterval(() => { try { runLogicalBackup(); } catch (e) { logger.error?.("backup", "scheduled backup failed", { error: String(e) }); } }, BACKUP_INTERVAL_HOURS * 3_600_000);
+    backupTimer.unref?.();
+  }
+
   app.post("/railway/webhook", async (c) => {
     // Authenticated by the per-project webhook secret (constant-time), not the
     // owner bearer key: Railway's webhook sender cannot present the owner key.
@@ -719,7 +788,7 @@ export function createApp(cfg: NexusApiConfig) {
     return c.json({ data: r.value }, r.value.duplicate ? 200 : 202);
   });
 
-  return { app, db, orchestrator, naei, worldRuntime, mcp, memory, fabric, logger, metrics, health, railway, tools };
+  return { app, db, orchestrator, naei, worldRuntime, mcp, memory, fabric, logger, metrics, health, railway, tools, runLogicalBackup, listLogicalBackups, stopBackupScheduler: () => { if (backupTimer) clearInterval(backupTimer); } };
 }
 
 export type NexusApp = ReturnType<typeof createApp>;
