@@ -1,11 +1,11 @@
 {
   "version": "1.0.0",
-  "generatedAt": "2026-11-14T19:59:55Z",
+  "generatedAt": "2026-11-15T00:00:00Z",
   "requirements": [
     {
       "id": "ARCH-1",
       "product": "PLATFORM",
-      "directive": "§1.1",
+      "directive": "\u00a71.1",
       "title": "Repository architecture (monorepo) with service boundaries",
       "behaviour": "Single repository with workspace packages per subsystem; contracts package defines cross-boundary schemas",
       "subsystem": "repo",
@@ -25,7 +25,7 @@
     {
       "id": "ARCH-2",
       "product": "PLATFORM",
-      "directive": "§1.1",
+      "directive": "\u00a71.1",
       "title": "Atomic commits with change records",
       "behaviour": "Every milestone committed with descriptive messages",
       "subsystem": "repo",
@@ -41,7 +41,7 @@
     {
       "id": "ARCH-3",
       "product": "PLATFORM",
-      "directive": "§1.3",
+      "directive": "\u00a71.3",
       "title": "GitHub credential hygiene",
       "behaviour": "Token never printed/committed; .env gitignored",
       "subsystem": "repo",
@@ -57,7 +57,7 @@
     {
       "id": "ARCH-4",
       "product": "PLATFORM",
-      "directive": "§1.1",
+      "directive": "\u00a71.1",
       "title": "CI workflow: typecheck + tests",
       "behaviour": "GitHub Actions runs tsc --noEmit and bun test on push",
       "subsystem": "ci",
@@ -77,7 +77,7 @@
     {
       "id": "ARCH-5",
       "product": "PLATFORM",
-      "directive": "§16",
+      "directive": "\u00a716",
       "title": "Machine-readable requirements registry",
       "behaviour": "requirements.json with statuses, dependencies, evidence",
       "subsystem": "registry",
@@ -93,7 +93,7 @@
     {
       "id": "ARCH-6",
       "product": "PLATFORM",
-      "directive": "§17",
+      "directive": "\u00a717",
       "title": "Engineering ledger with task records",
       "behaviour": "ledger.json records engineering tasks, scope, tests, commits",
       "subsystem": "registry",
@@ -109,7 +109,7 @@
     {
       "id": "TECH-1",
       "product": "INTEGRATION",
-      "directive": "§2.3",
+      "directive": "\u00a72.3",
       "title": "OpenViking investigation and decision",
       "behaviour": "volcengine/OpenViking (42.2k stars, AGPL-3.0) assessed: ADOPT via adapter; memory abstraction keeps native engine default",
       "subsystem": "memory",
@@ -125,7 +125,7 @@
     {
       "id": "TECH-2",
       "product": "INTEGRATION",
-      "directive": "§2.3",
+      "directive": "\u00a72.3",
       "title": "Pizza Bot investigation and decision",
       "behaviour": "pizza-bot-app/pizza-bot (559 stars, Apache-2.0) assessed: ADAPT patterns (durable queues, checkpointing, HITL) into NAEI",
       "subsystem": "naei",
@@ -141,7 +141,7 @@
     {
       "id": "TECH-3",
       "product": "INTEGRATION",
-      "directive": "§2.3",
+      "directive": "\u00a72.3",
       "title": "ARTEMIS investigation and decision",
       "behaviour": "google/artemis (17.4k stars, Apache-2.0) Android automation; iOS requires Appium/WDA path; live integration blocked (no device host in build env)",
       "subsystem": "integration",
@@ -164,7 +164,7 @@
     {
       "id": "TECH-4",
       "product": "INTEGRATION",
-      "directive": "§2.3",
+      "directive": "\u00a72.3",
       "title": "Unsloth investigation and decision",
       "behaviour": "unslothai/unsloth (79.5k stars, Apache-2.0 core): training requires GPU >= 5GB VRAM; adopted for off-platform training (Colab/Kaggle); Railway is CPU-only",
       "subsystem": "ai-lab",
@@ -187,7 +187,7 @@
     {
       "id": "TECH-5",
       "product": "INTEGRATION",
-      "directive": "§2.3",
+      "directive": "\u00a72.3",
       "title": "Godot investigation and decision",
       "behaviour": "Godot 4.7.2 (MIT): auxiliary headless test harness only; Unreal remains primary world runtime",
       "subsystem": "integration",
@@ -203,7 +203,7 @@
     {
       "id": "TECH-6",
       "product": "INTEGRATION",
-      "directive": "§2.3",
+      "directive": "\u00a72.3",
       "title": "Unity investigation and decision",
       "behaviour": "No measurable advantage over Unreal+Blender; excluded from runtime stack (documented rationale)",
       "subsystem": "integration",
@@ -219,7 +219,7 @@
     {
       "id": "TECH-7",
       "product": "INTEGRATION",
-      "directive": "§3",
+      "directive": "\u00a73",
       "title": "Technology acquisition registry",
       "behaviour": "registry/technologies.json with capabilities, licences, decisions, integration status, test results",
       "subsystem": "registry",
@@ -235,9 +235,9 @@
     {
       "id": "TECH-8",
       "product": "INTEGRATION",
-      "directive": "§2.3",
+      "directive": "\u00a72.3",
       "title": "Additional tools (FreeMoCap/Natron/Theatre.js) assessed",
-      "behaviour": "FreeMoCap AGPL high-relevance (video mocap, REST API); Natron low priority; Theatre.js marginal — records with verdicts",
+      "behaviour": "FreeMoCap AGPL high-relevance (video mocap, REST API); Natron low priority; Theatre.js marginal \u2014 records with verdicts",
       "subsystem": "integration",
       "dependsOn": [],
       "status": "VERIFIED",
@@ -251,7 +251,7 @@
     {
       "id": "MCP-1",
       "product": "PLATFORM",
-      "directive": "§4.1",
+      "directive": "\u00a74.1",
       "title": "MCP lifecycle management (register, connect, discover, invoke, audit)",
       "behaviour": "Gateway registers servers, connects over stdio/HTTP, discovers tools, routes invocations with validation + audit",
       "subsystem": "mcp-gateway",
@@ -271,7 +271,7 @@
     {
       "id": "MCP-2",
       "product": "PLATFORM",
-      "directive": "§4.2",
+      "directive": "\u00a74.2",
       "title": "Schema validation and permission enforcement",
       "behaviour": "Required-args validation rejects invalid invocations; approval_required servers demand approvedBy",
       "subsystem": "mcp-gateway",
@@ -291,9 +291,9 @@
     {
       "id": "MCP-3",
       "product": "PLATFORM",
-      "directive": "§4.4",
+      "directive": "\u00a74.4",
       "title": "Integration acceptance: real operation succeeds",
-      "behaviour": "Bundled test MCP server: connect → discover 3 tools → real echo operation → audit recorded",
+      "behaviour": "Bundled test MCP server: connect \u2192 discover 3 tools \u2192 real echo operation \u2192 audit recorded",
       "subsystem": "mcp-gateway",
       "dependsOn": [],
       "status": "VERIFIED",
@@ -307,7 +307,7 @@
     {
       "id": "MCP-4",
       "product": "INTEGRATION",
-      "directive": "§4.3",
+      "directive": "\u00a74.3",
       "title": "Unreal MCP + Blender MCP registered integrations",
       "behaviour": "Manifests prepared per MCP Registry server.json format; endpoints configured by env in deployment",
       "subsystem": "mcp-gateway",
@@ -324,13 +324,13 @@
         "limitation": "Unreal Editor MCP and Blender MCP servers run on the owner's workstation; neither runtime exists in the build environment.",
         "technicalEvidence": "registry/technologies.json TECH-012/013 (Epic UE 5.8 MCP docs; mcp-for-blender README)",
         "minimumAdditionalCapability": "Owner workstation with UE 5.8+ and Blender 4.x, reachable by the gateway over HTTP",
-        "continuesIndependently": "Gateway verified end-to-end with the bundled test server (directive §4.4); HTTP transport ready"
+        "continuesIndependently": "Gateway verified end-to-end with the bundled test server (directive \u00a74.4); HTTP transport ready"
       }
     },
     {
       "id": "JAR-1",
       "product": "JARVIS",
-      "directive": "§5.1",
+      "directive": "\u00a75.1",
       "title": "Cognitive architecture: distinct perception/context/reasoning/planning/action/evaluation services",
       "behaviour": "packages/cognition implements each as a service contract; orchestrator composes them",
       "subsystem": "cognition",
@@ -347,7 +347,7 @@
     {
       "id": "JAR-2",
       "product": "JARVIS",
-      "directive": "§5.2",
+      "directive": "\u00a75.2",
       "title": "Central orchestration state machine with persistence",
       "behaviour": "RECEIVED..COMPLETED states persisted per transition; restart resumes mid-flight tasks",
       "subsystem": "orchestrator",
@@ -363,7 +363,7 @@
     {
       "id": "JAR-3",
       "product": "JARVIS",
-      "directive": "§5.3",
+      "directive": "\u00a75.3",
       "title": "Model intelligence fabric (provider-independent routing)",
       "behaviour": "Cloudflare (LIVE), OpenAI, echo providers; capability ranking, fallback chains, health + cost tracking",
       "subsystem": "model-fabric",
@@ -376,7 +376,7 @@
         },
         {
           "kind": "commit",
-          "reference": "audit repair de428c3: echo provider OFF by default (NEXUS_ALLOW_ECHO=true to opt in) — degraded mode fails loudly instead of silently (ADR-007)"
+          "reference": "audit repair de428c3: echo provider OFF by default (NEXUS_ALLOW_ECHO=true to opt in) \u2014 degraded mode fails loudly instead of silently (ADR-007)"
         }
       ],
       "outstandingWork": "Per-call provider provenance is not plumbed into task records (aggregate health only)"
@@ -384,7 +384,7 @@
     {
       "id": "JAR-4",
       "product": "JARVIS",
-      "directive": "§5.4",
+      "directive": "\u00a75.4",
       "title": "Memory architecture: tiers, retrieval, consolidation, provenance, supersession",
       "behaviour": "9 tiers, relevance ranking, promotion, contradiction detection, kind separation, scope isolation",
       "subsystem": "memory",
@@ -401,7 +401,7 @@
     {
       "id": "JAR-5",
       "product": "JARVIS",
-      "directive": "§5.5",
+      "directive": "\u00a75.5",
       "title": "Voice intelligence architecture",
       "behaviour": "Voice pipeline interface (STT/intent/TTS/streaming) is specified; live capture/playback needs an audio-runtime host",
       "subsystem": "voice",
@@ -419,7 +419,7 @@
     {
       "id": "JAR-6",
       "product": "JARVIS",
-      "directive": "§5.6",
+      "directive": "\u00a75.6",
       "title": "Autonomous task execution with tool routing",
       "behaviour": "Objectives decompose into plans; tools include memory, world, MCP, NAEI delegation; outcomes stored in episodic memory",
       "subsystem": "orchestrator",
@@ -432,14 +432,14 @@
       "evidence": [
         {
           "kind": "test",
-          "reference": "integration: Scenario A shape — objective to completion with live model"
+          "reference": "integration: Scenario A shape \u2014 objective to completion with live model"
         }
       ]
     },
     {
       "id": "JAR-7",
       "product": "JARVIS",
-      "directive": "§5.4",
+      "directive": "\u00a75.4",
       "title": "OpenViking adapter seam",
       "behaviour": "MemoryBackend interface is the stable seam; OpenViking provider adapter specified (AGPL assessed)",
       "subsystem": "memory",
@@ -458,7 +458,7 @@
     {
       "id": "NAEI-1",
       "product": "NAEI",
-      "directive": "§6.1",
+      "directive": "\u00a76.1",
       "title": "Specialist agent divisions with capability profiles",
       "behaviour": "10-agent default roster across 6 divisions with structured contracts",
       "subsystem": "naei",
@@ -474,7 +474,7 @@
     {
       "id": "NAEI-2",
       "product": "NAEI",
-      "directive": "§6.2",
+      "directive": "\u00a76.2",
       "title": "Agent contracts (identity, budgets, permissions, failure policy)",
       "behaviour": "AgentContract schema enforced for every agent",
       "subsystem": "naei",
@@ -490,7 +490,7 @@
     {
       "id": "NAEI-3",
       "product": "NAEI",
-      "directive": "§6.3",
+      "directive": "\u00a76.3",
       "title": "Task queue with dependency DAG + ready scheduling",
       "behaviour": "Tasks queue until dependencies reach VERIFIED/COMMITTED",
       "subsystem": "naei",
@@ -506,7 +506,7 @@
     {
       "id": "NAEI-4",
       "product": "NAEI",
-      "directive": "§6.3",
+      "directive": "\u00a76.3",
       "title": "Isolated workspaces + checkpointing",
       "behaviour": "Per-task workspace directories with analysis/implementation/verification artifacts",
       "subsystem": "naei",
@@ -522,7 +522,7 @@
     {
       "id": "NAEI-5",
       "product": "NAEI",
-      "directive": "§6.4",
+      "directive": "\u00a76.4",
       "title": "Independent verification (agent never certifies own work)",
       "behaviour": "verification_engineer (different agent) inspects requirement vs implementation; can FAIL",
       "subsystem": "naei",
@@ -540,7 +540,7 @@
     {
       "id": "NAEI-6",
       "product": "NAEI",
-      "directive": "§6.3",
+      "directive": "\u00a76.3",
       "title": "Human approval gates for consequential operations",
       "behaviour": "requiresApproval tasks pause at AWAITING_APPROVAL until owner approves",
       "subsystem": "naei",
@@ -556,9 +556,9 @@
     {
       "id": "NAEI-7",
       "product": "NAEI",
-      "directive": "§19 B",
+      "directive": "\u00a719 B",
       "title": "Scenario B: NAEI autonomous engineering end-to-end",
-      "behaviour": "Submit requirement → assign → analyse → implement → independently verify → terminal status",
+      "behaviour": "Submit requirement \u2192 assign \u2192 analyse \u2192 implement \u2192 independently verify \u2192 terminal status",
       "subsystem": "naei",
       "dependsOn": [
         "NAEI-1",
@@ -575,7 +575,7 @@
     {
       "id": "WLD-1",
       "product": "NEXUS_WORLD",
-      "directive": "§7.1",
+      "directive": "\u00a77.1",
       "title": "Authoritative world-state separate from rendering",
       "behaviour": "World state lives in backend store; no rendering client required",
       "subsystem": "world",
@@ -591,7 +591,7 @@
     {
       "id": "WLD-2",
       "product": "NEXUS_WORLD",
-      "directive": "§7.2",
+      "directive": "\u00a77.2",
       "title": "Canonical entity models (World/Resident/Vehicle/Property/Business/Account/Event)",
       "behaviour": "Versioned zod schemas with stable ids and explicit relationships",
       "subsystem": "contracts",
@@ -607,7 +607,7 @@
     {
       "id": "WLD-3",
       "product": "NEXUS_WORLD",
-      "directive": "§7.3",
+      "directive": "\u00a77.3",
       "title": "Simulation scheduler with fidelity tiers",
       "behaviour": "HIGH/MEDIUM/ABSTRACT assignment by distance; tiered tick cadence",
       "subsystem": "world",
@@ -623,7 +623,7 @@
     {
       "id": "WLD-4",
       "product": "NEXUS_WORLD",
-      "directive": "§7.4",
+      "directive": "\u00a77.4",
       "title": "Life engine: needs, goals, routines, relationships",
       "behaviour": "Utility-AI activity selection from needs x time-of-day x personality; deterministic seeds",
       "subsystem": "world",
@@ -639,7 +639,7 @@
     {
       "id": "WLD-5",
       "product": "NEXUS_WORLD",
-      "directive": "§7.5",
+      "directive": "\u00a77.5",
       "title": "Causal memory engine (event-sourced, knowledge levels)",
       "behaviour": "Append-only events with cause/participants/witnesses; knowledge isolation verified",
       "subsystem": "world",
@@ -655,8 +655,8 @@
     {
       "id": "WLD-6",
       "product": "NEXUS_WORLD",
-      "directive": "§7.6",
-      "title": "World director (conditions → events)",
+      "directive": "\u00a77.6",
+      "title": "World director (conditions \u2192 events)",
       "behaviour": "Weather incidents, collisions during commute, community events; never controls individual residents",
       "subsystem": "world",
       "dependsOn": [
@@ -666,7 +666,7 @@
       "evidence": [
         {
           "kind": "test",
-          "reference": "Scenario F: collision → response → road consequence chain"
+          "reference": "Scenario F: collision \u2192 response \u2192 road consequence chain"
         },
         {
           "kind": "commit",
@@ -677,7 +677,7 @@
     {
       "id": "WLD-7",
       "product": "NEXUS_WORLD",
-      "directive": "§7.8",
+      "directive": "\u00a77.8",
       "title": "Economic intelligence with transactional consistency",
       "behaviour": "Atomic transfers/purchases/salaries; idempotent salary; money-supply conservation verified",
       "subsystem": "world",
@@ -697,8 +697,8 @@
     {
       "id": "WLD-8",
       "product": "NEXUS_WORLD",
-      "directive": "§7.11",
-      "title": "Creation engine (natural language → construction spec + world state)",
+      "directive": "\u00a77.11",
+      "title": "Creation engine (natural language \u2192 construction spec + world state)",
       "behaviour": "6 construction kinds produce structures, roads, population, businesses; construction event recorded",
       "subsystem": "world",
       "dependsOn": [],
@@ -713,7 +713,7 @@
     {
       "id": "WLD-9",
       "product": "NEXUS_WORLD",
-      "directive": "§11",
+      "directive": "\u00a711",
       "title": "World continuity: snapshots + restart recovery",
       "behaviour": "Snapshot checkpoints; recover() restores state + verifies event continuity; idempotent replay",
       "subsystem": "world",
@@ -736,7 +736,7 @@
     {
       "id": "WLD-10",
       "product": "NEXUS_WORLD",
-      "directive": "§7.9",
+      "directive": "\u00a77.9",
       "title": "Ecology engine",
       "behaviour": "Wildlife populations, habitats, ecosystem simulation",
       "subsystem": "world",
@@ -747,7 +747,7 @@
     {
       "id": "WLD-11",
       "product": "NEXUS_WORLD",
-      "directive": "§7.7",
+      "directive": "\u00a77.7",
       "title": "Civilisation institutions (government, healthcare, police...)",
       "behaviour": "Institutional entities with operational state",
       "subsystem": "world",
@@ -763,7 +763,7 @@
     {
       "id": "UE-1",
       "product": "NEXUS_WORLD",
-      "directive": "§8.1",
+      "directive": "\u00a78.1",
       "title": "Unreal Engine project structure",
       "behaviour": "Real .uproject + C++ runtime modules for world-state integration",
       "subsystem": "tools/unreal",
@@ -779,7 +779,7 @@
     {
       "id": "UE-2",
       "product": "NEXUS_WORLD",
-      "directive": "§8",
+      "directive": "\u00a78",
       "title": "Unreal build verification",
       "behaviour": "Compile + editor automation requires UE 5.x toolchain",
       "subsystem": "tools/unreal",
@@ -799,7 +799,7 @@
     {
       "id": "BLD-1",
       "product": "NEXUS_WORLD",
-      "directive": "§9.1",
+      "directive": "\u00a79.1",
       "title": "Blender production pipeline (bpy automation + validation harness)",
       "behaviour": "Asset generation scripts + spec-driven validation runnable with bpy or headless harness",
       "subsystem": "tools/blender-pipeline",
@@ -815,7 +815,7 @@
     {
       "id": "BLD-2",
       "product": "NEXUS_WORLD",
-      "directive": "§9.1",
+      "directive": "\u00a79.1",
       "title": "Blender live execution",
       "behaviour": "Actual bpy runs producing .blend/FBX assets",
       "subsystem": "tools/blender-pipeline",
@@ -835,9 +835,9 @@
     {
       "id": "BLD-3",
       "product": "NEXUS_WORLD",
-      "directive": "§19 C",
-      "title": "Scenario C: Blender → Unreal asset round trip",
-      "behaviour": "Building asset: spec → Blender geometry → validation → export → Unreal import → runtime check",
+      "directive": "\u00a719 C",
+      "title": "Scenario C: Blender \u2192 Unreal asset round trip",
+      "behaviour": "Building asset: spec \u2192 Blender geometry \u2192 validation \u2192 export \u2192 Unreal import \u2192 runtime check",
       "subsystem": "pipeline",
       "dependsOn": [
         "BLD-2",
@@ -856,7 +856,7 @@
     {
       "id": "GAME-1",
       "product": "NEXUS_WORLD",
-      "directive": "§10.2",
+      "directive": "\u00a710.2",
       "title": "Property ownership system",
       "behaviour": "Transactional purchase with ownership records (buyProperty)",
       "subsystem": "world",
@@ -878,7 +878,7 @@
     {
       "id": "GAME-2",
       "product": "NEXUS_WORLD",
-      "directive": "§10.3",
+      "directive": "\u00a710.3",
       "title": "Vehicle ownership system",
       "behaviour": "Transactional vehicle purchase with possession records",
       "subsystem": "world",
@@ -896,7 +896,7 @@
     {
       "id": "GAME-3",
       "product": "NEXUS_WORLD",
-      "directive": "§10.4-10.9",
+      "directive": "\u00a710.4-10.9",
       "title": "Gameplay systems (racing, combat, dance, sports...)",
       "behaviour": "Full interactive gameplay requires the Unreal client",
       "subsystem": "unreal",
@@ -909,7 +909,7 @@
     {
       "id": "INFRA-1",
       "product": "PLATFORM",
-      "directive": "§12.1",
+      "directive": "\u00a712.1",
       "title": "Railway deployment of NEXUS API",
       "behaviour": "Auto-deploy from main; Dockerfile build; /health healthcheck; /data volume persistence",
       "subsystem": "deploy",
@@ -937,12 +937,12 @@
     {
       "id": "INFRA-2",
       "product": "PLATFORM",
-      "directive": "§12.2",
+      "directive": "\u00a712.2",
       "title": "Supabase role in stack",
       "behaviour": "Assessed: schema empty, SQLite on volume chosen for single-service deploy (ADR-005); Supabase credentials preserved for future Postgres migration",
       "subsystem": "deploy",
       "dependsOn": [],
-      "status": "VERIFIED",
+      "status": "SPECIFIED",
       "evidence": [
         {
           "kind": "report",
@@ -953,7 +953,7 @@
     {
       "id": "INFRA-3",
       "product": "PLATFORM",
-      "directive": "§12.4",
+      "directive": "\u00a712.4",
       "title": "Versioned service contracts",
       "behaviour": "CONTRACT_VERSION + zod schemas shared by all services",
       "subsystem": "contracts",
@@ -969,7 +969,7 @@
     {
       "id": "SEC-1",
       "product": "PLATFORM",
-      "directive": "§13",
+      "directive": "\u00a713",
       "title": "Owner authentication for consequential routes",
       "behaviour": "OWNER_KEY bearer required for advance/construct/execute/approve/commit",
       "subsystem": "api",
@@ -982,14 +982,14 @@
         },
         {
           "kind": "test",
-          "reference": "audit repair de428c3: full auth matrix in tests/integration/security.test.ts — 15 consequential routes x 401, wrong-key 401, query-string key rejected"
+          "reference": "audit repair de428c3: full auth matrix in tests/integration/security.test.ts \u2014 15 consequential routes x 401, wrong-key 401, query-string key rejected"
         }
       ]
     },
     {
       "id": "SEC-2",
       "product": "PLATFORM",
-      "directive": "§13",
+      "directive": "\u00a713",
       "title": "Secret management",
       "behaviour": "Secrets via env only; never committed; audit trail for tool invocations",
       "subsystem": "api",
@@ -1009,7 +1009,7 @@
     {
       "id": "OBS-1",
       "product": "PLATFORM",
-      "directive": "§14",
+      "directive": "\u00a714",
       "title": "Observability: health, metrics, structured logs",
       "behaviour": "HealthRegistry (5 probes), MetricsCollector, NexusLogger, correlation ids",
       "subsystem": "observability",
@@ -1029,7 +1029,7 @@
     {
       "id": "OBS-2",
       "product": "PLATFORM",
-      "directive": "§14",
+      "directive": "\u00a714",
       "title": "No masking of failures",
       "behaviour": "Probes report unhealthy on error; verification refuses to self-certify",
       "subsystem": "observability",
@@ -1045,9 +1045,9 @@
     {
       "id": "SCEN-A",
       "product": "JARVIS",
-      "directive": "§19 A",
+      "directive": "\u00a719 A",
       "title": "Scenario A: JARVIS autonomy",
-      "behaviour": "Complex objective → memory retrieval → plan → tools → verify → store outcome",
+      "behaviour": "Complex objective \u2192 memory retrieval \u2192 plan \u2192 tools \u2192 verify \u2192 store outcome",
       "subsystem": "orchestrator",
       "dependsOn": [
         "JAR-1",
@@ -1068,9 +1068,9 @@
     {
       "id": "SCEN-B",
       "product": "NAEI",
-      "directive": "§19 B",
+      "directive": "\u00a719 B",
       "title": "Scenario B: NAEI autonomous engineering",
-      "behaviour": "Requirement → agents → implement → test → verify → commit path",
+      "behaviour": "Requirement \u2192 agents \u2192 implement \u2192 test \u2192 verify \u2192 commit path",
       "subsystem": "naei",
       "dependsOn": [
         "NAEI-7"
@@ -1086,9 +1086,9 @@
     {
       "id": "SCEN-D",
       "product": "NEXUS_WORLD",
-      "directive": "§19 D",
+      "directive": "\u00a719 D",
       "title": "Scenario D: persistent world across restart",
-      "behaviour": "Modify world → stop → restart → state + history consistent",
+      "behaviour": "Modify world \u2192 stop \u2192 restart \u2192 state + history consistent",
       "subsystem": "world",
       "dependsOn": [
         "WLD-9"
@@ -1104,9 +1104,9 @@
     {
       "id": "SCEN-E",
       "product": "NEXUS_WORLD",
-      "directive": "§19 E",
+      "directive": "\u00a719 E",
       "title": "Scenario E: autonomous residents",
-      "behaviour": "Work, encounter, event, purchase — experiences/relationships/memories retained; outsiders know nothing",
+      "behaviour": "Work, encounter, event, purchase \u2014 experiences/relationships/memories retained; outsiders know nothing",
       "subsystem": "world",
       "dependsOn": [
         "WLD-4",
@@ -1123,7 +1123,7 @@
     {
       "id": "SCEN-F",
       "product": "NEXUS_WORLD",
-      "directive": "§19 F",
+      "directive": "\u00a719 F",
       "title": "Scenario F: causal world event (collision in rain)",
       "behaviour": "Damage, witnesses, emergency response, road consequence, resident memories, causal ordering",
       "subsystem": "world",
@@ -1142,7 +1142,7 @@
     {
       "id": "SCEN-G",
       "product": "NEXUS_WORLD",
-      "directive": "§19 G",
+      "directive": "\u00a719 G",
       "title": "Scenario G: world economy",
       "behaviour": "Payment, balances, inventory, revenue, stock, transaction history, money conservation",
       "subsystem": "world",
@@ -1160,9 +1160,9 @@
     {
       "id": "SCEN-H",
       "product": "NEXUS_WORLD",
-      "directive": "§19 H",
+      "directive": "\u00a719 H",
       "title": "Scenario H: world creation",
-      "behaviour": "Neighbourhood request → records + infrastructure + population created and persistent",
+      "behaviour": "Neighbourhood request \u2192 records + infrastructure + population created and persistent",
       "subsystem": "world",
       "dependsOn": [
         "WLD-8"
@@ -1178,9 +1178,9 @@
     {
       "id": "LAB-1",
       "product": "PLATFORM",
-      "directive": "Product blueprints: §34 (files 5/6); §7 (file 1); Part 10-11 (files 2-3)",
+      "directive": "Product blueprints: \u00a734 (files 5/6); \u00a77 (file 1); Part 10-11 (files 2-3)",
       "title": "NEXUS Laboratory workflows",
-      "behaviour": "Actual laboratory workflows: research, experimentation, engineering, software development, model evaluation, simulation, asset production, prototyping, creative workflows, results management — with 12-field experiment records, seed reproducibility and SIMULATION PREDICTION labelling",
+      "behaviour": "Actual laboratory workflows: research, experimentation, engineering, software development, model evaluation, simulation, asset production, prototyping, creative workflows, results management \u2014 with 12-field experiment records, seed reproducibility and SIMULATION PREDICTION labelling",
       "subsystem": "laboratory",
       "dependsOn": [],
       "status": "DISCOVERED",
@@ -1189,7 +1189,7 @@
     {
       "id": "EMB-1",
       "product": "JARVIS",
-      "directive": "Product blueprints: §13-14 (files 5/6); Part 13 (file 2)",
+      "directive": "Product blueprints: \u00a713-14 (files 5/6); Part 13 (file 2)",
       "title": "JARVIS embodiment: persistent digital-human character",
       "behaviour": "Persistent adult digital-human character: 66-bone rig, blendshapes, lip-sync, convincing facial proportions, natural eyes, gaze behaviour, facial expression, blinking; shared body/voice/intelligence state; preserve existing rig assets",
       "subsystem": "embodiment",
@@ -1202,20 +1202,20 @@
     {
       "id": "SEC-3",
       "product": "PLATFORM",
-      "directive": "Product blueprints: §4 (file 1); Part 4 (file 2); Part 13 (file 3)",
+      "directive": "Product blueprints: \u00a74 (file 1); Part 4 (file 2); Part 13 (file 3)",
       "title": "Seven owner switches",
-      "behaviour": "Master, Microphone, Camera, Autonomy, Remote Compute, Computer Control, Embodiment — enforced on BOTH client and server; Microphone and Camera must default to OFF after every fresh session and restart",
+      "behaviour": "Master, Microphone, Camera, Autonomy, Remote Compute, Computer Control, Embodiment \u2014 enforced on BOTH client and server; Microphone and Camera must default to OFF after every fresh session and restart",
       "subsystem": "api",
       "dependsOn": [
         "SEC-1"
       ],
-      "status": "DISCOVERED",
+      "status": "SPECIFIED",
       "evidence": []
     },
     {
       "id": "WLD-12",
       "product": "NEXUS_WORLD",
-      "directive": "Product blueprint file 3: §4.3-4.4",
+      "directive": "Product blueprint file 3: \u00a74.3-4.4",
       "title": "Regional population targets and settlement quotas",
       "behaviour": "Highlands 150,000; Western 400,000; Central 900,000; Eastern 450,000; Southern 300,000; Coastal 350,000. At least 8 villages, minimum 40 buildings per village, minimum 200 per town; 6 regions, 7 settlements, 11 capital districts, 5 km x 7 km footprint",
       "subsystem": "world",
@@ -1226,7 +1226,7 @@
     {
       "id": "WLD-13",
       "product": "NEXUS_WORLD",
-      "directive": "Product blueprint file 3: §10.2, Part 15",
+      "directive": "Product blueprint file 3: \u00a710.2, Part 15",
       "title": "World-time calendar and performance targets",
       "behaviour": "One simulated world day = 24 real minutes at 1x; support pause, 1x, 10x, 100x; four seasons of 91 days; 1080p at average 60 FPS (minimum 30); simulation tick under 16 ms; save under 5 s; load under 30 s",
       "subsystem": "world",
@@ -1239,7 +1239,7 @@
     {
       "id": "WLD-14",
       "product": "NEXUS_WORLD",
-      "directive": "Master Directive §7.10",
+      "directive": "Master Directive \u00a77.10",
       "title": "NEXUS REALITY ENGINE",
       "behaviour": "Collision, physics, material interactions, doors, furniture, movable objects, water, vegetation, weather, lighting, shadows, reflections, fire, smoke, dust, vehicle damage, environmental reactions, spatial audio",
       "subsystem": "unreal",
@@ -1252,7 +1252,7 @@
     {
       "id": "GAME-4",
       "product": "NEXUS_WORLD",
-      "directive": "Master Directive §10.1",
+      "directive": "Master Directive \u00a710.1",
       "title": "Player: persistent character",
       "behaviour": "Persistent character with customisation, first-person and third-person, movement, interaction, inventory, skills, finances, reputation",
       "subsystem": "unreal",
@@ -1265,7 +1265,7 @@
     {
       "id": "TECH-9",
       "product": "INTEGRATION",
-      "directive": "Product blueprint file 4: §22-24",
+      "directive": "Product blueprint file 4: \u00a722-24",
       "title": "Selective 50-day AI training programme",
       "behaviour": "Maximum initial programme window 50 days with a day-by-day schedule (days 1-5 inventory ... 45-50 final selection); SFT/LoRA/QLoRA/distillation methods; teacher-student independence rules",
       "subsystem": "ai-lab",
@@ -1278,7 +1278,7 @@
     {
       "id": "PROC-1",
       "product": "PLATFORM",
-      "directive": "Master Directive §15.3",
+      "directive": "Master Directive \u00a715.3",
       "title": "8-field evidence format for verified requirements",
       "behaviour": "Every verified requirement carries: requirement ID, implementation reference, test reference, execution result, evidence, verification agent, timestamp, relevant commit (the registry evidence objects currently carry 2 fields)",
       "subsystem": "registry",
@@ -1296,9 +1296,9 @@
     {
       "id": "PROC-2",
       "product": "PLATFORM",
-      "directive": "Master Directive §20",
+      "directive": "Master Directive \u00a720",
       "title": "Five-point blocker documentation for every BLOCKED requirement",
-      "behaviour": "Exact limitation, technical evidence, minimum additional capability, compatible solution, and what continues independently — never a bare BLOCKED",
+      "behaviour": "Exact limitation, technical evidence, minimum additional capability, compatible solution, and what continues independently \u2014 never a bare BLOCKED",
       "subsystem": "registry",
       "dependsOn": [],
       "status": "VERIFIED",
@@ -1312,7 +1312,7 @@
     {
       "id": "PROC-3",
       "product": "PLATFORM",
-      "directive": "Master Directive §22",
+      "directive": "Master Directive \u00a722",
       "title": "Four-category acceptance reporting, never combined",
       "behaviour": "IMPLEMENTED / VERIFIED / DEPLOYED / BLOCKED reported as four separate categories; no 10/10 rating for incomplete work",
       "subsystem": "docs",
@@ -1328,7 +1328,7 @@
     {
       "id": "PROC-4",
       "product": "PLATFORM",
-      "directive": "Master Directive §21",
+      "directive": "Master Directive \u00a721",
       "title": "Session persistence and resumability",
       "behaviour": "Engineering workflow persists current milestone, active tasks and the exact next action; termination and resumption protocols",
       "subsystem": "process",
@@ -1339,7 +1339,7 @@
     {
       "id": "INFRA-4",
       "product": "PLATFORM",
-      "directive": "§2-§22 (Railway intelligence directive 2026-11-15)",
+      "directive": "\u00a72-\u00a722 (Railway intelligence directive 2026-11-15)",
       "title": "Secure Railway credential management",
       "behaviour": "Token read once from env (gitignored, chmod-600 .env); prefix-family detection with per-type auth header (Bearer vs Project-Access-Token); rotation support; redaction on every surface; unconfigured fails closed (never faked)",
       "subsystem": "railway",
@@ -1366,7 +1366,7 @@
     {
       "id": "INFRA-5",
       "product": "PLATFORM",
-      "directive": "§2-§22 (Railway intelligence directive 2026-11-15)",
+      "directive": "\u00a72-\u00a722 (Railway intelligence directive 2026-11-15)",
       "title": "Live Railway authentication verified",
       "behaviour": "Workspace token authenticates against https://backboard.railway.com/graphql/v2; auth failures arrive as HTTP 200 + 'Not Authorized' (validated independently of HTTP status); project tokens use the Project-Access-Token header",
       "subsystem": "railway",
@@ -1393,7 +1393,7 @@
     {
       "id": "INFRA-6",
       "product": "PLATFORM",
-      "directive": "§2-§22 (Railway intelligence directive 2026-11-15)",
+      "directive": "\u00a72-\u00a722 (Railway intelligence directive 2026-11-15)",
       "title": "GraphQL client with timeout, retry, backoff, cache, budget guard",
       "behaviour": "Exponential backoff with jitter honouring Retry-After; queries retry on transport failures; mutations retry ONLY when no connection was established; TTL cache for queries; client-side rate-budget floor; circuit breaker",
       "subsystem": "railway",
@@ -1410,7 +1410,7 @@
     {
       "id": "INFRA-7",
       "product": "PLATFORM",
-      "directive": "§2-§22 (Railway intelligence directive 2026-11-15)",
+      "directive": "\u00a72-\u00a722 (Railway intelligence directive 2026-11-15)",
       "title": "API contract intelligence (versioned, drift-detecting)",
       "behaviour": "Machine-generated live-schema baseline committed at packages/railway/contract/expected-fields.json (captured 2026-11-15); USED_FIELDS subset check (unit); live introspection diff flags removed/deprecated/added fields as BREAKING/WARNING/INFO",
       "subsystem": "railway",
@@ -1437,7 +1437,7 @@
     {
       "id": "INFRA-8",
       "product": "PLATFORM",
-      "directive": "§2-§22 (Railway intelligence directive 2026-11-15)",
+      "directive": "\u00a72-\u00a722 (Railway intelligence directive 2026-11-15)",
       "title": "Complete infrastructure discovery with honest classification",
       "behaviour": "Workspace, projects, environments, service instances (+ latest deployments, domains incl. nested CustomDomainStatus), deployment history, volumes, volume backups + schedules, platform status, project events, workspace audit-log metadata; resources classified discovered/inaccessible/missing/unsupported/unverified; variables query NEVER issued (returns secret values)",
       "subsystem": "railway",
@@ -1459,7 +1459,7 @@
     {
       "id": "INFRA-9",
       "product": "PLATFORM",
-      "directive": "§2-§22 (Railway intelligence directive 2026-11-15)",
+      "directive": "\u00a72-\u00a722 (Railway intelligence directive 2026-11-15)",
       "title": "Deployment monitoring",
       "behaviour": "Latest + historical deployment states classified across the verified 13-value DeploymentStatus enum (failed/transitioning/sleeping/removed/approval_needed); per-service-instance evidence",
       "subsystem": "railway",
@@ -1481,7 +1481,7 @@
     {
       "id": "INFRA-10",
       "product": "PLATFORM",
-      "directive": "§2-§22 (Railway intelligence directive 2026-11-15)",
+      "directive": "\u00a72-\u00a722 (Railway intelligence directive 2026-11-15)",
       "title": "Independent application health",
       "behaviour": "Direct HTTP checks to public service domains (healthcheckPath-aware) decoupled from the Railway API; 200 healthy / 503 unhealthy / auth-gated alive / timeout-unreachable; NEVER conflated with deployment success",
       "subsystem": "railway",
@@ -1498,7 +1498,7 @@
     {
       "id": "INFRA-11",
       "product": "PLATFORM",
-      "directive": "§2-§22 (Railway intelligence directive 2026-11-15)",
+      "directive": "\u00a72-\u00a722 (Railway intelligence directive 2026-11-15)",
       "title": "Dependency health",
       "behaviour": "Application's own /health/detailed component view + Railway platform status (incidents/maintenance) as external dependency; correlated, never masked",
       "subsystem": "railway",
@@ -1515,7 +1515,7 @@
     {
       "id": "INFRA-12",
       "product": "PLATFORM",
-      "directive": "§2-§22 (Railway intelligence directive 2026-11-15)",
+      "directive": "\u00a72-\u00a722 (Railway intelligence directive 2026-11-15)",
       "title": "Infrastructure health",
       "behaviour": "Volume states and capacity pressure, domain sync statuses, platform incidents; unknown when no projects visible (scope honesty)",
       "subsystem": "railway",
@@ -1532,7 +1532,7 @@
     {
       "id": "INFRA-13",
       "product": "PLATFORM",
-      "directive": "§2-§22 (Railway intelligence directive 2026-11-15)",
+      "directive": "\u00a72-\u00a722 (Railway intelligence directive 2026-11-15)",
       "title": "Cost & resource intelligence (measured vs estimated, honestly)",
       "behaviour": "workspaceUsageTotals (MEASURED) and estimatedUsage (ESTIMATED) reported separately; observed volume pressure; configurable per-measurement thresholds; anomaly heuristics labelled heuristic; NO fabricated currency (schema exposes no workspace USD total for this token class)",
       "subsystem": "railway",
@@ -1554,7 +1554,7 @@
     {
       "id": "INFRA-14",
       "product": "PLATFORM",
-      "directive": "§2-§22 (Railway intelligence directive 2026-11-15)",
+      "directive": "\u00a72-\u00a722 (Railway intelligence directive 2026-11-15)",
       "title": "Autonomous diagnostics & root-cause analysis",
       "behaviour": "14-step investigation: affected-resource identification, evidence collection (deployments, logs, lifecycle events, platform status, app health), timeline correlation, cause classification CONFIRMED/PROBABLE/POSSIBLE/UNKNOWN with documented confidence scale, impact, recommendations carrying exact permission levels; persisted + audited + remembered in JARVIS memory scope 'railway'",
       "subsystem": "railway",
@@ -1576,7 +1576,7 @@
     {
       "id": "INFRA-15",
       "product": "PLATFORM",
-      "directive": "§2-§22 (Railway intelligence directive 2026-11-15)",
+      "directive": "\u00a72-\u00a722 (Railway intelligence directive 2026-11-15)",
       "title": "L1-L4 recovery authorization (agents never self-approve)",
       "behaviour": "Operation registry (23 ops incl. all directive-protected classes); only user:owner can be granted; agents ALWAYS denied; grants single-use, 15-min TTL, resource-scoped, consumed atomically; READ-ONLY mode (default) refuses every mutation; every decision audited",
       "subsystem": "railway",
@@ -1598,7 +1598,7 @@
     {
       "id": "INFRA-16",
       "product": "PLATFORM",
-      "directive": "§2-§22 (Railway intelligence directive 2026-11-15)",
+      "directive": "\u00a72-\u00a722 (Railway intelligence directive 2026-11-15)",
       "title": "Authorized execution with independent verification",
       "behaviour": "Execution requires valid grant + non-read-only; post-execution the ACTUAL resulting state is re-queried (deployment + service instance) and compared to expectations; outcomes recorded in the audit chain",
       "subsystem": "railway",
@@ -1620,7 +1620,7 @@
     {
       "id": "INFRA-17",
       "product": "PLATFORM",
-      "directive": "§2-§22 (Railway intelligence directive 2026-11-15)",
+      "directive": "\u00a72-\u00a722 (Railway intelligence directive 2026-11-15)",
       "title": "Webhook event intelligence (secret-header, reconciled)",
       "behaviour": "Verified facts: Railway webhooks are unsigned, unordered, best-effort. Receiver: fail-closed when unconfigured, constant-time X-Webhook-Secret comparison, zod payload validation, replay tolerance window, fingerprint dedup, out-of-order-safe persistence, and reconciliation of every accepted event against the authoritative API (prompts, not truth). Owner configures the webhook + secret in the Railway dashboard (documented runbook step)",
       "subsystem": "railway",
@@ -1647,7 +1647,7 @@
     {
       "id": "INFRA-18",
       "product": "PLATFORM",
-      "directive": "§2-§22 (Railway intelligence directive 2026-11-15)",
+      "directive": "\u00a72-\u00a722 (Railway intelligence directive 2026-11-15)",
       "title": "Controlled polling fallback (rate-limit aware)",
       "behaviour": "Poller over the project events query with jittered interval, budget-guard deferral below 100 remaining, idempotent append-only ingestion, checkpointed cursor for restart recovery",
       "subsystem": "railway",
@@ -1664,7 +1664,7 @@
     {
       "id": "INFRA-19",
       "product": "PLATFORM",
-      "directive": "§2-§22 (Railway intelligence directive 2026-11-15)",
+      "directive": "\u00a72-\u00a722 (Railway intelligence directive 2026-11-15)",
       "title": "Infrastructure state reconciliation",
       "behaviour": "Actual (discovery) vs internal (last snapshot) compared: missing_in_actual / missing_in_internal / status_mismatch / stale_record classified; reconciliation history retained; internal records NEVER silently overwritten; whatChanged() diff for the 'what changed' question",
       "subsystem": "railway",
@@ -1681,7 +1681,7 @@
     {
       "id": "INFRA-20",
       "product": "PLATFORM",
-      "directive": "§2-§22 (Railway intelligence directive 2026-11-15)",
+      "directive": "\u00a72-\u00a722 (Railway intelligence directive 2026-11-15)",
       "title": "Resilience & degradation",
       "behaviour": "Circuit breaker (closed/open/half-open), exponential backoff with full jitter, request timeouts, TTL cache, graceful UNCONFIGURED/unknown degradation with honest statuses",
       "subsystem": "railway",
@@ -1698,7 +1698,7 @@
     {
       "id": "INFRA-21",
       "product": "PLATFORM",
-      "directive": "§2-§22 (Railway intelligence directive 2026-11-15)",
+      "directive": "\u00a72-\u00a722 (Railway intelligence directive 2026-11-15)",
       "title": "Tamper-evident audit trail",
       "behaviour": "Hash-chained (SHA-256, canonical JSON) append-only railway_audit table: id, timestamp, category, severity, resource, component, outcome, principal, redacted evidence; verify() detects modification AND deletion; no update/delete API exists",
       "subsystem": "railway",
@@ -1715,7 +1715,7 @@
     {
       "id": "INFRA-22",
       "product": "PLATFORM",
-      "directive": "§2-§22 (Railway intelligence directive 2026-11-15)",
+      "directive": "\u00a72-\u00a722 (Railway intelligence directive 2026-11-15)",
       "title": "Logical backup + isolated restore verification",
       "behaviour": "Full read-only export of all 24 NEXUS tables (sha256 per table) + REAL restore into an isolated in-memory database with row-exact comparison; tampering breaks verification; a backup that has never been restored is not claimed recoverable",
       "subsystem": "railway",
@@ -1737,7 +1737,7 @@
     {
       "id": "INFRA-23",
       "product": "PLATFORM",
-      "directive": "§2-§22 (Railway intelligence directive 2026-11-15)",
+      "directive": "\u00a72-\u00a722 (Railway intelligence directive 2026-11-15)",
       "title": "Railway volume backup restore in production",
       "behaviour": "volumeInstanceBackupRestore is registered as an L4 operation; production restore requires owner authorization and is blocked by the read-only production protection",
       "subsystem": "railway",
@@ -1755,13 +1755,13 @@
         "limitation": "Restoring a Railway volume backup in production is a destructive, irreversible operation on live data (wipe semantics) and cannot be performed under the production READ-ONLY restriction",
         "technicalEvidence": "Railway schema: volumeInstanceBackupRestore(volumeInstanceId!, volumeInstanceBackupId!, wipeServiceIds!, replicaServiceIds!) -> WorkflowId; backup reports honestly carry verified:false, recoverability:UNVERIFIED",
         "minimumAdditionalCapability": "Owner disables RAILWAY_READ_ONLY, grants railway.volume.backup.restore for a specific volume+backup pair, and the restore+verification executes against a disposable environment first",
-        "continuesIndependently": "Yes — backup discovery, schedules, retention metadata and logical app-level backups (INFRA-22) are fully verified; only the production volume restore is blocked"
+        "continuesIndependently": "Yes \u2014 backup discovery, schedules, retention metadata and logical app-level backups (INFRA-22) are fully verified; only the production volume restore is blocked"
       }
     },
     {
       "id": "INFRA-24",
       "product": "PLATFORM",
-      "directive": "§2-§22 (Railway intelligence directive 2026-11-15)",
+      "directive": "\u00a72-\u00a722 (Railway intelligence directive 2026-11-15)",
       "title": "Production deployment of the railway intelligence",
       "behaviour": "The @nexus/railway package and /railway routes are committed and fully tested in-repo; deploying them to the Railway production service is a production change that the directive explicitly gates on owner authorization",
       "subsystem": "railway",
@@ -1776,16 +1776,16 @@
       ],
       "blockedBy": "owner authorization required (production READ-ONLY protection)",
       "blocker": {
-        "limitation": "'Keep production READ-ONLY. Do not deploy or modify production infrastructure without my explicit authorization' — deploying the new image would replace the running production deployment",
+        "limitation": "'Keep production READ-ONLY. Do not deploy or modify production infrastructure without my explicit authorization' \u2014 deploying the new image would replace the running production deployment",
         "technicalEvidence": "railway.json auto-deploys from main; current production deployment SUCCESS (service Jarvis-Nexus, discovered live 2026-11-15); no deployment was triggered by this work",
         "minimumAdditionalCapability": "Owner authorization to push to main (auto-deploy) or a manual serviceInstanceRedeploy with the new image",
-        "continuesIndependently": "Yes — the capability is live-verified from the repository against the real Railway API; only the production rollout awaits authorization"
+        "continuesIndependently": "Yes \u2014 the capability is live-verified from the repository against the real Railway API; only the production rollout awaits authorization"
       }
     },
     {
       "id": "INFRA-25",
       "product": "PLATFORM",
-      "directive": "§2-§22 (Railway intelligence directive 2026-11-15)",
+      "directive": "\u00a72-\u00a722 (Railway intelligence directive 2026-11-15)",
       "title": "JARVIS architectural integration",
       "behaviour": "Railway intelligence is an integrated capability, not a dashboard: 20 HTTP routes (public status + owner-gated control plane), JARVIS ToolExecutor tools (read tools unconsequential; railway.recovery.execute consequential + dual-gated), health probe (fail-visible, non-blocking), memory scope 'railway' (tier operational), bounded metric labels, credential isolation from MCP/NAEI",
       "subsystem": "railway",
@@ -1807,9 +1807,9 @@
     {
       "id": "INFRA-26",
       "product": "PLATFORM",
-      "directive": "§2-§22 (Railway intelligence directive 2026-11-15)",
+      "directive": "\u00a72-\u00a722 (Railway intelligence directive 2026-11-15)",
       "title": "End-to-end operational exercises",
-      "behaviour": "Directive §17 Scenarios A-I exercised: A deployment-failure investigation, B app-outage independence, C credential failure (live garbage-token + previous-token probe), D discrepancy detection, E usage anomalies, F lost-event recovery, G monitoring independence, H authorized recovery loop (isolated) + read-only refusals, I backup restore verification",
+      "behaviour": "Directive \u00a717 Scenarios A-I exercised: A deployment-failure investigation, B app-outage independence, C credential failure (live garbage-token + previous-token probe), D discrepancy detection, E usage anomalies, F lost-event recovery, G monitoring independence, H authorized recovery loop (isolated) + read-only refusals, I backup restore verification",
       "subsystem": "railway",
       "dependsOn": [],
       "status": "VERIFIED",
@@ -1825,7 +1825,189 @@
           "timestamp": "2026-11-14T19:59:55Z"
         }
       ]
+    },
+    {
+      "id": "SEC-4",
+      "product": "NEXUS API",
+      "directive": "Stage2 \u00a73 production security",
+      "title": "CORS allowlist (least-privilege default)",
+      "behaviour": "No cross-origin access unless CORS_ALLOWED_ORIGINS lists the origin exactly; preflight handled; unset = same-origin only",
+      "subsystem": "apps/nexus-api",
+      "dependsOn": [
+        "SEC-1"
+      ],
+      "status": "VERIFIED",
+      "evidence": [
+        "tests/integration/phase3-security.test.ts (allowed/denied/preflight matrix)"
+      ]
+    },
+    {
+      "id": "SEC-5",
+      "product": "NEXUS API",
+      "directive": "Stage2 \u00a73 production security",
+      "title": "Per-IP rate limiting with auth-fail lockout",
+      "behaviour": "Global fixed window (RATE_LIMIT_PER_MIN default 240) on all routes; auth-fail budget (default 60/min) locks protected routes for the IP (even valid tokens) while public routes stay readable; 429 + Retry-After",
+      "subsystem": "apps/nexus-api",
+      "dependsOn": [
+        "SEC-1"
+      ],
+      "status": "VERIFIED",
+      "evidence": [
+        "tests/integration/phase3-security.test.ts (burst, separate budgets, lockout semantics)",
+        "tests/adversarial/verifier.test.ts V1"
+      ]
+    },
+    {
+      "id": "SEC-6",
+      "product": "NEXUS API",
+      "directive": "Stage2 \u00a73 honest model health",
+      "title": "Honest model-fabric health + live provider verification",
+      "behaviour": "/models/health distinguishes configured/verified/never-probed per provider; POST /models/verify (owner) runs real round-trips; fabricFromEnv rejects whitespace/placeholder credentials",
+      "subsystem": "packages/model-fabric + apps/nexus-api",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        "tests/integration/phase3-security.test.ts",
+        "adversarial ADV-02 fix + activeProviderIds()"
+      ]
+    },
+    {
+      "id": "VIS-1",
+      "product": "Visual Application",
+      "directive": "Stage2 \u00a75 V1",
+      "title": "Visual application buildability (strict)",
+      "behaviour": "next 16 / react 19 / three 0.187 dependencies restored; ignoreBuildErrors removed; dedicated strict tsconfig; clean production build with standalone output",
+      "subsystem": "src/ (Next.js app)",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        "scripts/build-visual.sh",
+        "build log: compiled + typechecked + 3/3 pages + standalone"
+      ]
+    },
+    {
+      "id": "VIS-2",
+      "product": "Visual Application",
+      "directive": "Stage2 \u00a75 V2",
+      "title": "Backend as single source of truth (adapter architecture)",
+      "behaviour": "All 14 API routes are thin adapters over the Hono backend; OWNER_KEY server-side only; duplicate client-side simulation retired from request path (preserved as reference)",
+      "subsystem": "src/lib/backend.ts + src/app/api/*",
+      "dependsOn": [
+        "VIS-1"
+      ],
+      "status": "VERIFIED",
+      "evidence": [
+        "scripts/stage2_visual_integration.sh + evidence/visual_app_integration.txt (live chain incl. consequential writes + restart persistence)"
+      ]
+    },
+    {
+      "id": "VIS-3",
+      "product": "Visual Application",
+      "directive": "Stage2 \u00a75 V3",
+      "title": "Interactive universe (backend-driven)",
+      "behaviour": "OrbitControls navigation; resident interaction; venue interiors (derived, marked); day/night + weather from backend clock; backend auto-tick; responsive mobile viewport",
+      "subsystem": "src/components/nexus/WorldView.tsx",
+      "dependsOn": [
+        "VIS-2"
+      ],
+      "status": "VERIFIED",
+      "evidence": [
+        "evidence/visual_dom_verification.txt (WebGL canvas, controls, 8 residents real data, zero console errors)",
+        "visual_01..05 screenshots"
+      ]
+    },
+    {
+      "id": "VIS-4",
+      "product": "Visual Application",
+      "directive": "Stage2 \u00a75 V4",
+      "title": "Real-device mobile acceptance (iPhone/Safari)",
+      "behaviour": "PWA install, standalone operation, responsive rendering, audio permissions, voice input, TTS playback, lifecycle, network recovery \u2014 on an actual device",
+      "subsystem": "visual app",
+      "dependsOn": [
+        "VIS-3"
+      ],
+      "status": "BLOCKED",
+      "evidence": [
+        "viewport evidence only (supplementary); owner test plan in VISUAL_APP_RESTORATION.md \u00a7V4; requires deployment"
+      ],
+      "blockedBy": "real-device (iPhone/Safari) acceptance cannot be executed from the sandbox; browser emulation is supplementary evidence only (Stage2 directive \u00a75 V4)",
+      "blocker": {
+        "limitation": "V4 acceptance requires an actual iPhone via Safari \u2014 PWA install, standalone launch, touch interaction, audio permissions, voice I/O and lifecycle cannot be truthfully verified by headless emulation",
+        "technicalEvidence": "headless evidence is supplementary: 390x844 viewport render (visual_05), speechSynthesis/SpeechRecognition/getUserMedia all present in-browser (voice_chat_verification.txt); zero device-specific results exist",
+        "minimumAdditionalCapability": "deployment of the visual application (Phase 3 owner authorization) plus the owner executing the 10-minute V4 test plan in VISUAL_APP_RESTORATION.md",
+        "continuesIndependently": "Yes \u2014 all device-independent acceptance criteria are VERIFIED; only on-device confirmation remains"
+      }
+    },
+    {
+      "id": "VOI-1",
+      "product": "Voice Intelligence",
+      "directive": "Stage2 \u00a77",
+      "title": "Provider-independent voice I/O (client adapters)",
+      "behaviour": "speak(): server slot -> speechSynthesis fallback, interruption-safe; listenOnce(): SpeechRecognition with interim transcript; capability detection never assumed; honest 503 server slots",
+      "subsystem": "src/lib/voice.ts + ChatView",
+      "dependsOn": [
+        "VIS-2"
+      ],
+      "status": "VERIFIED",
+      "evidence": [
+        "evidence/voice_chat_verification.txt (all capabilities real in-browser; chat round-trip)"
+      ]
+    },
+    {
+      "id": "VOI-2",
+      "product": "Voice Intelligence",
+      "directive": "Stage2 \u00a77",
+      "title": "Wake-word, discrete VAD, server audio round-trips",
+      "behaviour": "Always-on audio session wake-word; server STT/TTS providers with real audio verification",
+      "subsystem": "voice",
+      "dependsOn": [
+        "VOI-1"
+      ],
+      "status": "DISCOVERED",
+      "evidence": [
+        "honestly not implemented; server slots 503; piper-tts reference preserved"
+      ]
+    },
+    {
+      "id": "BKP-1",
+      "product": "NEXUS API",
+      "directive": "Stage2 \u00a74",
+      "title": "Scheduled logical backups with retention + restore verification",
+      "behaviour": "Export -> isolated in-memory restore-verify -> volume write -> retention prune; NEXUS_BACKUP_INTERVAL_HOURS (default 24) / NEXUS_BACKUP_RETENTION (14); status view with RPO/RTO",
+      "subsystem": "apps/nexus-api backup scheduler",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        "tests/integration/phase4-backups.test.ts (owner gate, verification, pruning, status)"
+      ]
+    },
+    {
+      "id": "VER-1",
+      "product": "Governance",
+      "directive": "Stage2 \u00a79",
+      "title": "Independent adversarial verification system",
+      "behaviour": "Separate verifier suite (fabrication detection, security attacks, contract validation, evidence provenance, regression landmines) with authority to reject implementation work",
+      "subsystem": "tests/adversarial",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        "19 tests; found + fixed ADV-01 (malformed JSON world mutation) and ADV-02 (echo listing); 3 verifier self-corrections documented"
+      ]
+    },
+    {
+      "id": "ARC-RT-1",
+      "product": "Architecture",
+      "directive": "Stage2 \u00a76 realtime sync",
+      "title": "Realtime multi-environment synchronization (WebSocket/SSE)",
+      "behaviour": "Live push of world events to all connected environments (web, UE5, future clients); current state: request/poll everywhere; WS vs SSE decision pending traffic analysis",
+      "subsystem": "backend",
+      "dependsOn": [],
+      "status": "SPECIFIED",
+      "evidence": [
+        "investigated Phase 6; honest \u2014 not implemented, no fake liveness"
+      ]
     }
   ],
-  "intakeNote": "Re-intake 2026-11-14 after the independent audit: the original '7 files, byte-verified, coverage closes exactly' claim was false (two files were byte-identical; the registry cited only the Master Directive, dropping the five product blueprints). This registry now also carries the previously dropped requirements as DISCOVERED/SPECIFIED — never fake-verified."
+  "intakeNote": "Re-intake 2026-11-14 after the independent audit: the original '7 files, byte-verified, coverage closes exactly' claim was false (two files were byte-identical; the registry cited only the Master Directive, dropping the five product blueprints). This registry now also carries the previously dropped requirements as DISCOVERED/SPECIFIED \u2014 never fake-verified.",
+  "stage2Note": "Stage 2 update: +11 requirements (SEC-4..6, VIS-1..4, VOI-1..2, BKP-1, VER-1, ARC-RT-1); statuses carry Stage 2 evidence only where executed this session."
 }
