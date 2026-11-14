@@ -365,6 +365,16 @@ export class ModelFabric {
     return [...this.catalog];
   }
 
+  /**
+   * Provider ids actually SELECTABLE for routing (Stage 2 Phase 9 finding):
+   * echo is excluded unless explicitly enabled — mirrors complete()'s filter
+   * so listings never advertise a provider the fabric would refuse to use.
+   */
+  activeProviderIds(): ProviderId[] {
+    return (Object.keys(this.providers) as ProviderId[])
+      .filter((p) => !(this.disableEcho && p === "echo"));
+  }
+
   /** Rank candidate models for a task type (capability > health > cost). */
   rankFor(taskType: ModelTaskType, preferredModel?: string): ModelDescriptor[] {
     const capable = this.catalog.filter((m) => m.capabilities.taskTypes.includes(taskType));

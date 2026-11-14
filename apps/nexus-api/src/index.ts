@@ -525,7 +525,13 @@ export function createApp(cfg: NexusApiConfig) {
     });
   });
   app.post("/world/advance", requireOwner, async (c) => {
-    const parse = AdvanceWorldRequest.safeParse(await c.req.json().catch(() => ({})));
+    // Phase 9 adversarial finding: malformed JSON must be a 400, never silently
+    // coerced to {} (which would default ticks=1 and advance the world on garbage)
+    const raw = await c.req.json().catch(() => undefined);
+    if (raw === undefined || raw === null || typeof raw !== "object") {
+      return c.json({ error: "malformed_json" }, 400);
+    }
+    const parse = AdvanceWorldRequest.safeParse(raw);
     if (!parse.success) return c.json({ error: "validation", issues: parse.error.issues }, 400);
     const worlds = worldRuntime.store.listWorlds();
     if (worlds.length === 0) return c.json({ error: "not_found" }, 404);
@@ -558,7 +564,11 @@ export function createApp(cfg: NexusApiConfig) {
   app.post("/world/construct", requireOwner, async (c) => {
     const worlds = worldRuntime.store.listWorlds();
     if (worlds.length === 0) return c.json({ error: "not_found" }, 404);
-    const body = await c.req.json().catch(() => ({}));
+    // malformed JSON is a 400 — construction must never run on garbage input
+    const body = await c.req.json().catch(() => undefined);
+    if (body === undefined || body === null || typeof body !== "object") {
+      return c.json({ error: "malformed_json" }, 400);
+    }
     const r = worldRuntime.creation.construct(worlds[0]!, String(body.request ?? ""));
     return c.json({ data: r.ok ? { spec: r.value.spec, created: r.value.created, eventId: r.value.event.id } : null, error: r.ok ? undefined : r.error.message });
   });
@@ -615,7 +625,7 @@ export function createApp(cfg: NexusApiConfig) {
   });
 
   // -- MODELS -----------------------------------------------------------------------
-  app.get("/models/providers", (c) => c.json({ data: providers }));
+  app.get("/models/providers", (c) => c.json({ data: fabric.activeProviderIds() }));
   app.get("/models/catalog", (c) => c.json({ data: fabric.listModels() }));
   // Stage 2 Phase 3 — honest health semantics: provider-level status (configured
   // vs verified vs never-probed) PLUS the pre-existing per-model runtime records.
