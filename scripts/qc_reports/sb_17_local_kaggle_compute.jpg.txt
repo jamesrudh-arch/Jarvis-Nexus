@@ -1,1 +1,0 @@
-IDENTITY=9 LIGHT=7 HANDS=ok DEFECTS=none VERDICT=KEEP - consistent woman, decent hologram glow, minor under-lighting on face.

@@ -1,1 +1,0 @@
-IDENTITY=9 LIGHT=7 HANDS=ok DEFECTS=none VERDICT=KEEP - matches reference; hologram spill on hand good, face glow weak

@@ -1,1 +1,0 @@
-IDENTITY=8 LIGHT=7 HANDS=ok DEFECTS=minor garbled HUD glyph text VERDICT=KEEP - matches reference; hologram spill on face/hands convincing

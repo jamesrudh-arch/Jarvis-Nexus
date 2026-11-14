@@ -1,1 +1,0 @@
-IDENTITY=8 LIGHT=7 HANDS=ok DEFECTS=none VERDICT=KEEP - consistent identity; hologram glow reasonably motivates cyan cast on hand.

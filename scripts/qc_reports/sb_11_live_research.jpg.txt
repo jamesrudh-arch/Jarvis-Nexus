@@ -1,1 +1,0 @@
-IDENTITY=9 LIGHT=8 HANDS=ok DEFECTS=garbled axis text on chart screens VERDICT=KEEP - identity matches, glow integration convincing, minor text garble only.

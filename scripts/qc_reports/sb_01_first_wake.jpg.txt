@@ -1,1 +1,0 @@
-IDENTITY=n/a LIGHT=8 HANDS=n/a DEFECTS=face not visible; no cast shadow from figure on glowing path VERDICT=KEEP - consistent silhouette, bun, blazer; ambient glow plausible

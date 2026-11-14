@@ -1,1 +1,0 @@
-IDENTITY=8 LIGHT=6 HANDS=ok DEFECTS=garbled hologram text, slight plastic skin, weak face illumination from hologram VERDICT=KEEP - strong match; improve hologram glow on face and readable UI.

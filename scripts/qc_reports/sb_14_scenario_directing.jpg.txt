@@ -1,1 +1,0 @@
-IDENTITY=8 LIGHT=7 HANDS=ok DEFECTS=none VERDICT=KEEP - Same woman, hologram glow lights hands/face plausibly.
