@@ -17,14 +17,36 @@
     "apps/nexus-api": {
       "name": "@nexus/api",
       "version": "0.1.0",
+      "dependencies": {
+        "@nexus/cognition": "workspace:*",
+        "@nexus/contracts": "workspace:*",
+        "@nexus/core": "workspace:*",
+        "@nexus/db": "workspace:*",
+        "@nexus/mcp-gateway": "workspace:*",
+        "@nexus/memory": "workspace:*",
+        "@nexus/model-fabric": "workspace:*",
+        "@nexus/naei": "workspace:*",
+        "@nexus/observability": "workspace:*",
+        "@nexus/orchestrator": "workspace:*",
+        "@nexus/world": "workspace:*",
+        "hono": "^4.13.18",
+      },
     },
     "packages/cognition": {
       "name": "@nexus/cognition",
       "version": "0.1.0",
+      "dependencies": {
+        "@nexus/contracts": "workspace:*",
+        "@nexus/core": "workspace:*",
+        "@nexus/model-fabric": "workspace:*",
+      },
     },
     "packages/contracts": {
       "name": "@nexus/contracts",
       "version": "0.1.0",
+      "dependencies": {
+        "zod": "^4.6.7",
+      },
     },
     "packages/core": {
       "name": "@nexus/core",
@@ -33,38 +55,76 @@
     "packages/db": {
       "name": "@nexus/db",
       "version": "0.1.0",
-    },
-    "packages/eventsourcing": {
-      "name": "@nexus/eventsourcing",
-      "version": "0.1.0",
+      "dependencies": {
+        "@nexus/core": "workspace:*",
+      },
     },
     "packages/mcp-gateway": {
       "name": "@nexus/mcp-gateway",
       "version": "0.1.0",
+      "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.32.2",
+        "@nexus/contracts": "workspace:*",
+        "@nexus/core": "workspace:*",
+        "@nexus/db": "workspace:*",
+      },
     },
     "packages/memory": {
       "name": "@nexus/memory",
       "version": "0.1.0",
+      "dependencies": {
+        "@nexus/contracts": "workspace:*",
+        "@nexus/core": "workspace:*",
+        "@nexus/db": "workspace:*",
+      },
     },
     "packages/model-fabric": {
       "name": "@nexus/model-fabric",
       "version": "0.1.0",
+      "dependencies": {
+        "@nexus/contracts": "workspace:*",
+        "@nexus/core": "workspace:*",
+      },
     },
     "packages/naei": {
       "name": "@nexus/naei",
       "version": "0.1.0",
+      "dependencies": {
+        "@nexus/contracts": "workspace:*",
+        "@nexus/core": "workspace:*",
+        "@nexus/db": "workspace:*",
+        "@nexus/model-fabric": "workspace:*",
+      },
     },
     "packages/observability": {
       "name": "@nexus/observability",
       "version": "0.1.0",
+      "dependencies": {
+        "@nexus/contracts": "workspace:*",
+        "@nexus/core": "workspace:*",
+        "@nexus/db": "workspace:*",
+      },
     },
     "packages/orchestrator": {
       "name": "@nexus/orchestrator",
       "version": "0.1.0",
+      "dependencies": {
+        "@nexus/cognition": "workspace:*",
+        "@nexus/contracts": "workspace:*",
+        "@nexus/core": "workspace:*",
+        "@nexus/db": "workspace:*",
+        "@nexus/memory": "workspace:*",
+        "@nexus/model-fabric": "workspace:*",
+      },
     },
     "packages/world": {
       "name": "@nexus/world",
       "version": "0.1.0",
+      "dependencies": {
+        "@nexus/contracts": "workspace:*",
+        "@nexus/core": "workspace:*",
+        "@nexus/db": "workspace:*",
+      },
     },
   },
   "packages": {
@@ -81,8 +141,6 @@
     "@nexus/core": ["@nexus/core@workspace:packages/core"],
 
     "@nexus/db": ["@nexus/db@workspace:packages/db"],
-
-    "@nexus/eventsourcing": ["@nexus/eventsourcing@workspace:packages/eventsourcing"],
 
     "@nexus/mcp-gateway": ["@nexus/mcp-gateway@workspace:packages/mcp-gateway"],
 

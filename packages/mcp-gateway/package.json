@@ -3,5 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" }
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@nexus/core": "workspace:*",
+    "@nexus/contracts": "workspace:*",
+    "@nexus/db": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.32.2"
+  }
 }

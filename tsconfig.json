@@ -18,7 +18,6 @@
       "@nexus/core": ["./packages/core/src/index.ts"],
       "@nexus/contracts": ["./packages/contracts/src/index.ts"],
       "@nexus/db": ["./packages/db/src/index.ts"],
-      "@nexus/eventsourcing": ["./packages/eventsourcing/src/index.ts"],
       "@nexus/model-fabric": ["./packages/model-fabric/src/index.ts"],
       "@nexus/memory": ["./packages/memory/src/index.ts"],
       "@nexus/cognition": ["./packages/cognition/src/index.ts"],
