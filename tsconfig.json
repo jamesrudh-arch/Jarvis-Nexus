@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    "types": ["bun"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true,
+    "paths": {
+      "@nexus/core": ["./packages/core/src/index.ts"],
+      "@nexus/contracts": ["./packages/contracts/src/index.ts"],
+      "@nexus/db": ["./packages/db/src/index.ts"],
+      "@nexus/eventsourcing": ["./packages/eventsourcing/src/index.ts"],
+      "@nexus/model-fabric": ["./packages/model-fabric/src/index.ts"],
+      "@nexus/memory": ["./packages/memory/src/index.ts"],
+      "@nexus/cognition": ["./packages/cognition/src/index.ts"],
+      "@nexus/orchestrator": ["./packages/orchestrator/src/index.ts"],
+      "@nexus/naei": ["./packages/naei/src/index.ts"],
+      "@nexus/world": ["./packages/world/src/index.ts"],
+      "@nexus/mcp-gateway": ["./packages/mcp-gateway/src/index.ts"],
+      "@nexus/observability": ["./packages/observability/src/index.ts"],
+      "@nexus/api": ["./apps/nexus-api/src/index.ts"]
+    }
+  },
+  "include": ["packages/**/*", "apps/**/*", "tools/**/*", "tests/**/*"],
+  "exclude": ["node_modules", "tools/unreal", "tools/blender-pipeline/vendor"]
+}

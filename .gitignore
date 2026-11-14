@@ -1,31 +1,35 @@
-# Secrets and credentials — NEVER commit
-.env*
-*.pem
-*.key
+# secrets — never commit
+.env
+.env.*
 
-# Dependencies / build outputs
+# dependencies & builds
 node_modules/
-.next/
-out/
-build/
 dist/
 *.tsbuildinfo
-next-env.d.ts
 
-# Databases (local)
+# runtime data (SQLite lives on Railway volume /data in production)
+data/
 *.db
 *.db-journal
+*.db-wal
 
-# Logs
-*.log
-
-# Sandbox working directories (not part of the product repository)
-download/
-upload/
-skills/
+# sandbox platform scaffolding (untracked by design — see ADR-002)
+Caddyfile
+components.json
+postcss.config.mjs
+tailwind.config.ts
+eslint.config.mjs
+examples/
+mini-services/
+public/
 .zscripts/
+skills/
+upload/
+download/
 tool-results/
 agent-ctx/
+*.log
 
 # OS / editor
 .DS_Store
+Thumbs.db

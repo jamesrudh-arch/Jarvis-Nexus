@@ -1,0 +1,34 @@
+{
+  "name": "jarvis-nexus",
+  "version": "0.1.0",
+  "private": true,
+  "description": "JARVIS NEXUS — autonomous AI ecosystem: JARVIS intelligence, NEXUS WORLD persistent civilisation, NAEI engineering workforce",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "test:unit": "bun test tests/unit",
+    "test:integration": "bun test tests/integration",
+    "test:persistence": "bun test tests/persistence",
+    "test:scenarios": "bun test tests/scenarios",
+    "start": "bun apps/nexus-api/src/main.ts",
+    "dev": "bun --watch apps/nexus-api/src/main.ts",
+    "migrate": "bun packages/db/src/migrate-cli.ts",
+    "registry:validate": "bun tools/registry-validate.ts"
+  },
+  "engines": {
+    "bun": ">=1.2.0"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "hono": "^4.13.18",
+    "zod": "^4.6.7"
+  }
+}
