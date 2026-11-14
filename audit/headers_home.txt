@@ -1,0 +1,16 @@
+HTTP/2 200 
+cache-control: s-maxage=31536000
+content-type: text/html; charset=utf-8
+date: Thu, 12 Nov 2026 21:44:24 GMT
+etag: "1765i6worg87ow"
+server: railway-hikari
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch, Accept-Encoding
+x-nextjs-cache: HIT
+x-nextjs-prerender: 1
+x-nextjs-prerender: 1
+x-nextjs-stale-time: 300
+x-powered-by: Next.js
+x-railway-request-id: 5mWBES_vRu6XHh7i2h0iww
+x-railway-edge: hkg1
+x-hikari-trace: hkg1.hn7d
+
