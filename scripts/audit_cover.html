@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: 794px 1123px; margin: 0; }
+  html, body { margin: 0; padding: 0; background: #ffffff; }
+  .poster {
+    position: relative;
+    width: 794px; height: 1123px;
+    background: #ffffff;
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    overflow: hidden;
+  }
+  /* Layer 1: faint grid */
+  .grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(to right, rgba(108,100,76,0.05) 0.5px, transparent 0.5px),
+      linear-gradient(to bottom, rgba(108,100,76,0.05) 0.5px, transparent 0.5px);
+    background-size: 50px 50px;
+  }
+  /* Layer 2: left anchor line 6pt at 0.12W, from 0.10H to 0.90H */
+  .anchor {
+    position: absolute;
+    left: 95px; top: 112px; bottom: 112px;
+    width: 8px; background: #6c644c;
+  }
+  /* Layer 3: content, left edge = 0.12W + 40px = 135px */
+  .kicker {
+    position: absolute; left: 150px; top: 168px;
+    font-size: 21px; font-weight: 400; letter-spacing: 4px;
+    color: rgba(34,33,31,0.60); text-transform: uppercase;
+  }
+  .hero {
+    position: absolute; left: 150px; top: 300px; width: 560px;
+    font-size: 62px; font-weight: 800; line-height: 1.15;
+    color: #22211f; letter-spacing: 1px;
+  }
+  .hero .accent { color: #6c644c; }
+  .summary {
+    position: absolute; left: 150px; top: 585px; width: 470px;
+    font-size: 22px; font-weight: 400; line-height: 1.6;
+    color: rgba(34,33,31,0.85);
+  }
+  .meta {
+    position: absolute; left: 150px; top: 840px; width: 500px;
+    font-size: 19px; line-height: 1.75; color: rgba(34,33,31,0.78);
+    word-wrap: break-word; overflow-wrap: break-word;
+  }
+  .meta .label { color: rgba(34,33,31,0.45); display: inline-block; min-width: 132px; }
+</style>
+</head>
+<body>
+<div class="poster">
+  <div class="grid"></div>
+  <div class="anchor"></div>
+  <div class="kicker">Production Audit Report &middot; Session 7</div>
+  <div class="hero">JARVIS<br>NEXUS<br><span class="accent">Embodiment<br>Restored</span></div>
+  <div class="summary">
+    Digital-human black-void defect root-caused and fixed live on production.
+    EOS credentials completed in Railway. Groq free-tier LLM provider wired.
+    Mobile layout repaired. Every claim verified against the live deployment.
+  </div>
+  <div class="meta">
+    <div><span class="label">Deployment&nbsp;&nbsp;</span>jarvis-nexus-production.up.railway.app</div>
+    <div><span class="label">Repository&nbsp;&nbsp;&nbsp;</span>jamesrudh-arch/Jarvis-Nexus</div>
+    <div><span class="label">Revision&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>main @ d2c1d95</div>
+    <div><span class="label">Date&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>2026-11-13</div>
+  </div>
+</div>
+</body>
+</html>

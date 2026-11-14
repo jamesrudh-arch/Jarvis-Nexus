@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --c-bg: #f0f2f2;
+    --c-accent: #2f80a8;
+    --c-text: #141617;
+    --c-muted: #838a8d;
+    --c-mid: #415661;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  @page { size: 794px 1123px; margin: 0; }
+  html, body { margin: 0; padding: 0; background: var(--c-bg); }
+  .cover {
+    position: relative;
+    width: 794px;
+    height: 1123px;
+    background: var(--c-bg);
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    border: none; outline: none; box-shadow: none;
+  }
+  /* Layer 1 — background grid (clipped) */
+  .layer-1 {
+    position: absolute; inset: 0; overflow: hidden; z-index: 1;
+    background-image:
+      linear-gradient(rgba(47, 128, 168, 0.04) 0.5px, transparent 0.5px),
+      linear-gradient(90deg, rgba(47, 128, 168, 0.04) 0.5px, transparent 0.5px);
+    background-size: 50px 50px;
+  }
+  /* Layer 2 — structure: ultra-thick vertical anchor line */
+  .layer-2 { position: absolute; inset: 0; z-index: 2; }
+  .anchor-line {
+    position: absolute;
+    left: 95px;               /* 0.12 * W */
+    top: 112px;               /* 0.10 * H */
+    bottom: 112px;            /* to 0.90 * H */
+    width: 6px;
+    background: var(--c-mid);
+  }
+  /* Layer 3 — content (no overflow:hidden) */
+  .layer-3 { position: absolute; inset: 0; z-index: 3; }
+  .kicker {
+    position: absolute;
+    left: 141px;              /* 0.12W + 6px line + 40px (1U gap) */
+    top: 168px;               /* 0.15 * H */
+    font-size: 16px;
+    font-weight: 400;
+    letter-spacing: 3pt;
+    text-transform: uppercase;
+    color: var(--c-text);
+    opacity: 0.6;
+    max-width: 560px;
+  }
+  .hero-line1 {
+    position: absolute;
+    left: 141px;
+    top: 300px;
+    font-size: 88px;
+    line-height: 1.15;
+    font-weight: 900;
+    color: var(--c-text);
+    max-width: 600px;
+    letter-spacing: -1px;
+  }
+  .hero-line2 {
+    position: absolute;
+    left: 141px;
+    top: 406px;               /* 300 + 88 * 1.15 + 5px gap */
+    font-size: 88px;
+    line-height: 1.15;
+    font-weight: 900;
+    color: var(--c-accent);
+    max-width: 600px;
+    letter-spacing: -1px;
+  }
+  .summary {
+    position: absolute;
+    left: 141px;
+    top: 562px;               /* 0.50 * H */
+    font-size: 17px;
+    line-height: 1.6;
+    font-weight: 400;
+    color: var(--c-text);
+    opacity: 0.85;
+    max-width: 476px;         /* W * 0.6 */
+  }
+  .meta {
+    position: absolute;
+    left: 141px;
+    top: 842px;               /* 0.75 * H */
+    font-size: 16px;
+    line-height: 1.75;
+    font-weight: 500;
+    color: var(--c-text);
+    max-width: 600px;
+  }
+  .footer {
+    position: absolute;
+    left: 141px;
+    top: 1010px;              /* 0.90 * H */
+    font-size: 16px;
+    font-weight: 400;
+    letter-spacing: 3pt;
+    text-transform: uppercase;
+    color: var(--c-text);
+    opacity: 0.6;
+    max-width: 600px;
+  }
+</style>
+</head>
+<body>
+<div class="cover">
+  <div class="layer-1"></div>
+  <div class="layer-2"><div class="anchor-line"></div></div>
+  <div class="layer-3">
+    <div class="kicker">Final Engineering Report &middot; Railway Infrastructure Intelligence</div>
+    <div class="hero-line1">JARVIS</div>
+    <div class="hero-line2">NEXUS</div>
+    <div class="summary">
+      Secure, resilient and independently verified Railway infrastructure intelligence,
+      engineered inside JARVIS NEXUS: live discovery, five-dimension monitoring,
+      evidence-backed diagnostics, L1&ndash;L4 authorized recovery, contract drift
+      detection and tamper-evident auditing &mdash; with production held strictly read-only.
+    </div>
+    <div class="meta">
+      15 November 2026<br>
+      163 tests pass / 0 fail &middot; live read-only API verification<br>
+      Acceptance matrix 17 PASS / 2 PARTIAL / 0 FAIL
+    </div>
+    <div class="footer">Commits e7d4e39 &middot; a808727 &middot; 60d4fdd</div>
+  </div>
+</div>
+</body>
+</html>
