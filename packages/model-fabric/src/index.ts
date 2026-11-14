@@ -341,6 +341,8 @@ export class ModelFabric {
   private readonly catalog: ModelDescriptor[];
   private readonly providers: Partial<Record<ProviderId, ProviderAdapter>>;
   private readonly health = new Map<string, HealthRecord>();
+  /** Per-provider verification outcomes from explicit verifyProviders() runs. */
+  private readonly providerVerify = new Map<ProviderId, { ok: boolean; at: number; detail: string }>();
   private readonly clock: Clock;
   private readonly usageSink?: UsageSink;
   private readonly maxFallbacks: number;
@@ -431,6 +433,71 @@ export class ModelFabric {
     }));
   }
 
+  /**
+   * Honest per-provider status view (Stage 2 Phase 3: /models/health semantics).
+   * Distinguishes CONFIGURED (env present) from VERIFIED (an explicit
+   * healthCheck round-trip succeeded). `verified: null` means never probed —
+   * never reported as "available" on configuration alone.
+   */
+  providerStatus(): Array<{
+    provider: ProviderId;
+    configured: boolean;
+    models: number;
+    totalCalls: number;
+    totalFailures: number;
+    lastError: string | null;
+    verified: boolean | null;
+    lastVerifiedAt: string | null;
+  }> {
+    const all: ProviderId[] = ["cloudflare", "openai", "echo"];
+    return all.map((p) => {
+      const adapter = this.providers[p];
+      const models = this.catalog.filter((m) => m.provider === p);
+      const modelIds = models.map((m) => m.id);
+      const calls = modelIds.reduce((acc, id) => acc + (this.health.get(id)?.totalCalls ?? 0), 0);
+      const failures = modelIds.reduce((acc, id) => acc + (this.health.get(id)?.totalFailures ?? 0), 0);
+      const lastError = modelIds
+        .map((id) => this.health.get(id)?.lastError)
+        .filter((x): x is string => Boolean(x))
+        .slice(-1)[0] ?? null;
+      const v = this.providerVerify.get(p);
+      return {
+        provider: p,
+        configured: adapter !== undefined,
+        models: models.length,
+        totalCalls: calls,
+        totalFailures: failures,
+        lastError,
+        verified: v ? v.ok : null,
+        lastVerifiedAt: v ? new Date(v.at).toISOString() : null,
+      };
+    });
+  }
+
+  /**
+   * Actively verify each configured provider with a minimal round-trip
+   * (GET /models or equivalent). Records honest outcomes — a failing or
+   * invalid credential reports `verified: false` with the error class, never
+   * a silent "available".
+   */
+  async verifyProviders(): Promise<Array<{ provider: ProviderId; verified: boolean; detail: string; latencyMs: number }>> {
+    const entries = Object.entries(this.providers) as Array<[ProviderId, ProviderAdapter]>;
+    const results: Array<{ provider: ProviderId; verified: boolean; detail: string; latencyMs: number }> = [];
+    for (const [p, adapter] of entries) {
+      const started = this.now();
+      const r = await adapter.healthCheck();
+      const latencyMs = this.now() - started;
+      const detail = r.ok
+        ? r.value
+          ? "round-trip succeeded"
+          : "endpoint reachable but returned non-success status"
+        : `${r.error.code}: ${r.error.message}`.slice(0, 200);
+      this.providerVerify.set(p, { ok: r.ok && r.value === true, at: this.now(), detail });
+      results.push({ provider: p, verified: r.ok && r.value === true, detail, latencyMs });
+    }
+    return results;
+  }
+
   private recordSuccess(modelId: string, latencyMs: number): void {
     const h = this.ensure(modelId);
     h.consecutiveFailures = 0;
@@ -464,11 +531,20 @@ export class ModelFabric {
 
 export function fabricFromEnv(env: Record<string, string | undefined>, usageSink?: UsageSink): { fabric: ModelFabric; providers: ProviderId[] } {
   const providers: Partial<Record<ProviderId, ProviderAdapter>> = {};
-  if (env.CLOUDFLARE_API_TOKEN && env.CLOUDFLARE_ACCOUNT_ID) {
-    providers.cloudflare = new CloudflareAdapter(env.CLOUDFLARE_ACCOUNT_ID, env.CLOUDFLARE_API_TOKEN);
+  // Defensive configuration (Stage 2 Phase 3): whitespace-only or placeholder
+  // values are UNCONFIGURED — never wire an obviously-invalid credential.
+  const present = (v: string | undefined): string | undefined => {
+    const t = v?.trim();
+    return t && t !== "changeme" && t !== "placeholder" ? t : undefined;
+  };
+  const cfToken = present(env.CLOUDFLARE_API_TOKEN);
+  const cfAccount = present(env.CLOUDFLARE_ACCOUNT_ID);
+  const oaKey = present(env.OPENAI_API_KEY);
+  if (cfToken && cfAccount) {
+    providers.cloudflare = new CloudflareAdapter(cfAccount, cfToken);
   }
-  if (env.OPENAI_API_KEY) {
-    providers.openai = new OpenAIAdapter(env.OPENAI_API_KEY);
+  if (oaKey) {
+    providers.openai = new OpenAIAdapter(oaKey);
   }
   providers.echo = new EchoAdapter();
   // ADR-007: echo is a deterministic TEST STUB. In the API it is OFF by

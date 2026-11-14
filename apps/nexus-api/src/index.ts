@@ -242,11 +242,17 @@ export function createApp(cfg: NexusApiConfig) {
     checkedAt: new Date().toISOString(),
   }));
   health.register("model_fabric", async () => {
-    const providerList = providers.map((p) => `${p}:available`).join(",");
+    // Stage 2 Phase 3: honest semantics — report CONFIGURED providers, never
+    // "available" (configuration is not verification; use POST /models/verify).
+    const status = fabric.providerStatus();
+    const configured = status.filter((s) => s.configured);
+    const realProviders = configured.filter((s) => s.provider !== "echo");
+    const verifiedReal = realProviders.filter((s) => s.verified === true);
+    const providerList = configured.map((s) => `${s.provider}:configured${s.verified === true ? "+verified" : s.verified === false ? "+verify-failed" : ""}`).join(",");
     return {
       component: "model_fabric",
-      status: providers.length > 1 ? "healthy" : "degraded",
-      detail: `providers: ${providerList}; openai blocked from sandbox egress region is expected (ADR-007)`,
+      status: realProviders.length === 0 ? "degraded" : verifiedReal.length > 0 ? "healthy" : "degraded",
+      detail: `providers: ${providerList || "none"}; verification via POST /models/verify (owner)`,
       checkedAt: new Date().toISOString(),
     };
   });
@@ -284,7 +290,77 @@ export function createApp(cfg: NexusApiConfig) {
 
   // ---- HTTP app ---------------------------------------------------------------
   const app = new Hono();
-  app.use("*", cors());
+
+  // CORS allowlist (Stage 2 Phase 3): least-privilege default — NO cross-origin
+  // access unless the owner explicitly lists origins in CORS_ALLOWED_ORIGINS
+  // (comma-separated exact origins, e.g. https://jarvis-nexus-production.up.railway.app).
+  const corsAllowedOrigins = (cfg.env.CORS_ALLOWED_ORIGINS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  if (corsAllowedOrigins.length > 0) {
+    app.use("*", cors({
+      // Hono 4: origin-as-function receives (origin, context) and RETURNS the
+      // allowed origin (or undefined to deny). Exact-match allowlist only.
+      origin: (origin: string) => (corsAllowedOrigins.includes(origin) ? origin : undefined),
+      allowMethods: ["GET", "POST", "OPTIONS"],
+      allowHeaders: ["Content-Type", "Authorization", "X-Webhook-Secret", "X-Correlation-Id"],
+      maxAge: 86400,
+    }));
+  }
+  // When unset: no CORS middleware at all — same-origin only. The Railway
+  // webhook is server-to-server and never needs CORS.
+
+  // Rate limiting (Stage 2 Phase 3): in-memory fixed window per client IP.
+  // Railway terminates TLS and provides X-Forwarded-For; first hop is the client.
+  // Two independent budgets:
+  //  - GLOBAL (default 240/min): every route. Generous for the owner's
+  //    interactive use; caps abuse and metric/log spam.
+  //  - AUTH-FAIL (default 60/min): failed owner-auth attempts. An exhausted
+  //    budget locks out ALL protected routes for that IP for the window —
+  //    lockout semantics (even valid tokens are refused while locked) — but
+  //    never public routes (health, metrics, world state stay readable; a
+  //    brute-forcing IP must not blind Railway healthchecks or public state).
+  const RATE_LIMIT_PER_MIN = Math.max(1, Number(cfg.env.RATE_LIMIT_PER_MIN ?? 240));
+  const AUTH_FAIL_LIMIT_PER_MIN = Math.max(1, Number(cfg.env.AUTH_FAIL_LIMIT_PER_MIN ?? 60));
+  const rateBuckets = new Map<string, { windowStart: number; count: number }>();
+  const authFailBuckets = new Map<string, { windowStart: number; count: number }>();
+  const clientIpOf = (c: any): string => {
+    const xff = String(c.req.header("X-Forwarded-For") ?? "");
+    const first = xff.split(",")[0]?.trim();
+    return first || c.req.header("X-Real-IP") || "unknown";
+  };
+  const hitBucket = (buckets: Map<string, { windowStart: number; count: number }>, key: string, limit: number, nowMs: number): { allowed: boolean; retryAfterSec: number } => {
+    const WINDOW_MS = 60_000;
+    let b = buckets.get(key);
+    if (!b || nowMs - b.windowStart >= WINDOW_MS) {
+      b = { windowStart: nowMs, count: 0 };
+      buckets.set(key, b);
+    }
+    if (b.count >= limit) {
+      return { allowed: false, retryAfterSec: Math.max(1, Math.ceil((b.windowStart + WINDOW_MS - nowMs) / 1000)) };
+    }
+    b.count += 1;
+    return { allowed: true, retryAfterSec: 0 };
+  };
+  // opportunistic sweep so the maps cannot grow without bound under IP churn
+  const sweepBuckets = (buckets: Map<string, { windowStart: number; count: number }>, nowMs: number) => {
+    if (buckets.size < 10_000) return;
+    for (const [k, b] of buckets) if (nowMs - b.windowStart >= 120_000) buckets.delete(k);
+  };
+  app.use("*", async (c: any, next: any) => {
+    const nowMs = Date.now();
+    sweepBuckets(rateBuckets, nowMs);
+    sweepBuckets(authFailBuckets, nowMs);
+    const ip = clientIpOf(c);
+    const r = hitBucket(rateBuckets, ip, RATE_LIMIT_PER_MIN, nowMs);
+    if (!r.allowed) {
+      return c.json({ error: "rate_limited" }, 429, { "Retry-After": String(r.retryAfterSec) });
+    }
+    // NOTE: the auth-fail budget is enforced inside requireOwner (protected
+    // routes only) — public routes are never collateral damage of lockout.
+    await next();
+  });
 
   // owner authentication for consequential routes (directive §13).
   // Constant-time comparison; header-only — the owner key never travels in a
@@ -297,9 +373,20 @@ export function createApp(cfg: NexusApiConfig) {
     return timingSafeEqual(a, b);
   };
   const requireOwner = async (c: any, next: any) => {
+    const ip = clientIpOf(c);
+    const nowMs = Date.now();
+    const af = authFailBuckets.get(`authfail:${ip}`);
+    if (af && af.count >= AUTH_FAIL_LIMIT_PER_MIN) {
+      // lockout semantics: while locked, even a VALID token is refused —
+      // that is what makes brute force pointless
+      const retry = Math.max(1, Math.ceil((af.windowStart + 60_000 - nowMs) / 1000));
+      return c.json({ error: "rate_limited" }, 429, { "Retry-After": String(retry) });
+    }
     const auth = c.req.header("Authorization") ?? "";
     const token = auth.startsWith("Bearer ") ? auth.slice(7) : undefined;
     if (!ownerKey || !token || !tokenMatches(token, ownerKey)) {
+      // failed auth consumes the brute-force budget for this IP
+      hitBucket(authFailBuckets, `authfail:${ip}`, AUTH_FAIL_LIMIT_PER_MIN, nowMs);
       return c.json({ error: "unauthorized" }, 401);
     }
     await next();
@@ -498,7 +585,22 @@ export function createApp(cfg: NexusApiConfig) {
   // -- MODELS -----------------------------------------------------------------------
   app.get("/models/providers", (c) => c.json({ data: providers }));
   app.get("/models/catalog", (c) => c.json({ data: fabric.listModels() }));
-  app.get("/models/health", (c) => c.json({ data: fabric.providerHealth() }));
+  // Stage 2 Phase 3 — honest health semantics: provider-level status (configured
+  // vs verified vs never-probed) PLUS the pre-existing per-model runtime records.
+  // An empty per-model list on a fresh boot is expected and now no longer reads
+  // as "no health".
+  app.get("/models/health", (c) => c.json({
+    data: fabric.providerHealth(),
+    providers: fabric.providerStatus(),
+    semantics: "data[] = per-model runtime records (empty until first call); providers[] = configured/verified provider status; POST /models/verify (owner) runs live round-trips",
+  }));
+  // Owner-gated live provider verification — honest credential checks. This is
+  // how the OpenAI configuration question ("is the key actually valid?") is
+  // answered with evidence instead of assumptions.
+  app.post("/models/verify", requireOwner, async (c) => {
+    const results = await fabric.verifyProviders();
+    return c.json({ data: results });
+  });
 
   // -- RAILWAY (infrastructure intelligence) -----------------------------------------
   // Public: cached monitoring snapshot (non-blocking, fail-visible).
