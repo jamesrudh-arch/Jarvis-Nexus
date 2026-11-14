@@ -1,0 +1,127 @@
+// JARVIS NEXUS — NEXUS WORLD persistence schema.
+// Event-sourced world (ADR-002 port): every state change is an event row
+// keyed by an idempotency key; projections (GeoNode, Entity, Memory,
+// Region, WorldMeta) are materialised by an idempotent apply layer and
+// are fully rebuildable from WorldEvent alone.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------------ world core
+model WorldMeta {
+  key   String @id
+  value String
+}
+
+model WorldEvent {
+  eventId   String   @id // idempotency key
+  seq       Int      @unique
+  tick      Int
+  type      String
+  payload   String // canonical JSON (sorted keys)
+  createdAt DateTime @default(now())
+
+  @@index([tick])
+  @@index([type, tick])
+}
+
+model GeoNode {
+  nodeId   String  @id
+  parentId String?
+  level    String
+  name     String
+  path     String
+  meta     String // JSON
+
+  @@index([level])
+  @@index([parentId])
+}
+
+model Entity {
+  entityId   String @id
+  entityType String
+  createdTick Int
+  data       String // JSON
+
+  @@index([entityType])
+}
+
+model IdCounter {
+  prefix String @id
+  nextVal Int
+}
+
+model Region {
+  regionId         String @id
+  owner            String
+  leaseExpiresTick Int
+}
+
+model Memory {
+  memoryId   String @id
+  residentId String
+  tick       Int
+  kind       String
+  text       String
+  importance Int
+
+  @@index([residentId, tick])
+}
+
+model CommandLog {
+  commandId   String    @id
+  actor       String
+  actionClass String
+  intent      String
+  status      String
+  result      String?
+  approved    Boolean   @default(false)
+  executedAt  DateTime?
+}
+
+// ------------------------------------------------------------ product
+model ChatMessage {
+  id        String   @id @default(cuid())
+  role      String // user | assistant | system
+  content   String
+  provider  String? // glm | openai | fallback
+  model     String?
+  latencyMs Int?
+  tokens    Int?
+  createdAt DateTime @default(now())
+}
+
+model ProviderStatus {
+  id            String    @id @default(cuid())
+  name          String    @unique
+  kind          String // reasoning | tts | stt | image | infra
+  status        String // operational | degraded | blocked | unverified | offline
+  detail        String?
+  lastCheckedAt DateTime?
+  latencyMs     Int?
+}
+
+model TaskLedger {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  title     String
+  state     String // PLANNED..DEPLOYED/BLOCKED/FAILED
+  priority  String
+  detail    String?
+  evidence  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AuditEvent {
+  id        String   @id @default(cuid())
+  kind      String // security | ops | provider
+  detail    String
+  createdAt DateTime @default(now())
+}
