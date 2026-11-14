@@ -268,9 +268,19 @@ export class MemoryService {
     return { expired, promoted, contradictions };
   }
 
-  /** Controlled deletion with tombstone semantics (supersede, not erase). */
+  /**
+   * Controlled deletion with tombstone semantics (supersede, not erase).
+   * Without a replacement the record is tombstoned with a self-reference
+   * (hidden from retrieval; backendGet still shows it and its supersededById).
+   * Providing a nonexistent or self-referential replacement is rejected.
+   */
   supersede(id: string, replacementId?: string): boolean {
-    return this.backend.update(id, { supersededById: replacementId }) !== null;
+    if (replacementId) {
+      const replacement = this.backend.get(replacementId);
+      if (!replacement || replacement.id === id) return false;
+    }
+    const updated = this.backend.update(id, { supersededById: replacementId ?? id });
+    return updated !== null && (updated.supersededById ?? null) !== null;
   }
 
   backendGet(id: string): MemoryRecord | null {

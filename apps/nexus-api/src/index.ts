@@ -18,8 +18,9 @@ import { WorldRuntime, createWorld } from "@nexus/world";
 import { McpGateway, TEST_MCP_SERVER_NAME, testMcpServerScript } from "@nexus/mcp-gateway";
 import { NexusLogger, HealthRegistry, MetricsCollector, newCorrelationId } from "@nexus/observability";
 import { ok, err, safeJsonStringify, NexusError } from "@nexus/core";
-import { CreateObjectiveRequest, CreateNaeiTaskRequest, AdvanceWorldRequest } from "@nexus/contracts";
+import { CreateObjectiveRequest, CreateNaeiTaskRequest, AdvanceWorldRequest, CreateMemoryRequest, CONTRACT_VERSION } from "@nexus/contracts";
 import { mkdirSync, writeFileSync } from "node:fs";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { join } from "node:path";
 
 export interface NexusApiConfig {
@@ -133,10 +134,14 @@ export function createApp(cfg: NexusApiConfig) {
           return ok({ naeiTaskId: task.id, status: exec.ok ? exec.value.status : "FAILED", verification: exec.ok ? exec.value.verification : undefined });
         }
         case "mcp.invoke": {
+          // approval is never self-granted: without an explicit owner approval
+          // (ctx.approvedBy), approval_required servers must reject — the
+          // previous `?? "jarvis"` default silently self-approved on the
+          // restart-recovery path.
           const r = await mcp.invoke({
             serverName: String(params.serverName), toolName: String(params.toolName),
             args: (params.args as Record<string, unknown>) ?? {},
-            approvedBy: ctx.approvedBy ?? "jarvis",
+            approvedBy: ctx.approvedBy,
           }, "jarvis");
           return r.ok ? ok(r.value) : r;
         }
@@ -151,9 +156,12 @@ export function createApp(cfg: NexusApiConfig) {
   const orchestrator = new JarvisOrchestrator({
     db, fabric, memory, tools,
     memoryScope: "jarvis",
-    approvalGate: async (task) => {
+    approvalGate: async (task, opts) => {
       const consequential = task.plan.some((s) => s.tool && tools.requiresApproval(s.tool, s.params));
-      return { required: consequential, granted: false }; // approval must be explicit via API
+      // release only when the caller carries an explicit approval — supplied
+      // by the owner-authenticated /jarvis/tasks/:id/approve route. Without
+      // this, the approve endpoint could never release a consequential task.
+      return { required: consequential, granted: Boolean(opts?.approvedBy), by: opts?.approvedBy };
     },
   });
 
@@ -173,7 +181,10 @@ export function createApp(cfg: NexusApiConfig) {
   // ---- health probes ------------------------------------------------------------
   health.register("database", () => ({
     component: "database",
-    status: db.count("SELECT 1 AS n") >= 0 ? "healthy" : "unhealthy",
+    // real check: this read throws when the store is broken (the registry
+    // catches it and reports unhealthy) — the previous `>= 0` tautology could
+    // never fail
+    status: db.count("SELECT COUNT(*) AS n FROM schema_migrations") >= 1 ? "healthy" : "unhealthy",
     detail: `migrations applied: ${migrationReport.applied.length + migrationReport.skipped.length}`,
     checkedAt: new Date().toISOString(),
   }));
@@ -216,12 +227,20 @@ export function createApp(cfg: NexusApiConfig) {
   const app = new Hono();
   app.use("*", cors());
 
-  // owner authentication for consequential routes (directive §13)
+  // owner authentication for consequential routes (directive §13).
+  // Constant-time comparison; header-only — the owner key never travels in a
+  // URL/query string (those leak into proxy and access logs).
   const ownerKey = cfg.env.OWNER_KEY;
+  const tokenMatches = (provided: string | undefined, expected: string): boolean => {
+    if (!provided) return false;
+    const a = createHash("sha256").update(provided).digest();
+    const b = createHash("sha256").update(expected).digest();
+    return timingSafeEqual(a, b);
+  };
   const requireOwner = async (c: any, next: any) => {
     const auth = c.req.header("Authorization") ?? "";
-    const token = auth.startsWith("Bearer ") ? auth.slice(7) : c.req.query("key");
-    if (!ownerKey || token !== ownerKey) {
+    const token = auth.startsWith("Bearer ") ? auth.slice(7) : undefined;
+    if (!ownerKey || !token || !tokenMatches(token, ownerKey)) {
       return c.json({ error: "unauthorized" }, 401);
     }
     await next();
@@ -231,26 +250,35 @@ export function createApp(cfg: NexusApiConfig) {
   app.use("*", async (c: any, next: any) => {
     const correlationId = c.req.header("X-Correlation-Id") ?? newCorrelationId();
     c.set("correlationId", correlationId);
-    metrics.increment("http_requests_total", { path: new URL(c.req.url).pathname });
+    // bounded label: fixed route allowlist. Labelling by any raw path component
+    // would let any client mint unbounded metric rows (one per unique URL).
+    const KNOWN_ROUTES = new Set(["health", "world", "jarvis", "naei", "mcp", "memory", "metrics", "models"]);
+    const firstSegment = new URL(c.req.url).pathname.split("/")[1] ?? "";
+    const route = KNOWN_ROUTES.has(firstSegment) ? firstSegment : "other";
+    metrics.increment("http_requests_total", { route });
     await next();
   });
 
   app.get("/", (c) => c.json({
     service: "NEXUS API",
     version: "1.0.0",
-    contractVersion: "1.0.0",
+    contractVersion: CONTRACT_VERSION,
     subsystems: ["jarvis", "naei", "world", "mcp", "memory", "models", "observability"],
   }));
 
   app.get("/health", async (c) => {
     const h = await health.check();
-    return c.json(h, c.req.url.includes("detailed") ? 200 : 200);
+    // fail visible: an unhealthy aggregate is a 503, not a 200 — the Railway
+    // healthcheck and external monitors must see real failures
+    return c.json(h, h.overall === "unhealthy" ? 503 : 200);
   });
   app.get("/health/detailed", async (c) => c.json(await health.check()));
   app.get("/metrics", (c) => c.json({ counters: metrics.snapshot(), db: repos.metrics.sumByName() }));
 
   // -- JARVIS ----------------------------------------------------------------
-  app.post("/jarvis/objectives", async (c) => {
+  // model spend and autonomous execution are consequential: unauthenticated
+  // users must not be able to run objectives or enqueue NAEI work
+  app.post("/jarvis/objectives", requireOwner, async (c) => {
     const parse = CreateObjectiveRequest.safeParse(await c.req.json().catch(() => ({})));
     if (!parse.success) return c.json({ error: "validation", issues: parse.error.issues }, 400);
     const task = orchestrator.receive(parse.data.objective, parse.data.origin);
@@ -269,7 +297,7 @@ export function createApp(cfg: NexusApiConfig) {
 
   // -- NAEI --------------------------------------------------------------------
   app.get("/naei/agents", (c) => c.json({ data: naei.agents.list() }));
-  app.post("/naei/tasks", async (c) => {
+  app.post("/naei/tasks", requireOwner, async (c) => {
     const parse = CreateNaeiTaskRequest.safeParse(await c.req.json().catch(() => ({})));
     if (!parse.success) return c.json({ error: "validation", issues: parse.error.issues }, 400);
     const task = naei.submit(parse.data);
@@ -324,7 +352,9 @@ export function createApp(cfg: NexusApiConfig) {
     const worlds = worldRuntime.store.listWorlds();
     if (worlds.length === 0) return c.json({ error: "not_found" }, 404);
     const world = worlds[0]!;
-    const report = worldRuntime.simulation.advance(world, { ticks: parse.data.ticks ?? 10 });
+    // one tick step = 10 sim-minutes (600_000 sim-ms): honor both request forms
+    const ticks = parse.data.ticks ?? Math.max(1, Math.ceil((parse.data.simDurationMs ?? 600_000) / 600_000));
+    const report = worldRuntime.simulation.advance(world, { ticks });
     return c.json({ data: report });
   });
   app.get("/world/residents", (c) => {
@@ -343,12 +373,14 @@ export function createApp(cfg: NexusApiConfig) {
   });
   app.post("/world/snapshot", requireOwner, (c) => {
     const worlds = worldRuntime.store.listWorlds();
+    if (worlds.length === 0) return c.json({ error: "not_found" }, 404);
     const r = worldRuntime.store.snapshot(worlds[0]!.id, "manual");
     return c.json({ data: r.ok ? r.value : null, error: r.ok ? undefined : r.error.message });
   });
   app.post("/world/construct", requireOwner, async (c) => {
-    const body = await c.req.json().catch(() => ({}));
     const worlds = worldRuntime.store.listWorlds();
+    if (worlds.length === 0) return c.json({ error: "not_found" }, 404);
+    const body = await c.req.json().catch(() => ({}));
     const r = worldRuntime.creation.construct(worlds[0]!, String(body.request ?? ""));
     return c.json({ data: r.ok ? { spec: r.value.spec, created: r.value.created, eventId: r.value.event.id } : null, error: r.ok ? undefined : r.error.message });
   });
@@ -371,27 +403,32 @@ export function createApp(cfg: NexusApiConfig) {
     const r = mcp.register(body);
     return c.json({ data: r.ok ? r.value : null, error: r.ok ? undefined : r.error.message }, r.ok ? 201 : 400);
   });
-  app.post("/mcp/invoke", async (c) => {
+  app.post("/mcp/invoke", requireOwner, async (c) => {
     const body = await c.req.json().catch(() => null);
     if (!body?.serverName || !body?.toolName) return c.json({ error: "validation" }, 400);
-    const approved = ownerKey && (c.req.header("Authorization") === `Bearer ${ownerKey}`);
     const r = await mcp.invoke({
       serverName: body.serverName, toolName: body.toolName,
-      args: body.args ?? {}, approvedBy: approved ? "owner" : undefined,
-    }, approved ? "owner" : "api");
+      args: body.args ?? {}, approvedBy: "owner",
+    }, "owner");
     return c.json({ data: r.ok ? r.value : null, error: r.ok ? undefined : r.error.message }, r.ok ? 200 : 400);
   });
-  app.get("/mcp/audit", (c) => c.json({ data: mcp.auditLog({ limit: Number(c.req.query("limit") ?? 50) }) }));
+  app.get("/mcp/audit", requireOwner, (c) => c.json({ data: mcp.auditLog({ limit: Number(c.req.query("limit") ?? 50) }) }));
 
   // -- MEMORY ---------------------------------------------------------------------
-  app.get("/memory/:scope", (c) => c.json({ data: memory.listScope(c.req.param("scope")).slice(0, 100) }));
-  app.post("/memory", async (c) => {
-    const body = await c.req.json().catch(() => null);
-    if (!body?.scope || !body?.title) return c.json({ error: "validation" }, 400);
+  app.get("/memory/:scope", requireOwner, (c) => c.json({ data: memory.listScope(c.req.param("scope")).slice(0, 100) }));
+  app.post("/memory", requireOwner, async (c) => {
+    // zod-validated: tier/kind enums enforced, importance/confidence bounded,
+    // string lengths capped — the previous hand-rolled parsing accepted
+    // arbitrary tier strings and NaN importance
+    const parse = CreateMemoryRequest.safeParse(await c.req.json().catch(() => ({})));
+    if (!parse.success) return c.json({ error: "validation", issues: parse.error.issues }, 400);
     const m = memory.create({
-      scope: String(body.scope), tier: body.tier ?? "semantic", kind: body.kind ?? "fact",
-      title: String(body.title), content: String(body.content ?? ""),
-      importance: Number(body.importance ?? 0.5), source: "user",
+      scope: parse.data.scope, tier: parse.data.tier, kind: parse.data.kind,
+      title: parse.data.title, content: parse.data.content,
+      importance: parse.data.importance, confidence: parse.data.confidence,
+      tags: parse.data.tags, accessLevel: parse.data.accessLevel,
+      source: parse.data.provenance.source, sourceId: parse.data.provenance.sourceId,
+      expiresAt: parse.data.expiresAt,
     });
     return c.json({ data: m }, 201);
   });

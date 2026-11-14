@@ -471,6 +471,10 @@ export function fabricFromEnv(env: Record<string, string | undefined>, usageSink
     providers.openai = new OpenAIAdapter(env.OPENAI_API_KEY);
   }
   providers.echo = new EchoAdapter();
-  const fabric = new ModelFabric({ providers, usageSink, disableEcho: env.NEXUS_DISABLE_ECHO === "true" });
+  // ADR-007: echo is a deterministic TEST STUB. In the API it is OFF by
+  // default so a missing-credentials deployment fails loudly instead of
+  // silently serving deterministic fallbacks as "intelligence". Opt back in
+  // explicitly for local development with NEXUS_ALLOW_ECHO=true.
+  const fabric = new ModelFabric({ providers, usageSink, disableEcho: env.NEXUS_ALLOW_ECHO !== "true" });
   return { fabric, providers: Object.keys(providers) as ProviderId[] };
 }

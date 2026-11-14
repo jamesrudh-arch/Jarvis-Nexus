@@ -4,7 +4,12 @@
  *
  * Invariants:
  *  - Every authoritative state change appends a WorldEvent (append-only).
- *  - Snapshots + event replay reconstruct state after restart (Scenario D).
+ *  - Entity projections are write-through: state lives in the entity tables,
+ *    and snapshots are verified consistency checkpoints. On restart, if the
+ *    live world is BEHIND the last checkpoint (torn write), the checkpoint is
+ *    restored so state never regresses. Events after a snapshot are retained
+ *    for audit; there is no event-sourced projection rebuild today (registry
+ *    WLD-9 tracks that as outstanding work — do not claim replay).
  *  - Knowledge propagation is explicit: residents only know events recorded
  *    for them (world_truth vs direct_observation vs reported/rumour).
  */
@@ -190,22 +195,69 @@ export class WorldStore {
   }
 
   /**
-   * Restart recovery: restore latest snapshot (if any), then verify event
-   * continuity. Returns recovery report for observability (Scenario D).
+   * Restart recovery (directive §11, Scenario D). Entity state is write-through;
+   * the snapshot is a verified consistency checkpoint. If the live world is
+   * BEHIND the last checkpoint (torn write: crash between entity writes and
+   * saveWorld), the checkpoint contents are restored — exactly, including
+   * removing entities that postdate the checkpoint — so state never regresses.
+   * Progress after the checkpoint is sacrificed for consistency; the events
+   * remain in the append-only history for audit.
    */
-  recover(worldId: string): { recoveredFromSnapshot: boolean; snapshotSimTime: number | null; replayedEvents: number; world: World | null } {
+  recover(worldId: string): { recoveredFromSnapshot: boolean; snapshotSimTime: number | null; replayedEvents: number; world: World | null; restoredFromSnapshot: boolean } {
     const snap = this.latestSnapshot(worldId);
-    const world = this.getWorld(worldId);
-    if (!world) return { recoveredFromSnapshot: false, snapshotSimTime: null, replayedEvents: 0, world: null };
+    let world = this.getWorld(worldId);
+    if (!world) {
+      if (!snap) return { recoveredFromSnapshot: false, snapshotSimTime: null, replayedEvents: 0, world: null, restoredFromSnapshot: false };
+      // world row lost entirely: rebuild from the checkpoint
+      this.restoreSnapshot(worldId, snap.contents);
+      world = this.getWorld(worldId);
+      return { recoveredFromSnapshot: true, snapshotSimTime: snap.simTime, replayedEvents: 0, world, restoredFromSnapshot: true };
+    }
     const eventsSinceSnapshot = snap ? this.events(worldId, { afterSeq: snap.lastSeq }) : [];
-    // Entity projections are already persisted (write-through); the snapshot
-    // provides a verified consistency checkpoint. Events after the snapshot
-    // are counted and available for audit replay.
+    let restoredFromSnapshot = false;
+    if (snap && world.simulationTime < snap.simTime) {
+      // torn write detected: restore the checkpoint exactly
+      this.restoreSnapshot(worldId, snap.contents);
+      world = this.getWorld(worldId);
+      restoredFromSnapshot = true;
+    }
+    // events after the checkpoint are counted and retained for audit; there
+    // is no event-sourced projection rebuild in the store today (WLD-9).
     return {
       recoveredFromSnapshot: snap !== null,
       snapshotSimTime: snap?.simTime ?? null,
       replayedEvents: eventsSinceSnapshot.length,
       world,
+      restoredFromSnapshot,
     };
+  }
+
+  /**
+   * Write a snapshot's contents back into the entity tables, exactly: rows
+   * that postdate the checkpoint are removed, so restored state equals the
+   * checkpoint byte-for-byte at the entity level.
+   */
+  private restoreSnapshot(worldId: string, contents: SnapshotContents): void {
+    this.db.transaction(() => {
+      this.saveWorld(contents.world);
+      for (const r of contents.residents) this.saveResident(r);
+      for (const v of contents.vehicles) this.saveVehicle(v);
+      for (const p of contents.properties) this.saveProperty(p);
+      for (const b of contents.businesses) this.saveBusiness(b);
+      for (const a of contents.accounts) this.saveAccount(a);
+      const deleteAbsent = (table: string, keepIds: string[]) => {
+        if (keepIds.length === 0) {
+          this.db.run(`DELETE FROM ${table} WHERE world_id = ?`, worldId);
+        } else {
+          const ph = keepIds.map(() => "?").join(", ");
+          this.db.run(`DELETE FROM ${table} WHERE world_id = ? AND id NOT IN (${ph})`, worldId, ...keepIds);
+        }
+      };
+      deleteAbsent("residents", contents.residents.map((r) => r.id));
+      deleteAbsent("vehicles", contents.vehicles.map((v) => v.id));
+      deleteAbsent("properties", contents.properties.map((p) => p.id));
+      deleteAbsent("businesses", contents.businesses.map((b) => b.id));
+      deleteAbsent("accounts", contents.accounts.map((a) => a.id));
+    });
   }
 }

@@ -8,6 +8,7 @@
 import { nexusId, ID_PREFIXES, ok, err, NexusError, type Result } from "@nexus/core";
 import type { WorldEvent } from "@nexus/contracts";
 import type { World } from "./entities";
+import type { Resident } from "./entities";
 import { createProperty, createBusiness, createAccount, createResident, createVehicle } from "./entities";
 import type { WorldStore } from "./persistence";
 
@@ -42,7 +43,9 @@ export class CreationEngine {
   /**
    * Interpret a natural-language construction request into a specification,
    * materialise world entities, and record the causal construction event.
-   * Layout is deterministic from the request (reproducible builds).
+   * Layout is deterministic from the request (reproducible builds). The whole
+   * construction (all entities + the event) commits atomically: a crash
+   * mid-build leaves no partial district behind.
    */
   construct(world: World, request: string, opts?: { centre?: { x: number; z: number }; scale?: number }): Result<ConstructionResult> {
     const lower = request.toLowerCase();
@@ -71,39 +74,41 @@ export class CreationEngine {
     const created = { properties: 0, businesses: 0, residents: 0, vehicles: 0, accounts: 0 };
 
     try {
-      switch (kind) {
-        case "residential_neighbourhood": this.buildNeighbourhood(world, spec, centre, scale, created); break;
-        case "commercial_complex": this.buildCommercial(world, spec, centre, scale, created); break;
-        case "apartment_building": this.buildApartment(world, spec, centre, created); break;
-        case "racing_circuit": this.buildCircuit(world, spec, centre, created); break;
-        case "entertainment_district": this.buildEntertainment(world, spec, centre, scale, created); break;
-        case "city_district": this.buildDistrict(world, spec, centre, scale, created); break;
-        default: this.buildNeighbourhood(world, spec, centre, scale, created); break;
-      }
+      return this.store.db.transaction(() => {
+        switch (kind) {
+          case "residential_neighbourhood": this.buildNeighbourhood(world, spec, centre, scale, created); break;
+          case "commercial_complex": this.buildCommercial(world, spec, centre, scale, created); break;
+          case "apartment_building": this.buildApartment(world, spec, centre, created); break;
+          case "racing_circuit": this.buildCircuit(world, spec, centre, created); break;
+          case "entertainment_district": this.buildEntertainment(world, spec, centre, scale, created); break;
+          case "city_district": this.buildDistrict(world, spec, centre, scale, created); break;
+          default: this.buildNeighbourhood(world, spec, centre, scale, created); break;
+        }
 
-      // roads connect the district to the centre of the world
-      spec.roads.push({ from: { x: 0, z: 0 }, to: centre, width: 8 });
+        // roads connect the district to the centre of the world
+        spec.roads.push({ from: { x: 0, z: 0 }, to: centre, width: 8 });
 
-      spec.populationPlan = { residents: created.residents, homes: created.properties, jobs: created.businesses * 4 };
-      spec.estimatedValue = Math.round(spec.structures.reduce((s, st) => s + (st.type === "house" ? 250_000 : st.type === "apartment" ? 180_000 : st.type === "commercial" ? 400_000 : 50_000), 0) * scale);
+        spec.populationPlan = { residents: created.residents, homes: created.properties, jobs: created.businesses * 4 };
+        spec.estimatedValue = Math.round(spec.structures.reduce((s, st) => s + (st.type === "house" ? 250_000 : st.type === "apartment" ? 180_000 : st.type === "commercial" ? 400_000 : 50_000), 0) * scale);
 
-      const regionName = kind.replace(/_/g, " ");
-      world.regions.push({ regionId: spec.regionId, name: `New ${regionName}`, center: { x: centre.x, y: 0, z: centre.z }, radius: 250 * scale });
+        const regionName = kind.replace(/_/g, " ");
+        world.regions.push({ regionId: spec.regionId, name: `New ${regionName}`, center: { x: centre.x, y: 0, z: centre.z }, radius: 250 * scale });
 
-      const event = this.store.recordEvent({
-        worldId: world.id,
-        type: "world_construction",
-        simTime: world.simulationTime,
-        cause: `creation request: "${request}"`,
-        effects: [
-          { target: `region:${spec.regionId}`, change: `constructed ${spec.structures.length} structures` },
-          { target: "population", change: `+${created.residents} residents` },
-        ],
-        payload: { specId: spec.specId, kind, structures: spec.structures.length, created },
+        const event = this.store.recordEvent({
+          worldId: world.id,
+          type: "world_construction",
+          simTime: world.simulationTime,
+          cause: `creation request: "${request}"`,
+          effects: [
+            { target: `region:${spec.regionId}`, change: `constructed ${spec.structures.length} structures` },
+            { target: "population", change: `+${created.residents} residents` },
+          ],
+          payload: { specId: spec.specId, kind, structures: spec.structures.length, created },
+        });
+
+        this.store.saveWorld(world);
+        return ok({ spec, event, created });
       });
-
-      this.store.saveWorld(world);
-      return ok({ spec, event, created });
     } catch (e) {
       return err(new NexusError("INTERNAL_ERROR", `construction failed: ${String(e)}`));
     }
@@ -113,6 +118,7 @@ export class CreationEngine {
 
   private buildNeighbourhood(world: World, spec: ConstructionSpec, centre: { x: number; z: number }, scale: number, created: ConstructionResult["created"]): void {
     const homes = Math.max(4, Math.round(8 * scale));
+    const districtResidents: Resident[] = [];
     for (let i = 0; i < homes; i++) {
       const angle = (i / homes) * Math.PI * 2;
       const pos = { x: centre.x + Math.cos(angle) * 60 * scale, y: 0, z: centre.z + Math.sin(angle) * 60 * scale };
@@ -123,6 +129,7 @@ export class CreationEngine {
       this.store.saveProperty(prop);
       this.store.saveAccount(account);
       this.store.saveResident(resident);
+      districtResidents.push(resident);
       created.properties++; created.accounts++; created.residents++;
       spec.structures.push({ structureId: `st_${i}`, type: "house", position: pos, dimensions: { w: 12, h: 6, d: 10 }, propertyId: prop.id });
       spec.roads.push({ from: centre, to: { x: pos.x, z: pos.z }, width: 5 });
@@ -139,9 +146,18 @@ export class CreationEngine {
     this.store.saveAccount(shopAccount);
     this.store.saveBusiness(shop);
     created.businesses++; created.accounts++;
-    // the corner market employs the first two residents (real jobs, real salaries)
-    const employable = this.store.listResidents(world.id).slice(0, 2);
+    // the corner market employs residents OF THIS DISTRICT — never residents
+    // that already belong to a previous district (their employer roster entry
+    // is released so no one ends up with two jobs or a stale employeeIds row)
+    const employable = districtResidents.slice(0, 2);
     for (const [i, r] of employable.entries()) {
+      if (r.employment?.businessId) {
+        const previousEmployer = this.store.getBusiness(r.employment.businessId);
+        if (previousEmployer) {
+          previousEmployer.employeeIds = previousEmployer.employeeIds.filter((id) => id !== r.id);
+          this.store.saveBusiness(previousEmployer);
+        }
+      }
       r.employment = {
         businessId: shop.id, role: i === 0 ? "shopkeeper" : "stocker",
         salaryPerHour: 18,

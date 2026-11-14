@@ -58,7 +58,7 @@ export class PerceptionService {
     }
     return ok({
       intent: parsed.intent,
-      entities: parsed.entities ?? [],
+      entities: Array.isArray(parsed.entities) ? parsed.entities : [],
       constraints: parsed.constraints ?? [],
       successCriteria: parsed.successCriteria as string[],
       ambiguity: typeof parsed.ambiguity === "string" ? parsed.ambiguity : null,
@@ -133,6 +133,9 @@ export interface PlannedStep {
   description: string;
   tool?: string;
   agentRole?: string;
+  /** Tool input arguments derived from the objective (bound by the
+   *  orchestrator into tools.execute(step.tool, step.params)). */
+  params?: Record<string, unknown>;
   dependsOn: string[];
   completionCriteria: string;
 }
@@ -146,7 +149,8 @@ export class PlanningService {
       systemPrompt: `You are JARVIS's planning subsystem. Decompose the objective into an ordered execution plan.
 Available tools: ${availableTools.length ? availableTools.join(", ") : "none"}.
 Steps may declare a "tool" from the list, an "agentRole" for delegation (architect, backend_engineer, test_engineer, verification_engineer, blender_engineer, unreal_engineer), and "dependsOn" (step ids that must complete first).
-Return ONLY JSON: {"steps": [{"stepId": "s1", "description": "...", "tool": null, "agentRole": null, "dependsOn": [], "completionCriteria": "..."}]}
+If a step declares a "tool", also provide "params": a JSON object of that tool's input arguments derived from the objective and approach (e.g. {"query":"..."} for memory.search, {"ticks":40} for world.advance, {"serverName":"...","toolName":"...","args":{...}} for mcp.invoke).
+Return ONLY JSON: {"steps": [{"stepId": "s1", "description": "...", "tool": null, "agentRole": null, "params": {}, "dependsOn": [], "completionCriteria": "..."}]}
 Keep plans between 2 and 6 steps. Prefer the fewest steps that satisfy the objective.`,
       messages: [{ role: "user", content: `OBJECTIVE: ${objective}\nAPPROACH: ${approach}` }],
       jsonSchema: {
@@ -159,6 +163,7 @@ Keep plans between 2 and 6 steps. Prefer the fewest steps that satisfy the objec
               properties: {
                 stepId: { type: "string" }, description: { type: "string" },
                 tool: { type: ["string", "null"] }, agentRole: { type: ["string", "null"] },
+                params: { type: ["object", "null"] },
                 dependsOn: { type: "array", items: { type: "string" } },
                 completionCriteria: { type: "string" },
               },
@@ -175,12 +180,13 @@ Keep plans between 2 and 6 steps. Prefer the fewest steps that satisfy the objec
     if (!p?.steps || !Array.isArray(p.steps) || p.steps.length === 0) {
       return err(new NexusError("SCHEMA_ERROR", "planning: no steps returned"));
     }
-    // sanitise: filter unknown deps, dedupe step ids
+    // sanitise: filter unknown deps, dedupe step ids; tool params flow through
     const ids = new Set(p.steps.map((s) => s.stepId));
     return ok(p.steps.map((s) => ({
       ...s,
       tool: s.tool ?? undefined,
       agentRole: s.agentRole ?? undefined,
+      params: (s as { params?: Record<string, unknown> }).params ?? {},
       dependsOn: (s.dependsOn ?? []).filter((d) => ids.has(d)),
     })));
   }
@@ -224,7 +230,7 @@ export class EvaluationService {
 {"objectiveMet": <bool>, "summary": "<1-3 sentences>", "unmetCriteria": ["<criterion>"]}`,
       messages: [{
         role: "user",
-        content: `OBJECTIVE: ${objective}\n\nSUCCESS CRITERIA:\n${criteria.map((c, i) => `${i + 1}. ${c}`).join("\n")}\n\nSTEP OUTPUTS:\n${stepOutputs.map((s) => `${s.stepId}: ${JSON.stringify(s.output).slice(0, 800)}`).join("\n")}`,
+        content: `OBJECTIVE: ${objective}\n\nSUCCESS CRITERIA:\n${criteria.map((c, i) => `${i + 1}. ${c}`).join("\n")}\n\nSTEP OUTPUTS:\n${stepOutputs.map((s) => `${s.stepId}: ${JSON.stringify(s.output ?? null).slice(0, 800)}`).join("\n")}`,
       }],
       jsonSchema: {
         type: "object",

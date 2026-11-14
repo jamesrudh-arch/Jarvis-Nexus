@@ -1,13 +1,17 @@
 /**
  * NEXUS Economic Intelligence (directive §7.8).
  * Transactional financial operations: accounts, transfers, salaries,
- * purchases with inventory, ownership records. Prevents double payments,
- * fabricated inventory and unbounded money creation.
+ * purchases with inventory, ownership records. Transfers are strictly
+ * two-sided (no minting, no burning); salary payments are atomic and
+ * idempotent per (employee, pay period) — the dedup marker commits in the
+ * same transaction as the money movement, so a crash can never leave a
+ * paid salary without its marker.
  */
-import { nexusId, ID_PREFIXES, NexusError, err, ok, type Result } from "@nexus/core";
+import { nexusId, ID_PREFIXES, NexusError, err, ok, safeJsonStringify, type Result } from "@nexus/core";
 import type { WorldEvent } from "@nexus/contracts";
 import type { NexusDb } from "@nexus/db";
 import type { WorldStore } from "./persistence";
+import { createAccount } from "./entities";
 import type { Account, Business, Resident } from "./entities";
 
 export interface PaymentResult {
@@ -21,8 +25,10 @@ export class EconomyEngine {
   constructor(private readonly db: NexusDb, private readonly store: WorldStore) {}
 
   /**
-   * Atomic transfer. All invariants enforced inside ONE sqlite transaction:
-   * sufficient funds, positive amount, existing accounts, idempotent event.
+   * Atomic two-sided transfer. All invariants enforced inside ONE sqlite
+   * transaction: sufficient funds, positive amount, existing accounts,
+   * idempotent event. One-sided transfers (minting/burning) are rejected —
+   * money supply can only move between accounts, never appear or disappear.
    */
   transfer(input: {
     worldId: string;
@@ -35,8 +41,8 @@ export class EconomyEngine {
     participants?: WorldEvent["participants"];
   }): Result<PaymentResult> {
     if (!(input.amount > 0)) return err(new NexusError("VALIDATION_ERROR", "amount must be positive"));
-    if (!input.fromAccountId && !input.toAccountId) {
-      return err(new NexusError("VALIDATION_ERROR", "transfer requires at least one account"));
+    if (!input.fromAccountId || !input.toAccountId) {
+      return err(new NexusError("VALIDATION_ERROR", "transfer requires both from and to accounts (minting/burning is not permitted)"));
     }
 
     try {
@@ -173,7 +179,15 @@ export class EconomyEngine {
     }
   }
 
-  /** Scheduled salary payment — idempotent per (employee, payPeriodKey). */
+  /**
+   * Scheduled salary payment — atomic AND idempotent per (employee, payPeriodKey).
+   * The dedup marker (kv row) is committed in the SAME transaction as the
+   * money movement, so a crash can never leave a paid salary without its
+   * marker: a retry after the crash sees the marker and skips. A concurrent
+   * duplicate loses the kv PRIMARY KEY race and its whole transaction —
+   * including the transfer — rolls back. No 10k-event scans: the marker is a
+   * primary-key lookup.
+   */
   paySalary(input: {
     worldId: string;
     employee: Resident;
@@ -182,44 +196,72 @@ export class EconomyEngine {
     payPeriodKey: string; // e.g. "day-42"
   }): Result<{ transactionId: string; eventId: string; amount: number } | { skipped: true; reason: string }> {
     const idempotencyKey = `salary:${input.employee.id}:${input.payPeriodKey}`;
-    const existing = this.store.events(input.worldId, { type: "employment_payment", limit: 10_000 })
-      .find((e) => (e.payload as Record<string, unknown>)?.idempotencyKey === idempotencyKey);
-    if (existing) {
-      return ok({ skipped: true, reason: `already paid for ${input.payPeriodKey} (event ${existing.id})` });
-    }
-    const employment = input.employee.employment;
-    if (!employment || !employment.businessId) {
-      return err(new NexusError("VALIDATION_ERROR", "resident is not employed"));
-    }
-    const business = this.store.getBusiness(employment.businessId);
-    if (!business) return err(new NexusError("NOT_FOUND", "employer business not found"));
-    const amount = Math.round(employment.salaryPerHour * input.hours * 100) / 100;
-    if (amount <= 0) return ok({ skipped: true, reason: "zero salary" });
+    const dedupKey = `salary_dedup:${input.worldId}:${idempotencyKey}`;
+    try {
+      return this.db.transaction(() => {
+        const employment = input.employee.employment;
+        if (!employment || !employment.businessId) {
+          throw new NexusError("VALIDATION_ERROR", "resident is not employed");
+        }
+        const employeeAccount = input.employee.financialAccountId
+          ? this.store.getAccount(input.employee.financialAccountId)
+          : null;
+        if (!employeeAccount) throw new NexusError("VALIDATION_ERROR", "employee has no financial account");
+        const marker = this.db.get<{ key: string }>("SELECT key FROM kv WHERE key = ?", dedupKey);
+        if (marker) {
+          return ok({ skipped: true, reason: `already paid for ${input.payPeriodKey} (marker ${dedupKey})` });
+        }
+        const business = this.store.getBusiness(employment.businessId);
+        if (!business) throw new NexusError("NOT_FOUND", "employer business not found");
+        const amount = Math.round(employment.salaryPerHour * input.hours * 100) / 100;
+        if (amount <= 0) return ok({ skipped: true, reason: "zero salary" });
 
-    const pay = this.transfer({
-      worldId: input.worldId,
-      fromAccountId: business.accountId,
-      toAccountId: input.employee.financialAccountId,
-      amount,
-      reason: `salary ${input.payPeriodKey} (${input.hours}h @ ${employment.salaryPerHour}/h)`,
-      simTime: input.simTime,
-      participants: [{ residentId: input.employee.id, role: "employee" }],
-    });
-    if (!pay.ok) return pay;
-    const evt = this.store.recordEvent({
-      worldId: input.worldId,
-      type: "employment_payment",
-      simTime: input.simTime,
-      cause: "scheduled employment payment",
-      participants: [{ residentId: input.employee.id, role: "employee" }],
-      effects: [{ target: `account:${input.employee.financialAccountId}`, change: `+${amount}` }],
-      knowledge: [{ residentId: input.employee.id, level: "direct_observation" }],
-      payload: { idempotencyKey, amount, hours: input.hours, employeeId: input.employee.id, businessId: business.id },
-    });
-    return ok({ transactionId: pay.value.transactionId, eventId: evt.id, amount });
+        const pay = this.transfer({
+          worldId: input.worldId,
+          fromAccountId: business.accountId,
+          toAccountId: employeeAccount.id,
+          amount,
+          reason: `salary ${input.payPeriodKey} (${input.hours}h @ ${employment.salaryPerHour}/h)`,
+          simTime: input.simTime,
+          participants: [{ residentId: input.employee.id, role: "employee" }],
+        });
+        if (!pay.ok) throw pay.error;
+        const evt = this.store.recordEvent({
+          worldId: input.worldId,
+          type: "employment_payment",
+          simTime: input.simTime,
+          cause: "scheduled employment payment",
+          participants: [{ residentId: input.employee.id, role: "employee" }],
+          effects: [{ target: `account:${employeeAccount.id}`, change: `+${amount}` }],
+          knowledge: [{ residentId: input.employee.id, level: "direct_observation" }],
+          payload: { idempotencyKey, amount, hours: input.hours, employeeId: input.employee.id, businessId: business.id },
+        });
+        // plain INSERT (no upsert): a concurrent duplicate fails the kv PRIMARY
+        // KEY constraint and the whole transaction rolls back with it
+        this.db.run(
+          "INSERT INTO kv (key, value, updated_at) VALUES (?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'))",
+          dedupKey, safeJsonStringify({ eventId: evt.id, transactionId: pay.value.transactionId, amount, at: new Date().toISOString() }),
+        );
+        // employee learns of the payment (resident-side knowledge, same as event.knowledge)
+        const employee = this.store.getResident(input.employee.id)!;
+        if (employee && !employee.knowledgeRefs.includes(evt.id)) {
+          employee.knowledgeRefs.push(evt.id);
+          this.store.saveResident(employee);
+        }
+        return ok({ transactionId: pay.value.transactionId, eventId: evt.id, amount });
+      });
+    } catch (e) {
+      if (e instanceof NexusError) return err(e);
+      return err(new NexusError("INTERNAL_ERROR", String(e)));
+    }
   }
 
-  /** Property purchase with ownership transfer (directive §10.2). */
+  /**
+   * Property purchase with ownership transfer (directive §10.2). Money is
+   * conserved: the payment moves buyer -> world treasury (institution account),
+   * so unowned-asset purchases no longer destroy money. The buyer's
+   * possessions record is kept in parity with vehicles.
+   */
   buyProperty(input: { worldId: string; buyer: Resident; propertyId: string; simTime: number }): Result<{ eventId: string; price: number }> {
     try {
       return this.db.transaction(() => {
@@ -229,10 +271,11 @@ export class EconomyEngine {
         const account = input.buyer.financialAccountId ? this.store.getAccount(input.buyer.financialAccountId) : null;
         if (!account) throw new NexusError("NOT_FOUND", "buyer has no account");
         if (account.balance < prop.valuation) throw new NexusError("CONFLICT", "insufficient funds for property");
+        const treasury = this.treasuryAccount(input.worldId);
         const pay = this.transfer({
           worldId: input.worldId,
           fromAccountId: account.id,
-          toAccountId: undefined,
+          toAccountId: treasury.id,
           amount: prop.valuation,
           reason: `property purchase ${prop.id}`,
           simTime: input.simTime,
@@ -241,15 +284,21 @@ export class EconomyEngine {
         if (!pay.ok) throw pay.error;
         prop.ownerId = input.buyer.id;
         this.store.saveProperty(prop);
+        const buyer = this.store.getResident(input.buyer.id)!;
+        if (!buyer.possessionIds.includes(prop.id)) buyer.possessionIds.push(prop.id);
+        this.store.saveResident(buyer);
         const evt = this.store.recordEvent({
           worldId: input.worldId,
           type: "property_purchase",
           simTime: input.simTime,
           cause: "property purchase",
           participants: [{ residentId: input.buyer.id, role: "buyer" }],
-          effects: [{ target: `property:${prop.id}`, change: `owner=${input.buyer.id}` }],
+          effects: [
+            { target: `property:${prop.id}`, change: `owner=${input.buyer.id}` },
+            { target: `account:${treasury.id}`, change: `+${prop.valuation}` },
+          ],
           knowledge: [{ residentId: input.buyer.id, level: "direct_observation" }],
-          payload: { propertyId: prop.id, price: prop.valuation, buyerId: input.buyer.id },
+          payload: { propertyId: prop.id, price: prop.valuation, buyerId: input.buyer.id, treasuryAccountId: treasury.id },
         });
         return ok({ eventId: evt.id, price: prop.valuation });
       });
@@ -259,7 +308,10 @@ export class EconomyEngine {
     }
   }
 
-  /** Vehicle purchase with ownership + garage-worthy records (directive §10.3). */
+  /**
+   * Vehicle purchase with ownership + possession records (directive §10.3).
+   * Money is conserved: buyer -> world treasury (institution account).
+   */
   buyVehicle(input: { worldId: string; buyer: Resident; vehicleId: string; price?: number; simTime: number }): Result<{ eventId: string; price: number }> {
     try {
       return this.db.transaction(() => {
@@ -270,8 +322,9 @@ export class EconomyEngine {
         const account = input.buyer.financialAccountId ? this.store.getAccount(input.buyer.financialAccountId) : null;
         if (!account) throw new NexusError("NOT_FOUND", "buyer has no account");
         if (account.balance < price) throw new NexusError("CONFLICT", "insufficient funds for vehicle");
+        const treasury = this.treasuryAccount(input.worldId);
         const pay = this.transfer({
-          worldId: input.worldId, fromAccountId: account.id, toAccountId: undefined,
+          worldId: input.worldId, fromAccountId: account.id, toAccountId: treasury.id,
           amount: price, reason: `vehicle purchase ${vehicle.id}`, simTime: input.simTime,
           participants: [{ residentId: input.buyer.id, role: "buyer" }],
         });
@@ -279,14 +332,17 @@ export class EconomyEngine {
         vehicle.ownerId = input.buyer.id;
         this.store.saveVehicle(vehicle);
         const buyer = this.store.getResident(input.buyer.id)!;
-        buyer.possessionIds.push(vehicle.id);
+        if (!buyer.possessionIds.includes(vehicle.id)) buyer.possessionIds.push(vehicle.id);
         this.store.saveResident(buyer);
         const evt = this.store.recordEvent({
           worldId: input.worldId, type: "vehicle_purchase", simTime: input.simTime,
           cause: "vehicle purchase", participants: [{ residentId: input.buyer.id, role: "buyer" }],
-          effects: [{ target: `vehicle:${vehicle.id}`, change: `owner=${input.buyer.id}` }],
+          effects: [
+            { target: `vehicle:${vehicle.id}`, change: `owner=${input.buyer.id}` },
+            { target: `account:${treasury.id}`, change: `+${price}` },
+          ],
           knowledge: [{ residentId: input.buyer.id, level: "direct_observation" }],
-          payload: { vehicleId: vehicle.id, price },
+          payload: { vehicleId: vehicle.id, price, treasuryAccountId: treasury.id },
         });
         return ok({ eventId: evt.id, price });
       });
@@ -294,6 +350,19 @@ export class EconomyEngine {
       if (e instanceof NexusError) return err(e);
       return err(new NexusError("INTERNAL_ERROR", String(e)));
     }
+  }
+
+  /**
+   * World treasury (institution account) — the counterparty for unowned-asset
+   * purchases so money is conserved: buyer -> treasury moves the supply, it
+   * never destroys it. Reuses the Account.ownerType=institution seam (WLD-11).
+   */
+  private treasuryAccount(worldId: string): Account {
+    const existing = this.store.listAccounts(worldId).find((a) => a.ownerType === "institution");
+    if (existing) return existing;
+    const treasury = createAccount({ worldId, ownerType: "institution", balance: 0 });
+    this.store.saveAccount(treasury);
+    return treasury;
   }
 
   /** Money supply audit — detects unbounded money creation. */

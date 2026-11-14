@@ -182,20 +182,22 @@ export class SimulationEngine {
     }
     // community event opportunity
     if (hour >= 19 && hour <= 21 && roll > 0.96) {
+      // knowledge only — the director never controls individual residents
+      // directly (§7.6); attending the festival is the life engine's decision.
+      const nearby = residents.filter((r) => Math.hypot(r.position.x, r.position.z) < 50);
       const evt = this.store.recordEvent({
         worldId: world.id,
         type: "community_event",
         simTime: world.simulationTime,
         cause: "director opportunity generation",
         effects: [{ target: "social_calendar", change: "street_festival" }],
+        knowledge: nearby.map((r) => ({ residentId: r.id, level: "direct_observation" as const })),
         payload: { kind: "street_festival" },
       });
-      // nearby residents learn of it
-      for (const r of residents) {
-        if (Math.hypot(r.position.x, r.position.z) < 50) {
+      // nearby residents learn of it (resident-side knowledge, same as event.knowledge)
+      for (const r of nearby) {
+        if (!r.knowledgeRefs.includes(evt.id)) {
           r.knowledgeRefs.push(evt.id);
-          r.currentActivity = "responding_to_event";
-          r.currentActivityDetail = "attending street festival";
           this.store.saveResident(r);
         }
       }
@@ -204,75 +206,90 @@ export class SimulationEngine {
     return null;
   }
 
-  /** Causal collision event with witnesses, damage, emergency response chain (Scenario F). */
+  /**
+   * Causal collision event with witnesses, damage, emergency response chain
+   * (Scenario F). The whole chain (2 vehicle saves, 3 events, witness saves)
+   * commits atomically — a crash mid-chain can no longer tear the causal
+   * history. Participants (drivers) are always given knowledge of their own
+   * crash, even if they are farther from the impact point than the 40 m
+   * witness radius.
+   */
   vehicleCollision(world: World, a: Vehicle, b: Vehicle, residents: Resident[]): WorldEvent {
-    a.inUse = false; b.inUse = false;
-    a.condition = clamp(a.condition - 0.45, 0, 1);
-    b.condition = clamp(b.condition - 0.35, 0, 1);
-    this.store.saveVehicle(a);
-    this.store.saveVehicle(b);
+    return this.store.db.transaction(() => {
+      a.inUse = false; b.inUse = false;
+      a.condition = clamp(a.condition - 0.45, 0, 1);
+      b.condition = clamp(b.condition - 0.35, 0, 1);
+      this.store.saveVehicle(a);
+      this.store.saveVehicle(b);
 
-    const witnesses = residents
-      .filter((r) => Math.hypot(r.position.x - a.location.x, r.position.z - a.location.z) < 40)
-      .map((r) => r.id);
+      const witnesses = residents
+        .filter((r) => Math.hypot(r.position.x - a.location.x, r.position.z - a.location.z) < 40)
+        .map((r) => r.id);
+      // participants always know their own collision, even beyond the witness radius
+      const knowledgeIds = [...new Set([
+        ...witnesses,
+        ...(a.ownerId ? [a.ownerId] : []),
+        ...(b.ownerId ? [b.ownerId] : []),
+      ])];
 
-    const collision = this.store.recordEvent({
-      id: nexusId(ID_PREFIXES.event),
-      worldId: world.id,
-      type: "vehicle_collision",
-      simTime: world.simulationTime,
-      location: a.location,
-      cause: `wet roads (${world.environment.weather}) during commute`,
-      participants: [
-        ...(a.ownerId ? [{ residentId: a.ownerId, role: "driver_a" }] : []),
-        ...(b.ownerId ? [{ residentId: b.ownerId, role: "driver_b" }] : []),
-      ],
-      witnesses,
-      evidence: [`damage_report:${a.id}`, `damage_report:${b.id}`],
-      effects: [
-        { target: `vehicle:${a.id}`, change: "condition -0.45, stopped" },
-        { target: `vehicle:${b.id}`, change: "condition -0.35, stopped" },
-        { target: "traffic", change: "lane_blocked" },
-      ],
-      knowledge: witnesses.map((id) => ({ residentId: id, level: "direct_observation" as const })),
-      payload: { vehicleA: a.id, vehicleB: b.id, weather: world.environment.weather },
-    });
+      const collision = this.store.recordEvent({
+        id: nexusId(ID_PREFIXES.event),
+        worldId: world.id,
+        type: "vehicle_collision",
+        simTime: world.simulationTime,
+        location: a.location,
+        cause: `${world.environment.weather} roads during commute`,
+        participants: [
+          ...(a.ownerId ? [{ residentId: a.ownerId, role: "driver_a" }] : []),
+          ...(b.ownerId ? [{ residentId: b.ownerId, role: "driver_b" }] : []),
+        ],
+        witnesses,
+        evidence: [`damage_report:${a.id}`, `damage_report:${b.id}`],
+        effects: [
+          { target: `vehicle:${a.id}`, change: "condition -0.45, stopped" },
+          { target: `vehicle:${b.id}`, change: "condition -0.35, stopped" },
+          { target: "traffic", change: "lane_blocked" },
+        ],
+        knowledge: knowledgeIds.map((id) => ({ residentId: id, level: "direct_observation" as const })),
+        payload: { vehicleA: a.id, vehicleB: b.id, weather: world.environment.weather },
+      });
 
-    // witnesses remember the event
-    for (const r of residents) {
-      if (witnesses.includes(r.id) && !r.knowledgeRefs.includes(collision.id)) {
-        r.knowledgeRefs.push(collision.id);
-        this.store.saveResident(r);
+      // witnesses and participants remember the event
+      for (const r of residents) {
+        if (knowledgeIds.includes(r.id) && !r.knowledgeRefs.includes(collision.id)) {
+          r.knowledgeRefs.push(collision.id);
+          this.store.saveResident(r);
+        }
       }
-    }
 
-    // chained consequence: emergency response (§10.9)
-    this.store.recordEvent({
-      worldId: world.id,
-      type: "emergency_response",
-      simTime: world.simulationTime + 8 * 60_000, // 8 sim-minutes later
-      location: a.location,
-      cause: "dispatched to vehicle collision",
-      causeEventId: collision.id,
-      participants: [{ role: "police" }, { role: "ambulance" }],
-      effects: [
-        { target: "traffic", change: "road_cleared_pending_tow" },
-        { target: `vehicle:${a.id}`, change: "towed_to_garage" },
-      ],
-      payload: { collisionId: collision.id, responders: ["police", "ambulance", "tow"] },
+      // chained consequence: emergency response (§10.9)
+      this.store.recordEvent({
+        worldId: world.id,
+        type: "emergency_response",
+        simTime: world.simulationTime + 8 * 60_000, // 8 sim-minutes later
+        location: a.location,
+        cause: "dispatched to vehicle collision",
+        causeEventId: collision.id,
+        participants: [{ role: "police" }, { role: "ambulance" }],
+        effects: [
+          { target: "traffic", change: "road_cleared_pending_tow" },
+          { target: `vehicle:${a.id}`, change: "towed_to_garage" },
+        ],
+        payload: { collisionId: collision.id, responders: ["police", "ambulance", "tow"] },
+      });
+
+      // road consequence persists
+      this.store.recordEvent({
+        worldId: world.id,
+        type: "road_consequence",
+        simTime: world.simulationTime + 45 * 60_000,
+        cause: "collision aftermath",
+        causeEventId: collision.id,
+        effects: [{ target: "traffic", change: "speed_restriction_40" }],
+        payload: { collisionId: collision.id, restriction: "40kph", durationSimHours: 6 },
+      });
+
+      return collision;
     });
-
-    // road consequence persists
-    this.store.recordEvent({
-      worldId: world.id,
-      type: "road_consequence",
-      simTime: world.simulationTime + 45 * 60_000,
-      cause: "collision aftermath",
-      causeEventId: collision.id,
-      effects: [{ target: "traffic", change: "speed_restriction_40" }],
-      payload: { collisionId: collision.id, restriction: "40kph", durationSimHours: 6 },
-    });
-
-    return collision;
   }
 }

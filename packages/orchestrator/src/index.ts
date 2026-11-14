@@ -87,8 +87,10 @@ export interface OrchestratorConfig {
   clock?: Clock;
   memoryScope?: string;
   maxRecoveryAttempts?: number;
-  /** Consequential operations require owner approval before AUTHORISED. */
-  approvalGate?: (task: JarvisTask) => Promise<{ required: boolean; granted: boolean; by?: string }>;
+  /** Consequential operations require owner approval before AUTHORISED. The
+   *  gate receives the run options: an explicit approvedBy (supplied by the
+   *  /jarvis/tasks/:id/approve route) is what releases the gate. */
+  approvalGate?: (task: JarvisTask, opts?: { approvedBy?: string }) => Promise<{ required: boolean; granted: boolean; by?: string }>;
 }
 
 export class JarvisOrchestrator {
@@ -143,6 +145,7 @@ export class JarvisOrchestrator {
   async run(taskId: string, opts?: { approvedBy?: string }): Promise<Result<JarvisTask>> {
     let task = this.repo.get(taskId);
     if (!task) return err(new NexusError("NOT_FOUND", `task ${taskId} not found`));
+    let lastApproach: string | undefined;
 
     // ---- RECEIVED → INTERPRETED
     if (task.state === "RECEIVED") {
@@ -163,6 +166,7 @@ export class JarvisOrchestrator {
       const context = this.memory.assembleContext(this.memoryScope, task.objective, 8);
       const reasoning = await this.reasoning.analyse(task.objective, context, task.interpretation?.constraints ?? []);
       if (reasoning.ok) {
+        lastApproach = reasoning.value.approach;
         this.memory.create({
           scope: this.memoryScope, tier: "working", kind: "fact",
           title: `Reasoning for ${task.id}`,
@@ -177,9 +181,10 @@ export class JarvisOrchestrator {
 
     // ---- CONTEXTUALISED → PLANNED
     if (task.state === "CONTEXTUALISED") {
-      const plan = await this.planning.decompose(task.objective, "capability-driven", this.tools.listTools());
+      // the reasoning subsystem's approach drives planning (not a constant):
+      const plan = await this.planning.decompose(task.objective, lastApproach ?? "capability-driven", this.tools.listTools());
       const steps: PlanStep[] = plan.ok
-        ? plan.value.map((s) => ({ ...s, params: {} }))
+        ? plan.value.map((s) => ({ ...s, params: s.params ?? {} }))
         : PlanningService.fallbackPlan(task.objective).map((s) => ({ ...s, params: {} }));
       task.plan = steps;
       task.stepResults = steps.map((s) => ({ stepId: s.stepId, status: "PENDING" }));
@@ -203,9 +208,9 @@ export class JarvisOrchestrator {
     if (task.state === "VALIDATED") {
       const consequential = task.plan.some((s) => s.tool && this.tools.requiresApproval(s.tool, s.params));
       if (consequential && this.approvalGate) {
-        const gate = await this.approvalGate(task);
+        const gate = await this.approvalGate(task, opts);
         if (gate.required && !gate.granted) {
-          // stays VALIDATED; caller re-runs with approval
+          // stays VALIDATED; caller re-runs with approval (approvedBy)
           return ok(task);
         }
       }

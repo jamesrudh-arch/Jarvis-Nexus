@@ -560,9 +560,9 @@ export const AdvanceWorldRequest = z.object({
 });
 
 export const CreateNaeiTaskRequest = z.object({
-  requirement: z.string().min(1),
-  affectedSubsystems: z.array(z.string()).default([]),
-  acceptanceCriteria: z.array(z.string()).min(1),
+  requirement: z.string().min(1).max(8_000),
+  affectedSubsystems: z.array(z.string().min(1).max(64)).max(10).default([]),
+  acceptanceCriteria: z.array(z.string().min(1).max(500)).min(1).max(12),
   preferredRole: AgentRoleSchema.optional(),
   requiresApproval: z.boolean().default(false),
 });

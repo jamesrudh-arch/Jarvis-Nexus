@@ -3,7 +3,7 @@
  *
  * Design (ADR-004): single-file relational store; append-only event table for
  * causal world history; JSON documents for evolving entity shapes; explicit
- * migrations with checksums; transactional financial operations.
+ * id-tracked migrations; transactional financial operations.
  */
 import { Database as BunDatabase, type Statement } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
@@ -55,7 +55,8 @@ export class NexusDb {
 }
 
 // ===========================================================================
-// Migrations — ordered, append-only, checksum-guarded
+// Migrations — ordered, append-only; applied ids are tracked in the
+// schema_migrations table (no checksums: the id list is the source of truth)
 // ===========================================================================
 
 export interface Migration {
@@ -269,6 +270,18 @@ CREATE TABLE metrics (
   at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 CREATE INDEX idx_metrics_name_time ON metrics(name, at);
+`,
+  },
+  {
+    id: 2,
+    name: "audit_indexes",
+    sql: `
+-- Query-path indexes for the audit (2026-11-14): the events-after/recovery
+-- path (world_id, seq) and the global audit-log ordering (at DESC) previously
+-- degraded as the append-only tables grew.
+CREATE INDEX IF NOT EXISTS idx_events_world_seq ON world_events(world_id, seq);
+CREATE INDEX IF NOT EXISTS idx_mcp_audit_at ON mcp_audit(at DESC);
+CREATE INDEX IF NOT EXISTS idx_txn_event_ref ON transactions(event_ref);
 `,
   },
 ];

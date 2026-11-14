@@ -50,6 +50,29 @@ export class McpGateway {
     opts?: { clock?: Clock },
   ) {
     this.clock = opts?.clock ?? systemClock;
+    this.loadPersisted();
+  }
+
+  /**
+   * Re-register servers persisted in mcp_servers so registrations survive
+   * restarts (the table was previously write-only — a restart silently lost
+   * every dynamically registered server). Connections do not survive the
+   * process: state resets to "registered" and reconnects on first use.
+   */
+  private loadPersisted(): void {
+    try {
+      const rows = this.db.all<{ name: string; doc: string }>("SELECT name, doc FROM mcp_servers");
+      for (const row of rows) {
+        try {
+          const entry = JSON.parse(row.doc) as RegisteredServer;
+          if (entry?.registration?.name && !this.servers.has(entry.registration.name)) {
+            entry.state = "registered"; // stdio/http connections cannot survive a restart
+            entry.tools = entry.tools ?? [];
+            this.servers.set(entry.registration.name, entry);
+          }
+        } catch { /* skip corrupt rows */ }
+      }
+    } catch { /* table missing on a fresh database */ }
   }
 
   // -- lifecycle (§4.1) ------------------------------------------------------
@@ -197,12 +220,19 @@ export class McpGateway {
     }
 
     try {
-      const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new NexusError("TIMEOUT", `tool invocation exceeded ${entry.registration.timeoutMs}ms`)), entry.registration.timeoutMs));
-      const result = await Promise.race([
-        client.callTool({ name: inv.toolName, arguments: inv.args as Record<string, unknown> }, CallToolResultSchema),
-        timeout,
-      ]);
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const timeout = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new NexusError("TIMEOUT", `tool invocation exceeded ${entry.registration.timeoutMs}ms`)), entry.registration.timeoutMs);
+      });
+      let result;
+      try {
+        result = await Promise.race([
+          client.callTool({ name: inv.toolName, arguments: inv.args as Record<string, unknown> }, CallToolResultSchema),
+          timeout,
+        ]);
+      } finally {
+        clearTimeout(timer); // never leak the timer past the invocation
+      }
       const content = (result.content as Array<{ type: string; text?: string }> | undefined)?.[0]?.text;
       const durationMs = this.clock.nowMs() - started;
       const payload: McpInvocationResult = {
@@ -216,12 +246,18 @@ export class McpGateway {
     } catch (e) {
       const msg = String(e).slice(0, 400);
       const durationMs = this.clock.nowMs() - started;
-      const outcome = e instanceof NexusError && e.code === "TIMEOUT" ? "timeout" : "error";
-      // failed connections degrade the server state
-      entry.state = "failed";
-      entry.lastError = msg;
-      this.clients.delete(inv.serverName);
-      this.persist(entry);
+      const isTimeout = e instanceof NexusError && e.code === "TIMEOUT";
+      const outcome: McpAuditEntry["outcome"] = isTimeout ? "timeout" : "error";
+      if (!isTimeout) {
+        // transport failure degrades the server state and drops the connection;
+        // a timeout alone must not poison a healthy server
+        entry.state = "failed";
+        entry.lastError = msg;
+        const c = this.clients.get(inv.serverName);
+        this.clients.delete(inv.serverName);
+        if (c) void c.close().catch(() => { /* already closed */ });
+        this.persist(entry);
+      }
       return this.auditFail(auditBase, outcome, msg, started);
     }
   }
