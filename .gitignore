@@ -1,0 +1,31 @@
+# Secrets and credentials — NEVER commit
+.env*
+*.pem
+*.key
+
+# Dependencies / build outputs
+node_modules/
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+
+# Databases (local)
+*.db
+*.db-journal
+
+# Logs
+*.log
+
+# Sandbox working directories (not part of the product repository)
+download/
+upload/
+skills/
+.zscripts/
+tool-results/
+agent-ctx/
+
+# OS / editor
+.DS_Store
