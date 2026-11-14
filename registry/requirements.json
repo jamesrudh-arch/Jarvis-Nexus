@@ -245,6 +245,10 @@
         {
           "kind": "test",
           "reference": "tests/integration/api.test.ts: MCP gateway acceptance (4 tests)"
+        },
+        {
+          "kind": "deployment",
+          "reference": "production MCP invoke verified"
         }
       ]
     },
@@ -835,11 +839,23 @@
       "behaviour": "Auto-deploy from main; Dockerfile build; /health healthcheck; /data volume persistence",
       "subsystem": "deploy",
       "dependsOn": [],
-      "status": "VERIFIED",
+      "status": "DEPLOYED",
       "evidence": [
         {
           "kind": "deployment",
-          "reference": "jarvis-nexus-production.up.railway.app/health (see ACCEPTANCE.md)"
+          "reference": "Railway deployment 64502941 (af8bf00) SUCCESS"
+        },
+        {
+          "kind": "deployment",
+          "reference": "GET /health -> 200 overall healthy (live probe 2026-11-14)"
+        },
+        {
+          "kind": "deployment",
+          "reference": "live MCP invoke add(21,21)=42 in production"
+        },
+        {
+          "kind": "deployment",
+          "reference": "live JARVIS objective COMPLETED in production (4 cloudflare calls)"
         }
       ]
     },
@@ -920,6 +936,10 @@
         {
           "kind": "test",
           "reference": "integration: health reports all components"
+        },
+        {
+          "kind": "deployment",
+          "reference": "production /health/detailed all healthy"
         }
       ]
     },
@@ -955,6 +975,10 @@
         {
           "kind": "test",
           "reference": "integration Scenario A (live model, state machine to COMPLETED)"
+        },
+        {
+          "kind": "deployment",
+          "reference": "production JARVIS objective COMPLETED (live)"
         }
       ]
     },
