@@ -1,0 +1,109 @@
+Secure MCP Filesystem Server running on stdio
+Read-only mode: only tools that cannot change the filesystem are served
+Effective allowed directories (from the command line):
+  /tmp/nexus_ix_slrkthnn/mcpfs
+Client does not support MCP Roots, using allowed directories set from server args: [ '/tmp/nexus_ix_slrkthnn/mcpfs' ]
+Effective allowed directories (from the command line):
+  /tmp/nexus_ix_slrkthnn/mcpfs
+[PASS] M1 filesystem MCP connected, tools discovered + schemas — discovered=10 allowed=8
+[PASS] M1b write tools not served (server --read-only enforced)
+[PASS] M2 list_directory real call — [FILE] data.json | [DIR] nested | [FILE] note.txt
+[PASS] M3 read_text_file real call returns exact content
+[PASS] M4 read_multiple_files real call
+[PASS] M5 directory_tree real call (nested entry)
+{"evt": "mcp.call.denied", "server": "filesystem", "tool": "write_file", "reason": "tool_not_on_allowlist"}
+[PASS] M6 allowlist gate blocks non-allowed tool — PermissionDeniedError raised before any server round-trip
+[PASS] M7 server-side error mapped to ToolExecutionError
+[PASS] M8 health monitoring reports connected + call counters — calls=5 tool_count=10
+[11/13/26 21:58:48] INFO     Processing request of type            server.py:727
+                             ListToolsRequest                                   
+[PASS] J1 JARVIS MCP server spawned + handshake + tool discovery — tools=['execute_command', 'get_geography', 'get_world_status', 'list_capabilities', 'run_ticks']
+                    INFO     Processing request of type            server.py:727
+                             CallToolRequest                                    
+[PASS] J2 get_world_status over MCP matches world db — tick=0 hash=7beba499d4df
+                    INFO     Processing request of type            server.py:727
+                             CallToolRequest                                    
+[PASS] J3 run_ticks over MCP advances the persisted world — result tick=5 db tick=5
+                    INFO     Processing request of type            server.py:727
+                             CallToolRequest                                    
+[PASS] J4 wrong founder token rejected over MCP
+                    INFO     Processing request of type            server.py:727
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:727
+                             CallToolRequest                                    
+[PASS] J5 permission system enforced through MCP transport — simulate/observer=rejected observe/observer=executed
+                    INFO     Processing request of type            server.py:727
+                             CallToolRequest                                    
+[PASS] J6 list_capabilities over MCP
+[PASS] B1 navigate local fixture (real headless chromium) — title='Nexus Browser Fixture' chars=72
+[PASS] B2 link extraction from rendered page — links=['https://example.com/']
+[PASS] B3 screenshot rendered to PNG — bytes=15869
+[PASS] B4 navigate live site https://example.com — status=200 title='Example Domain'
+[PASS] V1 analyze_image on known fixture (64x32x3) — 64x32 edge_density=0.0
+[PASS] V2 QR encode→decode roundtrip — decoded='NEXUS-WORLD-2026'
+[PASS] V3 analyze_image on browser screenshot (chained artifact) — 1280x720 sharpness=520.13
+[PASS] W1 piper TTS real synthesis to WAV — duration=3.51s bytes=154668 elapsed=0.28s
+Secure MCP Filesystem Server running on stdio
+Read-only mode: only tools that cannot change the filesystem are served
+Effective allowed directories (from the command line):
+  /tmp/nexus_ix_slrkthnn/mcpfs
+Client does not support MCP Roots, using allowed directories set from server args: [ '/tmp/nexus_ix_slrkthnn/mcpfs' ]
+Effective allowed directories (from the command line):
+  /tmp/nexus_ix_slrkthnn/mcpfs
+Processing request of type ListToolsRequest
+[11/13/26 21:58:55] INFO     Processing request of type            server.py:727
+                             ListToolsRequest                                   
+[PASS] X1 orchestrator → browser.screenshot (approval-gated, audited) — status=executed
+[PASS] X2 orchestrator → vision.analyze_image on X1 artifact — 1280x720
+[PASS] X3 both tool invocations present in the audit event log — intents=['browser.screenshot', 'vision.analyze_image']
+[PASS] X4 command idempotency across the integration layer
+[PASS] X5 unknown capability rejected + audited (no crash)
+[PASS] O1 Prometheus exposition has orchestrator + tool metrics
+[PASS] O2 world tick gauge tracks persisted tick — gauge=3 store=3
+[PASS] R1 OPERATIONAL refused without evidence
+[PASS] R2 state regression refused
+[PASS] R3 markdown rendering + JSON persistence roundtrip
+[PASS] R4 invalid state rejected at construction
+[PASS] A1 GET /metrics serves Prometheus exposition
+Secure MCP Filesystem Server running on stdio
+Read-only mode: only tools that cannot change the filesystem are served
+Effective allowed directories (from the command line):
+  /home/z/my-project/NEXUS_WORLD/assets/mcp_fs_sandbox
+Client does not support MCP Roots, using allowed directories set from server args: [ '/home/z/my-project/NEXUS_WORLD/assets/mcp_fs_sandbox' ]
+Effective allowed directories (from the command line):
+  /home/z/my-project/NEXUS_WORLD/assets/mcp_fs_sandbox
+Processing request of type ListToolsRequest
+[11/13/26 21:58:59] INFO     Processing request of type            server.py:727
+                             ListToolsRequest                                   
+[PASS] A2 GET /integrations lists connected stack
+[PASS] A3 GET /integrations/health live component status
+[PASS] A4 external capability reachable through HTTP /command — status=executed links=1
+[PASS] A5 /metrics now shows command + tool telemetry
+[PASS] P2A POST /world/create on integrated app — status=201
+[PASS] P2B POST /world/populate creates residents — status=201
+[PASS] P2C 72 ticks with living residents advance — body=
+[PASS] P2D GET /residents lists living residents
+[PASS] A6 blender MCP server connected + registered on orchestrator — status=connected caps=40
+[PASS] A7 POST /render rejects unauthenticated — status=403
+Processing request of type CallToolRequest
+Failed to parse JSONRPC message from server
+Traceback (most recent call last):
+  File "/home/z/.venv/lib/python3.12/site-packages/mcp/client/stdio/__init__.py", line 155, in stdout_reader
+    message = types.JSONRPCMessage.model_validate_json(line)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/.venv/lib/python3.12/site-packages/pydantic/main.py", line 766, in model_validate_json
+    return cls.__pydantic_validator__.validate_json(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+pydantic_core._pydantic_core.ValidationError: 1 validation error for JSONRPCMessage
+  Invalid JSON: expected ident at line 1 column 4 [type=json_invalid, input_value='Info: Saved as "scene_tick72.a0.blend"', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/json_invalid
+Processing request of type CallToolRequest
+00:01.442  blend            | Read blend: "/home/z/my-project/NEXUS_WORLD/workspace/blender/scene_tick72.a0.blend"
+00:03.898  render           | Saved: '/home/z/my-project/NEXUS_WORLD/workspace/renders/top_tick72.png'
+[PASS] A8 POST /render renders the live world (real Blender) — status=200 transport=mcp ok=True
+[PASS] A9 GET /world/renders lists render artifacts
+
+(fixtures kept at /tmp/nexus_ix_slrkthnn)
+
+================================================================
+INTEGRATION ACCEPTANCE: 47/47 PASS, 0 FAIL — 21.4s

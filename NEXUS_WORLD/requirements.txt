@@ -1,0 +1,27 @@
+# NEXUS WORLD — Tier 0 runtime dependencies (pinned)
+# Philosophy: minimal dependency inventory (directive Part 5) — every entry
+# justified in docs/DECISIONS/ADR-007 + integration/INTEGRATION_REGISTER.md.
+# Phase 1 shipped with ZERO new runtime packages; this file pins what the
+# Integration Directive phase actually uses (all were pre-verified present,
+# piper-tts/bandit/pip-audit were the only additions this phase).
+
+# --- core (Phase 1; fastapi/starlette upgraded 2026-11-13 to remediate
+#     5 known starlette CVEs found by pip-audit — see
+#     reports/SECURITY_SCAN_OUTPUT.txt for the found→fixed evidence) ---
+fastapi==0.162.6
+starlette==1.10.0
+uvicorn==0.44.0
+pydantic>=2.12,<3
+httpx==0.28.1
+
+# --- integration layer (Phase 1B, Integration Directive) ---
+mcp>=1.27,<2          # official MCP SDK — 1.x line pinned; v2 removes FastMCP
+playwright==1.57.0    # headless chromium (browsers: chromium-1200)
+opencv-python-headless==4.13.0.90
+numpy>=2.1,<3
+prometheus_client==0.24.1
+piper-tts==1.8.0      # GPL-3.0+ — internal use; see register licensing note
+
+# --- security tooling (non-runtime) ---
+bandit==1.9.4
+pip-audit==2.10.1

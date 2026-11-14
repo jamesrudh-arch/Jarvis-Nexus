@@ -1,0 +1,53 @@
+RAILWAY VERIFICATION (live GraphQL + HTTP)
+verified_at_utc: 2026-11-13T16:31:16+00:00
+
+{
+  "deployment_paths": {
+    "available": [
+      "githubRepoDeploy",
+      "serviceInstanceDeploy",
+      "serviceInstanceDeployV2",
+      "templateDeployV2"
+    ],
+    "conclusion": "code deployment requires one of: GitHub repo connection / OCI image source / a CLI-compatible token \u2014 the CLI rejects workspace tokens on its user-scoped auth check (verified) while the same token works over GraphQL v2",
+    "source_upload_mutations": "NONE in public API"
+  },
+  "domains_found": 0,
+  "health_checks": [],
+  "project_count": 1,
+  "project_details": [
+    {
+      "project": "reasonable-heart",
+      "services": []
+    }
+  ],
+  "projects": [
+    {
+      "id": "f3e6f010-\u2026c4d3 (len=36)",
+      "name": "reasonable-heart",
+      "updatedAt": "2026-11-12T14:49:18.299Z"
+    }
+  ],
+  "projects_query": {
+    "data": {
+      "projects": {
+        "edges": [
+          {
+            "node": {
+              "id": "f3e6f010-61df-4e97-bc5e-1f7dd695c4d3",
+              "name": "reasonable-heart",
+              "updatedAt": "2026-11-12T14:49:18.299Z"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "result": "token VALID; workspace enumerated; 0 health probes performed",
+  "token": "rlwy_wksp\u2026P0yZ (len=50)",
+  "verified_at_utc": "2026-11-13T16:31:16+00:00",
+  "write_capability": {
+    "serviceCreate": "OK: nexus-write-probe",
+    "serviceDelete": "OK"
+  }
+}

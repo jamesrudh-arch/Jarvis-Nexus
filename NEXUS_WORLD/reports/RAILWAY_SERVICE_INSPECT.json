@@ -1,0 +1,67 @@
+{
+ "generated_utc": "2026-11-13T18:45:17Z",
+ "service_fields": [
+  "createdAt",
+  "deletedAt",
+  "featureFlags",
+  "groupId",
+  "hasHiddenRegistryCredentialsFromTemplate",
+  "icon",
+  "id",
+  "isRestricted",
+  "name",
+  "pendingTakedownAcknowledgment",
+  "project",
+  "projectId",
+  "repoTriggers",
+  "takedownAcknowledgments",
+  "templateId",
+  "templateServiceId",
+  "templateThreadSlug",
+  "updatedAt"
+ ],
+ "service_detail": {
+  "http": 200,
+  "data": {
+   "service": {
+    "id": "8f8a9401-5e27-4449-a1cb-01271906b8f7",
+    "name": "Jarvis-Nexus",
+    "createdAt": "2026-11-12T14:49:18.759Z",
+    "updatedAt": "2026-11-12T14:49:18.759Z"
+   }
+  },
+  "errors": null
+ },
+ "deployments": {
+  "http": 400,
+  "data": null,
+  "errors": [
+   "Unknown argument \"serviceId\" on field \"Query.deployments\".",
+   "Cannot query field \"stoppedAt\" on type \"Deployment\".",
+   "Field \"meta\" must not have a selection since type \"DeploymentMeta\" has no subfields.",
+   "Field \"deployments\" argument \"input\" of type \"DeploymentListInput!\" is required, but it was not provided."
+  ]
+ },
+ "serviceDomains": {
+  "http": 400,
+  "data": null,
+  "errors": [
+   "Cannot query field \"serviceDomains\" on type \"Service\"."
+  ]
+ },
+ "projectDomains": {
+  "http": 400,
+  "data": null,
+  "errors": [
+   "Cannot query field \"domains\" on type \"Project\"."
+  ]
+ },
+ "variable_names": {
+  "http": 400,
+  "data": null,
+  "errors": [
+   "Field \"variables\" must not have a selection since type \"EnvironmentVariables!\" has no subfields.",
+   "Field \"variables\" argument \"projectId\" of type \"String!\" is required, but it was not provided."
+  ]
+ }
+}

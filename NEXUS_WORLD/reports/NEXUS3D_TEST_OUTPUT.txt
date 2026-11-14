@@ -1,0 +1,15 @@
+[PASS] W1 worldgen deterministic (hash noise, no RNG state) — trees=160 parks=17
+[PASS] W2 worldgen varies by seed — water cells 196 vs 156
+[PASS] W3 city-flattening: terrain 0 on roads, wild off-city — on-road=0.0 at (60,45); sample (8,8)=0.0
+[PASS] W4 composite world built (city+terrain+water+parks+trees) — verts=4096 trees=320 parks=17 blend=1975400B
+[PASS] W4b rain particle system (weather=rain) — systems=1 particles=4000
+[PASS] W5 render passes FULL inspection (incl. sharpness+saturation) — brightness=156.4 sharp=180.27 sat=41.5 failed=[]
+[PASS] W6 characters are real rigs (armatures + bone-parented parts) — armatures=6 parts=36 (torso/head/2 arms/2 legs per rig) walk_cycles=6
+[PASS] W7 creatures (10 birds + wings + 2 quadrupeds) — birds=10 wings=20 quadrupeds=2
+[PASS] W8 rigid-body physics real (bake + measured bounces) — simulated=12/12 bounces=18 mean_rest_z=0.037
+[PASS] W9 UE bundle: USD+FBX+GLB exported, magic bytes verified — sizes={'usd': 16916, 'fbx': 66732, 'glb': 70700} magic={'usd': True, 'fbx': True, 'glb': True} rc=0 stderr=
+[PASS] W10 manifest: conventions + honest import status — manifest=manifest.json files=4
+[PASS] W11 regeneration triggers after failed corrections — attempts=[(1, False), (2, False), ('regen', True)]
+
+================================================================
+NEXUS 3D ACCEPTANCE: 12/12 PASS, 0 FAIL — 25.6s

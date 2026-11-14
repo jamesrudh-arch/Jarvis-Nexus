@@ -1,0 +1,106 @@
+{
+ "generated_utc": "2026-11-14T07:10:28Z",
+ "deployment": {
+  "id": "8128960e-edf7-4a0f-88f2-dfde6964d168",
+  "status": "SUCCESS",
+  "createdAt": "2026-11-13T17:57:09.635Z",
+  "statusUpdatedAt": "2026-11-13T17:59:34.243Z",
+  "canRedeploy": true,
+  "canRollback": true,
+  "instances": [
+   {
+    "id": "5867d302-fa42-448f-ba70-a6e1298fd2b6",
+    "status": "RUNNING"
+   }
+  ]
+ },
+ "log_count": 101,
+ "log_time_range": {
+  "first": "2026-11-13T19:33:16.406059904Z",
+  "last": "2026-11-14T07:09:50.214457768Z"
+ },
+ "restart_marker_count": 0,
+ "restart_markers_sample": [],
+ "first_logs": [
+  {
+   "ts": "2026-11-13T19:33:16.406059904Z",
+   "msg": "prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`MemoryRecord`.`id` FROM `main`.`MemoryRecord` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`"
+  },
+  {
+   "ts": "2026-11-13T19:33:16.406064265Z",
+   "msg": "prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`GoalRecord`.`id` FROM `main`.`GoalRecord` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`"
+  },
+  {
+   "ts": "2026-11-13T19:33:16.406068585Z",
+   "msg": "prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`OwnerSwitch`.`switchKey` FROM `main`.`OwnerSwitch` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`"
+  },
+  {
+   "ts": "2026-11-13T19:33:16.406071815Z",
+   "msg": "prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`ScenarioDefinition`.`id` FROM `main`.`ScenarioDefinition` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`"
+  },
+  {
+   "ts": "2026-11-13T19:33:25.390857290Z",
+   "msg": "prisma:query ALTER TABLE \"NexusWorldState\" ADD COLUMN \"residentsJson\" TEXT"
+  },
+  {
+   "ts": "2026-11-13T19:33:25.390862500Z",
+   "msg": "prisma:query SELECT `main`.`NexusWorldState`.`id`, `main`.`NexusWorldState`.`ownerName`, `main`.`NexusWorldState`.`firstLaunchCompleted`, `main`.`NexusWorldState`.`activeMode`, `ma"
+  },
+  {
+   "ts": "2026-11-13T19:33:25.392468048Z",
+   "msg": "prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`OwnerSwitch`.`switchKey` FROM `main`.`OwnerSwitch` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`"
+  },
+  {
+   "ts": "2026-11-13T19:33:25.392481087Z",
+   "msg": "prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`MemoryRecord`.`id` FROM `main`.`MemoryRecord` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`"
+  }
+ ],
+ "last_logs": [
+  {
+   "ts": "2026-11-14T07:09:50.214428108Z",
+   "msg": "prisma:query ALTER TABLE \"NexusWorldState\" ADD COLUMN \"residentsJson\" TEXT"
+  },
+  {
+   "ts": "2026-11-14T07:09:50.214434058Z",
+   "msg": "prisma:query SELECT `main`.`NexusWorldState`.`id`, `main`.`NexusWorldState`.`ownerName`, `main`.`NexusWorldState`.`firstLaunchCompleted`, `main`.`NexusWorldState`.`activeMode`, `ma"
+  },
+  {
+   "ts": "2026-11-14T07:09:50.214439358Z",
+   "msg": "prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`OwnerSwitch`.`switchKey` FROM `main`.`OwnerSwitch` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`"
+  },
+  {
+   "ts": "2026-11-14T07:09:50.214442518Z",
+   "msg": "prisma:query SELECT `main`.`ScenarioDefinition`.`id` FROM `main`.`ScenarioDefinition` WHERE 1=1 LIMIT ? OFFSET ?"
+  },
+  {
+   "ts": "2026-11-14T07:09:50.214445568Z",
+   "msg": "prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`MemoryRecord`.`id` FROM `main`.`MemoryRecord` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`"
+  },
+  {
+   "ts": "2026-11-14T07:09:50.214450898Z",
+   "msg": "prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`GoalRecord`.`id` FROM `main`.`GoalRecord` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`"
+  },
+  {
+   "ts": "2026-11-14T07:09:50.214457648Z",
+   "msg": "prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`SecurityAuditEvent`.`id` FROM `main`.`SecurityAuditEvent` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`"
+  },
+  {
+   "ts": "2026-11-14T07:09:50.214457768Z",
+   "msg": "prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`SpecialistAgent`.`id` FROM `main`.`SpecialistAgent` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`"
+  }
+ ],
+ "credit_attempts": {
+  "workspace_subscription_usage": {
+   "errors": [
+    "Unknown argument \"id\" on field \"Query.workspace\".",
+    "Cannot query field \"subscription\" on type \"Workspace\". Did you mean \"subscriptionModel\"?"
+   ]
+  },
+  "project_workspace": {
+   "errors": [
+    "Cannot query field \"subscription\" on type \"Workspace\". Did you mean \"subscriptionModel\"?",
+    "Cannot query field \"usage\" on type \"Workspace\". Did you mean \"name\"?"
+   ]
+  }
+ }
+}

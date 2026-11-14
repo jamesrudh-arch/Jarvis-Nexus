@@ -1,0 +1,32 @@
+
+===== PART A: upgrade-in-place (db/custom.db) =====
+before: tick 1062, residents 25
+PASS  A1 boot is idempotent (2nd boot adds 0 events) — 29098 → 29098
+advanced 288 ticks in 16776ms → tick 1350
+PASS  A2 wallet conservation (event log) — now 824 = init 1184 + salaries 540 - purchases 900 (expected 824)
+PASS  A3 business cash conservation (event log) — now 6320 = init 5510 + purchases 900 + grants 450 - salaries 540 (expected 6320)
+PASS  A4 combined total = initial + grants — 7144 vs 7144
+economy activity: 45 salaries (540), 5 missed, 187 transactions (900 resident spend), 7 skipped, 9 grants (450)
+PASS  A5 economy events exist (world is economically alive) — 45 salaries, 187 transactions
+PASS  A6 transactions reference real businesses — 187 checked
+PASS  C1 rooms exist — 52 rooms, 112 objects
+PASS  C2 every room rect within its building footprint
+residents indoors: 7/25
+PASS  C3 residents with room_id are inside that room's rect and building — 7 indoors
+PASS  D1 JARVIS resident exists — res-000025 (JARVIS, home JARVIS Sanctum)
+PASS  D2 identity established and versioned — v1, 6 principles, since tick 144
+PASS  D3 Sanctum exists and has interiors — JARVIS Sanctum · 3 rooms
+PASS  D4 JARVIS home is the Sanctum
+PASS  D5 JARVIS carries a wallet but no salary events — wallet 66
+PASS  D6 identity + presence survive restart (new connection)
+
+world now: tick 1350, pop 25, events 36951, memories 1246
+economy: {"store":16,"atelier":13,"institution":1,"kitchen":7} · tx 187 · wallets 824
+interiors: 52 rooms in 25 buildings
+jarvis: leisure at JARVIS Sanctum (JARVIS Sanctum · Atrium), wallet 66
+
+===== PART B: fresh-world determinism =====
+PASS  B1 two fresh worlds are identical (incl. economy + rooms + positions) — fingerprints match
+PASS  B2 repeated reads are stable
+
+===== RESULT: ALL PASS =====

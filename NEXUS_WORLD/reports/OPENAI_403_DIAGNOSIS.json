@@ -1,0 +1,82 @@
+{
+ "generated_utc": "2026-11-13T17:39:06Z",
+ "egress_geolocation": {
+  "ipinfo.io": {
+   "http": 200,
+   "ip": "8.212.10.159",
+   "query": null,
+   "country": "HK",
+   "countryCode": null,
+   "region": "Hong Kong",
+   "regionName": null,
+   "city": "Hong Kong",
+   "isp": null,
+   "org": "AS45102 Alibaba (US) Technology Co., Ltd.",
+   "as": null,
+   "connection": null,
+   "status": null
+  },
+  "ip-api.com": {
+   "http": 200,
+   "ip": null,
+   "query": "47.57.242.119",
+   "country": "Hong Kong",
+   "countryCode": "HK",
+   "region": null,
+   "regionName": "Kowloon",
+   "city": "Hong Kong",
+   "isp": "Alibaba (US) Technology Co., Ltd.",
+   "org": "Alibaba.com LLC",
+   "as": "AS45102 Alibaba (US) Technology Co., Ltd.",
+   "connection": null,
+   "status": "success"
+  },
+  "ipwho.is": {
+   "http": 429,
+   "ip": null,
+   "query": null,
+   "country": null,
+   "countryCode": null,
+   "region": null,
+   "regionName": null,
+   "city": null,
+   "isp": null,
+   "org": null,
+   "as": null,
+   "connection": null,
+   "status": null
+  }
+ },
+ "key_format": {
+  "present": true,
+  "length": 28,
+  "prefix_ok": true,
+  "expected_len_range_for_sk_proj": "150-170 chars",
+  "note": "len=28 strongly suggests truncation; full sk-proj- keys are ~150+ chars",
+  "charset": "mixed"
+ },
+ "models_endpoint": {
+  "http": 403,
+  "error_body": "{\"error\":{\"code\":\"unsupported_country_region_territory\",\"message\":\"Country, region, or territory not supported\",\"param\":null,\"type\":\"request_forbidden\"}}",
+  "cf_ray": null,
+  "cf_colpo": null,
+  "server": "cloudflare",
+  "x_error_code": null,
+  "openai_processing_ms": null,
+  "www_authenticate": null
+ },
+ "chat_endpoint": {
+  "http": 403,
+  "error_body": "{\"error\":{\"code\":\"unsupported_country_region_territory\",\"message\":\"Country, region, or territory not supported\",\"param\":null,\"type\":\"request_forbidden\"}}",
+  "cf_colpo": null
+ },
+ "unauthenticated_baseline": {
+  "http": 403,
+  "body": "{\"error\":{\"code\":\"unsupported_country_region_territory\",\"message\":\"Country, region, or territory not supported\",\"param\":null,\"type\":\"request_forbidden\"}}",
+  "note": "401 = auth layer reached (no geo block); 403 = blocked before auth"
+ },
+ "glm_endpoint_reachability": {
+  "http": 401,
+  "body": "{\"error\":{\"code\":\"1001\",\"message\":\"Header\u4e2d\u672a\u6536\u5230Authorization\u53c2\u6570\uff0c\u65e0\u6cd5\u8fdb\u884c\u8eab\u4efd\u9a8c\u8bc1\u3002\"}}"
+ }
+}

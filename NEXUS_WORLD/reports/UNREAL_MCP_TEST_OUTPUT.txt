@@ -1,0 +1,22 @@
+[11/13/26 21:58:05] INFO     Processing request of type            server.py:727
+                             ListToolsRequest                                   
+[PASS] U1 MCP stdio handshake + 7 tools discovered — tools=['import_asset', 'level_info', 'remote_python', 'save_all', 'spawn_actor', 'unreal_status', 'viewport_screenshot']
+                    INFO     Processing request of type            server.py:727
+                             CallToolRequest                                    
+[PASS] U2 unreal_status honest unreachable-editor response — http_error=URLError: <urlopen error [Errno 111] Connection refused>
+                    INFO     Processing request of type            server.py:727
+                             CallToolRequest                                    
+[PASS] U3 remote_python honest structured failure — tool=remote_python error=URLError: <urlopen error [Errno 111] Connection re
+                    INFO     Processing request of type            server.py:727
+                             CallToolRequest                                    
+[PASS] U4 import_asset honest unreachable (no fake import) — tool=import_asset
+                    INFO     Processing request of type            server.py:727
+                             CallToolRequest                                    
+[PASS] U5 spawn_actor rejects malformed spec — error=bad spec: Expecting value: line 1 column 1 (char 0)
+                    INFO     Processing request of type            server.py:727
+                             CallToolRequest                                    
+[PASS] U6 remote payload size cap enforced (20 000 chars) — payload rejected
+[PASS] U7 requirements doc present + honest status + specs — doc=4664 chars
+
+================================================================
+UNREAL MCP ACCEPTANCE: 7/7 PASS, 0 FAIL

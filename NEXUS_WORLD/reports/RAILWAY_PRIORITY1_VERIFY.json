@@ -1,0 +1,100 @@
+{
+ "generated_utc": "2026-11-13T18:46:52Z",
+ "note": "variable VALUES deliberately not recorded \u2014 names only",
+ "variables": {
+  "http": 200,
+  "count": 0,
+  "names": []
+ },
+ "domains": {
+  "http": 200,
+  "data": {
+   "domains": {
+    "serviceDomains": [
+     {
+      "domain": "jarvis-nexus-production.up.railway.app",
+      "syncStatus": "ACTIVE",
+      "targetPort": 8080,
+      "suffix": "up.railway.app"
+     }
+    ],
+    "customDomains": []
+   }
+  },
+  "errors": []
+ },
+ "log_fields": [
+  "attributes",
+  "message",
+  "severity",
+  "tags",
+  "timestamp"
+ ],
+ "deployment_logs": {
+  "http": 200,
+  "count": 101,
+  "tail": [
+   "prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`GoalRecord`.`id` FROM `main`.`GoalRecord` W",
+   "prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`SpecialistAgent`.`id` FROM `main`.`Speciali",
+   "prisma:query SELECT `main`.`ScenarioDefinition`.`id` FROM `main`.`ScenarioDefinition` WHERE 1=1 LIMIT ? OFFSET",
+   "prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`SecurityAuditEvent`.`id` FROM `main`.`Secur",
+   "prisma:query SELECT `main`.`NexusWorldState`.`id`, `main`.`NexusWorldState`.`ownerName`, `main`.`NexusWorldSta",
+   "prisma:query SELECT `main`.`OwnerSwitch`.`switchKey`, `main`.`OwnerSwitch`.`label`, `main`.`OwnerSwitch`.`enab",
+   "prisma:query SELECT `main`.`OwnerSwitch`.`switchKey`, `main`.`OwnerSwitch`.`label`, `main`.`OwnerSwitch`.`enab",
+   "prisma:query UPDATE `main`.`NexusWorldState` SET `residentsJson` = ?, `updatedAt` = ? WHERE (`main`.`NexusWorl",
+   "prisma:query SELECT `main`.`OwnerSwitch`.`switchKey`, `main`.`OwnerSwitch`.`label`, `main`.`OwnerSwitch`.`enab",
+   "prisma:query SELECT 1",
+   "prisma:query INSERT INTO `main`.`SecurityAuditEvent` (`id`, `severity`, `category`, `message`, `source`, `reso",
+   "prisma:query INSERT INTO `main`.`SecurityAuditEvent` (`id`, `severity`, `category`, `message`, `source`, `reso"
+  ],
+  "errors": []
+ },
+ "variables_service_scoped": {
+  "http": 200,
+  "count": 42,
+  "names": [
+   "CLOUDFLARE_ACCOUNT_ID",
+   "CLOUDFLARE_API_TOKEN",
+   "DATABASE_URL",
+   "EPIC_CLIENT_ID",
+   "EPIC_CLIENT_SECRET",
+   "EPIC_DEPLOYMENT_ID",
+   "EPIC_PRODUCT_ID",
+   "EPIC_SANDBOX_IDS",
+   "GITHUB_REPO",
+   "GITHUB_TOKEN",
+   "KAGGLE_API_TOKEN_1",
+   "KAGGLE_API_TOKEN_2",
+   "KAGGLE_API_TOKEN_3",
+   "KAGGLE_API_TOKEN_4",
+   "KAGGLE_API_TOKEN_5",
+   "KAGGLE_API_TOKEN_6",
+   "NEXUS_CF_AI_MODEL",
+   "NEXUS_LLM_PROVIDERS",
+   "NEXUS_STORAGE_BUCKET",
+   "OPENAI_API_KEY",
+   "OPENAI_MODEL",
+   "OWNER_EMAIL",
+   "OWNER_KEY",
+   "RAILWAY_API_TOKEN",
+   "RAILWAY_ENVIRONMENT",
+   "RAILWAY_ENVIRONMENT_ID",
+   "RAILWAY_ENVIRONMENT_NAME",
+   "RAILWAY_PRIVATE_DOMAIN",
+   "RAILWAY_PROJECT_ID",
+   "RAILWAY_PROJECT_NAME",
+   "RAILWAY_PUBLIC_DOMAIN",
+   "RAILWAY_SERVICE_ID",
+   "RAILWAY_SERVICE_JARVIS_NEXUS_URL",
+   "RAILWAY_SERVICE_NAME",
+   "RAILWAY_STATIC_URL",
+   "RAILWAY_VOLUME_ID",
+   "RAILWAY_VOLUME_MOUNT_PATH",
+   "RAILWAY_VOLUME_NAME",
+   "SUPABASE_ACCESS_TOKEN",
+   "SUPABASE_DB_PASSWORD",
+   "SUPABASE_SERVICE_ROLE_KEY",
+   "SUPABASE_URL"
+  ]
+ }
+}

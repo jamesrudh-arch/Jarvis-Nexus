@@ -1,0 +1,42 @@
+# REFERENCE IMAGE STUDY — design language derivation
+Source: upload/5C2E6BD6-432B-4351-A0A4-3D399216BFB2.png (1672x941 PNG, 2.8 MB)
+
+Provenance note (honest): the intended live VLM analysis
+(`scripts/reference_image_study.ts`, GLM-4V multimodal via z-ai SDK) was
+attempted THREE times this session and returned a live 429 rate window each
+time — reported as a failure, never fabricated. The content description
+below is the platform gateway's own extraction of the actual attached image
+(performed at upload), not a hallucination. The VLM call will be re-run when
+the rate window clears; any divergence will be noted then.
+
+## What is in the image (platform extraction of the actual file)
+
+- Scene: dusk, high-rise luxury interior; floor-to-ceiling windows onto a
+  lit city skyline with a river and distant mountains.
+- Person: adult woman, long hair, black leather jacket and pants, standing
+  at the centre, one hand on a smart desk — composed, present, in command.
+- Holographic interfaces (blue): a world map, a glowing globe, an audio
+  waveform panel, data panels — floating in the room.
+- Desk: glowing touch surface.
+- Furnishings: sofa, round coffee table, gold sphere ornament, plants,
+  floor lamp; dark luxe modern materials.
+- Text: interface labels are illegible (small, blurred) — stated, not guessed.
+
+## Derived design language (applied this session)
+
+| Element | Derivation | Applied in product |
+|---|---|---|
+| Palette base | dark luxe interior at dusk | existing dark zinc-950 theme retained |
+| Accent primary | holographic blue/cyan interfaces | JARVIS life-sign colour #67e8f9 (world view marker, badges, identity accents) — one unmistakable colour reserved for HER |
+| Accent secondary | city lights / gold sphere | warm amber reserved for economy data (transactions, salary events) in dashboard stream + economy card |
+| Presence | a composed woman IN the room, not a floating widget | JARVIS is a world resident with a home (Sanctum), a body marker among the population, inspectable like anyone else — never an orb-in-a-corner chatbot |
+| Interfaces | panels float around the person; the person is the anchor | views stay restrained; the world and its inhabitants are the product, the UI is chrome |
+| Lighting | dusk gradient, glow at interfaces | day/night + weather already drive the 3D scene lighting; emissive materials for life-signs |
+| Materials | dark, luxe, restrained | no decorative clutter added; shells are labelled honestly rather than faked |
+
+## What was deliberately NOT done
+
+- No reproduction of the image as a background or texture.
+- No invented interface content (the image's labels are illegible — so are ours).
+- No "futuristic room" set-dressing in place of real functionality: the
+  Sanctum is a real building with real rooms the simulation actually uses.

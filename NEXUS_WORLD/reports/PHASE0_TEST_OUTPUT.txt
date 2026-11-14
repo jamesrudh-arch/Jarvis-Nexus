@@ -1,0 +1,13 @@
+[PASS] world built with 6 events — count=6
+[PASS] T2 duplicate payment rejected
+[PASS] T2 payer balance debited exactly once — r-001=99550
+[PASS] T2 payee balance credited exactly once — r-002=50450
+[PASS] T2 closed-system ledger sums to zero — sum=0
+[PASS] T2 event log still has 6 events — count=6
+[PASS] T1 state hash identical after restart — 2cd9b2c1f7f7a679 vs 2cd9b2c1f7f7a679
+[PASS] T1 resident location persisted — bakery
+[PASS] T1 resident energy restored to 100 — 100
+[PASS] T3 replayed state hash identical to live state — 2cd9b2c1f7f7a679 vs 2cd9b2c1f7f7a679
+[PASS] T4 same events => same state hash — 2cd9b2c1f7f7a679 vs 2cd9b2c1f7f7a679
+
+=== RESULT: 11/11 checks passed in 5.2 ms on 2-core host ===

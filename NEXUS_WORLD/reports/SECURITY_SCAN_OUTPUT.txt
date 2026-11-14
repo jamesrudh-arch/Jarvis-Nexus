@@ -1,0 +1,48 @@
+NEXUS WORLD — Security assessment evidence (found → remediated → verified)
+Date: 2026-11-13T15:23:00Z
+
+======== 1. INITIAL SCAN — FINDINGS ========
+
+--- bandit (Python SAST), initial run on Phase-1B code ---
+LOW      B311 ./geography/hierarchy.py:55 — Standard pseudo-random generators are not suitable for security/cryptographic purposes.
+LOW      B105 ./infrastructure/api_server.py:29 — Possible hardcoded password: 'nexus-tier0-dev-token'
+LOW      B110 ./integration/browser.py:86 — Try, Except, Pass detected.
+LOW      B105 ./integration/mcp_server_expose.py:32 — Possible hardcoded password: ''
+LOW      B107 ./integration/mcp_server_expose.py:80 — Possible hardcoded password: ''
+LOW      B107 ./integration/mcp_server_expose.py:107 — Possible hardcoded password: ''
+LOW      B107 ./integration/wiring.py:62 — Possible hardcoded password: ''
+LOW      B110 ./observability/metrics.py:101 — Try, Except, Pass detected.
+LOW      B110 ./observability/metrics.py:114 — Try, Except, Pass detected.
+LOW      B110 ./observability/metrics.py:148 — Try, Except, Pass detected.
+MEDIUM   B108 ./scripts/run_world.py:27 — Probable insecure usage of temp file/directory.
+MEDIUM   B108 ./scripts/serve_world.py:21 — Probable insecure usage of temp file/directory.
+
+--- pip-audit on requirements.txt (pre-upgrade): 5 known CVEs in starlette 0.50.0 ---
+PYSEC-2026-161 (fix 1.0.1), PYSEC-2026-2280/-2281 (fix 1.1.0), PYSEC-2026-248/-249 (fix 1.3.0/1.3.1) — fastapi 0.128.0 dependency
+
+======== 2. REMEDIATION ACTIONS ========
+R1. persistence/world_store.py entities(): dynamic SQL fragment assembly replaced with two constant parameterised queries (bandit B608 eliminated).
+R2. fastapi 0.128.0 -> 0.162.6 and starlette 0.50.0 -> 1.10.0 installed to clear all five starlette CVEs; requirements.txt re-pinned.
+R3. Accepted-as-is (documented, Tier 0 scope): B105 dev token default (env-overridable, Tier 0 only), B108 /tmp db path defaults in dev scripts (env-overridable), B110 cleanup try/except/pass guards (intentional teardown), B311 seeded random (not used for security).
+
+======== 3. VERIFICATION RE-SCAN (post-remediation) ========
+
+--- bandit re-run ---
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0
+		Low: 10
+		Medium: 2
+		High: 0
+	Total issues (by confidence):
+		Undefined: 0
+		Low: 0
+		Medium: 7
+		High: 5
+Files skipped (0):
+
+--- pip-audit re-run on upgraded pins ---
+No known vulnerabilities found
+
+======== 4. FUNCTIONAL VERIFICATION AFTER UPGRADE ========
+Phase 0: 11/11 · Phase 1: 48/48 · Integration: 39/39 (reports/INTEGRATION_TEST_OUTPUT.txt)

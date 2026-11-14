@@ -1,0 +1,152 @@
+{
+ "generated_utc": "2026-11-14T07:10:04Z",
+ "project_subscription": {
+  "subscriptionType": "trial",
+  "subscriptionPlanLimit": {
+   "includedUsageDollars": 5,
+   "projects": 2,
+   "project": {
+    "members": 3,
+    "services": 5
+   },
+   "volumes": {
+    "defaultSizeMB": 500,
+    "maxSizeMB": 500,
+    "maxPerProject": 3,
+    "maxBackupsCount": 0,
+    "maxBackupsUsagePercent": 0
+   },
+   "containers": {
+    "cpu": 2,
+    "cpuDescription": "2 vCPU",
+    "maxCpuDescription": "2 vCPU",
+    "memoryBytes": 1000000000,
+    "memoryDescription": "1 GB",
+    "maxMemoryDescription": "1 GB",
+    "diskBytes": 1000000000,
+    "diskDescription": "1 GB",
+    "pidLimit": 1000,
+    "volumeIopsLimit": 3000,
+    "volumeBpsLimit": 70000000,
+    "maxRestartPolicyRetries": 10
+   },
+   "builds": {
+    "concurrent": 3,
+    "timeout": {
+     "soft": 10,
+     "hard": 20
+    },
+    "maxImageSizeBytes": 4000000000,
+    "vm": {
+     "cpu": 4,
+     "memoryBytes": 25769803776,
+     "diskBytes": 34359738368
+    }
+   },
+   "deploys": {
+    "replicas": 2
+   },
+   "observability": {
+    "logRetentionDays": 7
+   },
+   "networking": {
+    "customDomains": 1,
+    "emailForwardingAliases": 1,
+    "serviceDomains": 2,
+    "tcpProxies": 3,
+    "edgeRules": 0,
+    "httpReqPerSecPerHost": 10000,
+    "httpReqPerSecPerHostBurst": 25000,
+    "httpResponseTimeoutSeconds": 900,
+    "tcpConnectionsPerSecPerHost": 500,
+    "tcpActiveConnectionsPerHost": 10000
+   },
+   "apiTokens": {
+    "pointsToConsume": 100
+   },
+   "buckets": {
+    "maxPerProject": 3,
+    "workspaceMaxStorageBytes": 50000000000
+   },
+   "sandboxes": {
+    "maxRunningPerEnvironment": 10,
+    "defaultIdleTimeoutMinutes": 5,
+    "maxIdleTimeoutMinutes": 5,
+    "allowNeverIdleTimeout": false
+   },
+   "auditLogs": {
+    "retentionDays": 2
+   },
+   "agent": {
+    "defaultUsageLimitCents": 150
+   },
+   "vms": {
+    "cpu": 2,
+    "memoryBytes": 2000000000,
+    "sandboxDefaultCpu": 2,
+    "sandboxDefaultMemoryBytes": 2000000000
+   },
+   "rateLimits": {
+    "cloudAgentCreate": {
+     "max": 50,
+     "windowSeconds": 86400
+    },
+    "projectCreate": {
+     "max": 1,
+     "windowSeconds": 30
+    },
+    "environmentCreate": {
+     "max": 1,
+     "windowSeconds": 30
+    },
+    "volumeCreate": {
+     "max": 1,
+     "windowSeconds": 30
+    }
+   }
+  },
+  "expiredAt": null,
+  "isTempProject": false,
+  "createdAt": "2026-11-12T14:49:18.299Z",
+  "updatedAt": "2026-11-12T14:49:18.299Z",
+  "workspace": {
+   "id": "359b04d0-007d-4903-a210-05fb31a3aa35",
+   "name": "jamesrudh-arch's Projects"
+  }
+ },
+ "deployment_instances": {
+  "errors": [
+   {
+    "message": "Cannot query field \"edges\" on type \"DeploymentDeploymentInstance\".",
+    "locations": [
+     {
+      "line": 1,
+      "column": 117
+     }
+    ],
+    "extensions": {
+     "code": "GRAPHQL_VALIDATION_FAILED"
+    },
+    "traceId": "3044476419186695574"
+   }
+  ]
+ },
+ "deployment_logs_tail": [],
+ "environment_meta": {
+  "errors": [
+   {
+    "message": "Field \"meta\" of type \"EnvironmentMeta\" must have a selection of subfields. Did you mean \"meta { ... }\"?",
+    "locations": [
+     {
+      "line": 1,
+      "column": 52
+     }
+    ],
+    "extensions": {
+     "code": "GRAPHQL_VALIDATION_FAILED"
+    },
+    "traceId": "2948096685626082156"
+   }
+  ]
+ }
+}

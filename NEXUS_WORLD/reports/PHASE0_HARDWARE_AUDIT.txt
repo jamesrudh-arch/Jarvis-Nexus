@@ -1,0 +1,65 @@
+=== NEXUS WORLD ENVIRONMENT AUDIT ===
+Audit time (UTC): 2026-11-13 13:32:20
+
+--- CPU ---
+2
+model name	: Intel(R) Xeon(R) Processor
+
+--- MEMORY ---
+               total        used        free      shared  buff/cache   available
+Mem:           3.9Gi       898Mi       1.8Gi        13Mi       1.4Gi       3.1Gi
+Swap:             0B          0B          0B
+
+--- SWAP ---
+
+--- DISK ---
+Filesystem                               Size  Used Avail Use% Mounted on
+c-6af707ec-140d72b5-f115a95886cb-rootfs  9.9G  1.4G  8.0G  15% /
+c-6af707ec-140d72b5-f115a95886cb-rootfs  9.9G  1.4G  8.0G  15% /
+c-6af707ec-140d72b5-f115a95886cb-rootfs  9.9G  1.4G  8.0G  15% /
+
+--- GPU ---
+NO NVIDIA GPU (nvidia-smi not found)
+no /dev/dri devices (no GPU passthrough)
+
+--- OS / KERNEL ---
+Linux c-6af707ec-140d72b5-f115a95886cb 5.10.134-013.15.kangaroo.al8.x86_64 #1 SMP Thu Jul 30 12:54:59 UTC 2026 x86_64 GNU/Linux
+PRETTY_NAME="Debian GNU/Linux 13 (trixie)"
+NAME="Debian GNU/Linux"
+VERSION_ID="13"
+
+--- RUNTIMES ---
+Python: Python 3.12.16
+pip:    pip 26.2.2
+Node:   v24.22.2
+npm:    11.19.1
+Git:    git version 2.47.3
+
+--- DATABASES / SERVICES INSTALLED ---
+psql: absent
+mysql: absent
+neo4j: absent
+redis-server: absent
+nats-server: absent
+temporal: absent
+docker: absent
+podman: absent
+
+--- LISTENING PORTS ---
+State  Recv-Q Send-Q Local Address:Port  Peer Address:PortProcess                                   
+LISTEN 0      4096       127.0.0.1:38277      0.0.0.0:*    users:(("agent-browser-l",pid=2461,fd=9))
+LISTEN 0      10         127.0.0.1:45095      0.0.0.0:*    users:(("chrome",pid=2466,fd=89))        
+LISTEN 0      2048       127.0.0.1:12600      0.0.0.0:*                                             
+LISTEN 0      128        127.0.0.1:19001      0.0.0.0:*                                             
+LISTEN 0      511        127.0.0.1:12700      0.0.0.0:*                                             
+LISTEN 0      1024         0.0.0.0:19005      0.0.0.0:*                                             
+LISTEN 0      128          0.0.0.0:19006      0.0.0.0:*                                             
+LISTEN 0      4096               *:81               *:*                                             
+
+--- RELEVANT PYTHON PACKAGES ---
+fakeredis                    2.34.1
+fastapi                      0.128.0
+redis                        7.4.0
+typing-inspection            0.4.2
+
+=== AUDIT END ===

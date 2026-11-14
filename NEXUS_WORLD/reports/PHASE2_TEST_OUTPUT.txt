@@ -1,0 +1,30 @@
+NEXUS WORLD Phase 2 acceptance run 2026-11-13 21:57:13
+[PASS] P1 layout: 64 deterministic buildings, sane bounds — bounds=[-12, -12, 166, 166]
+[PASS] P2 layout deterministic (two instances identical)
+[PASS] P3 population created (24 residents)
+[PASS] P4 duplicate population refused
+[PASS] P5 needs initialised within 0..100
+[PASS] P6 identity fields present
+[PASS] P7 four simulated days advanced; all 6 real actions observed — tick=576 actions={'sleeping': 4593, 'eating': 361, 'leisure': 4901, 'commuting': 1204, 'socializing': 1072, 'working': 1693}
+[PASS] P8 night coherence: most residents asleep at 03:00 — 24/24 sleeping
+[PASS] P9 workday coherence: majority working/commuting at 13:00 — 17/24 working+commuting
+[PASS] P10 needs remain within 0..100 after days of life
+[PASS] P11 residents actually move between buildings — resident-1 visited 3 buildings
+[PASS] P12 memories recorded with expected kinds — count=500 kinds=['goal', 'meal', 'meeting', 'rest', 'work']
+[PASS] P12b goal evaluations recorded as long-term memories — goal memories=96 (one per resident per simulated day boundary crossed)
+[PASS] P13 memory recall ordered newest-first
+[PASS] P14 resident communications occurred — communications=37
+[PASS] P15 weather transitions recorded in the event log — changes=4 now=clear
+[PASS] P16 replay rebuilds identical state from events alone — f19eba1cff894f19 vs f19eba1cff894f19
+[PASS] P17 determinism: identical run reproduces identical state — f19eba1cff894f19 vs f19eba1cff894f19
+[PASS] P18 restart survival: world continues coherently — tick 636 -> 780
+[PASS] P19 cognition: valid LLM choice accepted — action=socializing reason=llm:stub-1
+[PASS] P20 cognition: invalid LLM output falls back to utility top — action=working reason=fallback:invalid_reply:'fly to the moon'
+[PASS] P21 NullCognition stays deterministic
+[PASS] P22 API populate 201 then 409 on duplicate — 201/409
+[PASS] P23 API /residents lists population with live actions
+[PASS] P24 API /residents/{id} returns detail + memories
+[PASS] P25 API unknown resident -> 404
+[PASS] P26 API /cognition/status reports provider stack — providers=['zai'] default=zai
+[PASS] P27 observers can read residents (read-only model intact)
+RESULT: 28/28 PASS

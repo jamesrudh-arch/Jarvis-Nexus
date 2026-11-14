@@ -1,0 +1,17 @@
+[PASS] A1 goal windows deterministic (same seed/resident/tick) — goal=social_bond target=2
+[PASS] A2 goals differ across residents (personal variety) — goal types in population=['explore', 'purpose_build', 'rest_well', 'social_bond']
+[PASS] A3 goal progress measured from the event log — goal=social_bond progress=0/2 people
+[PASS] A4 long-term memory salience (importance × recency) — memories=15 recent-salient=15
+[PASS] A5 relationship graph derived from communications — edges=32 friendships=12 mean_meetings=1.88
+[PASS] A6 friendships emerged (affinity ≥ threshold) — strongest=[('Bram Oakhollow', 5.5), ('Hal Coldwater', 5.5), ('Hal Coldwater', 4.5)]
+[PASS] A7 autobiography is resident-specific — 'I am Tess Emberly, a smith. I have 0 acquaintances and 0 friends. Lately: My goal to socia...'
+[PASS] A8 mood bounded and derived — mood=0.266
+[PASS] A9 policy divergence measured (autonomy ≠ script) — divergence=4.5% of decisions; action-distribution JSD=0.0000; policy={'commuting': 0.083, 'sleeping': 0.875, 'leisure': 0.042} vs script={'commuting': 0.083, 'sleeping': 0.875, 'leisure': 0.042}
+[PASS] A10 divergence bounded (autonomy, not chaos) — divergence=4.5% (cap 35%)
+[PASS] A11 ledger separates decision sources — sources={'policy': {'count': 26, 'pct': 4.5}, 'script': {'count': 552, 'pct': 95.5}}
+[PASS] A12 restart persistence: state survives engine rebuild — edges 32 → 32 after restart+1 tick
+[PASS] A13 API /residents/{id}/mind full inner life — goal=social_bond memories=8
+[PASS] A14 API /autonomy/report honest audit — divergence=29.9%
+
+================================================================
+AUTONOMY ACCEPTANCE: 14/14 PASS, 0 FAIL

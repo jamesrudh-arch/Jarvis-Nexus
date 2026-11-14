@@ -1,0 +1,8 @@
+NEXUS WORLD Phase 1 — live uvicorn server evidence (real HTTP over TCP)
+Date: 2026-11-13 | Host: 2-core Tier 0 sandbox | Server: scripts/serve_world.py (uvicorn 0.44.0, 127.0.0.1:8791)
+
+GET  /health (no world yet)        -> 200 {'status': 'ok', 'world_created': False, 'tick': 0, 'events': 0}
+POST /world/create (founder token) -> 201 {'world_id': 'nexus-prime', 'geography': {world:1, continent:2, country:2, state:4, city:8, district:16, neighbourhood:32, building:64}, 'regions': 4}
+POST /world/tick {n:72} (token)    -> 200 {'tick': 72, 'advanced': 72, 'sim_time_utc': '2026-01-01T12:00:00'}   # 72 x 10min = 12h exactly
+POST /world/tick (no token)        -> 403 {'detail': 'founder role required'}                                     # auth enforced
+GET  /world/state                  -> {'world_id': 'nexus-prime', 'tick': 72}                                      # state persisted

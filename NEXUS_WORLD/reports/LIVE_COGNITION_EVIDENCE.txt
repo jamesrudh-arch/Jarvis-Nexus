@@ -1,0 +1,65 @@
+LIVE COGNITION EVIDENCE (real hosted-LLM calls)
+{
+  "autonomous_run": {
+    "communications": 0,
+    "elapsed_s": 0.0,
+    "llm_decisions": 0,
+    "note": "deterministic utility layer remains authoritative; the LLM only chooses among its allowed actions",
+    "ticks": 12
+  },
+  "llm_decisions": [
+    {
+      "latency_s": 0.0,
+      "llm_choice": "sleeping",
+      "needs": {
+        "energy": 100,
+        "hunger": 70,
+        "purpose": 62,
+        "social": 78
+      },
+      "reason": "fallback:provider_error:zai: rate limited (429) \u2014 cooling down 300 s (no retries: they extend the window)",
+      "resident": "Juna Rushmore",
+      "role": "courier",
+      "utility_ranking": [
+        "sleeping",
+        "eating",
+        "leisure"
+      ]
+    },
+    {
+      "note": "remaining LLM calls skipped to avoid extending the 429 window; the integration itself is verified (first live completion this session: model glm-4-plus, reply 'OPERATIONAL', usage 20 tokens \u2014 recorded 2026-11-13 16:03 UTC)"
+    }
+  ],
+  "openai_probe": {
+    "configured": true,
+    "detail": "Country, region, or territory not supported",
+    "http": 403,
+    "provider": "openai",
+    "reachable": false
+  },
+  "providers": [
+    "openai",
+    "zai"
+  ],
+  "run_utc": "2026-11-13 17:39:23",
+  "world": {
+    "residents": 24,
+    "sample_actions": [
+      "sleeping",
+      "sleeping",
+      "sleeping",
+      "sleeping",
+      "sleeping",
+      "sleeping"
+    ],
+    "tick": 156
+  },
+  "zai_stats": {
+    "available": true,
+    "calls": 1,
+    "cli": "z-ai",
+    "cooling_down": true,
+    "errors": 1,
+    "provider": "zai"
+  }
+}

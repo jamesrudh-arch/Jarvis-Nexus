@@ -1,0 +1,669 @@
+{
+ "generated_utc": "2026-11-14T07:09:11Z",
+ "deployments": [
+  {
+   "id": "8128960e-edf7-4a0f-88f2-dfde6964d168",
+   "status": "SUCCESS",
+   "createdAt": "2026-11-13T17:57:09.635Z",
+   "meta": {
+    "plan": "trial",
+    "repo": "jamesrudh-arch/Jarvis-Nexus",
+    "branch": "main",
+    "logsV2": true,
+    "reason": "deploy",
+    "runtime": "V2",
+    "buildOnly": false,
+    "commitHash": "535bfc330354d4a69d3eac21d89266c556c0a9b1",
+    "imageDigest": "sha256:0b0f98aaa487f326627a4e45ccdc0d823385ebb25b5eff97b5a7e737dfafaff0",
+    "commitAuthor": "jamesrudh-arch",
+    "volumeMounts": [
+     "/data"
+    ],
+    "commitMessage": "Living residents (directive s4): ResidentDirector + world-state persistence + EOS token caching + security scanner discriminators\n\n- ResidentDirector: 4 holographic residents (Echo/Vector/Mira/Delta), deterministic\n  seeded personalities, autonomous wander/idle, separation steering + JARVIS\n  avoidance, real-time clock (session-2 lesson), reduced-motion accessibility freeze\n- Persistence: NexusWorldState.residentsJson (schema + local db push + defensive\n  runtime ALTER TABLE for the production volume); /api/v1/world/residents\n  GET public / PATCH owner-key; client applies on every world snapshot and persists\n  every 45s + pagehide keepalive; round-trip proven server->browser->server\n- NaN-velocity bug (separationForce {x,z} vs .y wiring) caught by the new unit\n  suite before ship; live-scene verification 5/5 (present/finite/moving/armor/zero\n  errors); evidence screenshot\n- eos.ts: EOS-SDK-style client-token caching (one exchange per ~hour, not per\n  status request); honest cached-verdict reporting when a live refresh fails\n  inside a valid window (external client_not_found regression documented)\n- security scanners: structural discriminators (all-lowercase test names vs real\n  mixed-case tokens; obvious test fixtures) \u2014 broad scan now passes alongside\n  the deep audit 3/3 (1,448 git objects)\n- docs: PROJECT_STATE/CHANGELOG/INTEGRATIONS session-8 records",
+    "rootDirectory": null,
+    "serviceManifest": {
+     "build": {
+      "builder": "DOCKERFILE",
+      "buildCommand": null,
+      "nixpacksPlan": null,
+      "watchPatterns": [],
+      "dockerfilePath": "/Dockerfile",
+      "buildEnvironment": "V3",
+      "nixpacksConfigPath": null
+     },
+     "deploy": {
+      "region": null,
+      "runtime": "V2",
+      "numReplicas": 1,
+      "cronSchedule": null,
+      "startCommand": null,
+      "limitOverride": null,
+      "overlapSeconds": null,
+      "drainingSeconds": null,
+      "healthcheckPath": null,
+      "preDeployCommand": null,
+      "sleepApplication": false,
+      "useLegacyStacker": false,
+      "ipv6EgressEnabled": false,
+      "multiRegionConfig": {
+       "sfo": {
+        "numReplicas": 1
+       }
+      },
+      "requiredMountPath": null,
+      "restartPolicyType": "ON_FAILURE",
+      "healthcheckTimeout": null,
+      "registryCredentials": null,
+      "preDeployTimeoutSeconds": null,
+      "restartPolicyMaxRetries": 10
+     }
+    },
+    "nixpacksProviders": [],
+    "fileServiceManifest": {},
+    "propertyFileMapping": {}
+   }
+  },
+  {
+   "id": "2431c16e-df08-4c37-9c3e-697cb6c62fdc",
+   "status": "REMOVED",
+   "createdAt": "2026-11-13T17:18:16.695Z",
+   "meta": {
+    "plan": "trial",
+    "repo": "jamesrudh-arch/Jarvis-Nexus",
+    "branch": "main",
+    "logsV2": true,
+    "reason": "deploy",
+    "runtime": "V2",
+    "buildOnly": false,
+    "commitHash": "4eb0127f4324dfe8015cd5c809e514b2a07639a8",
+    "imageDigest": "sha256:03b919942743c617ffe3c5149491d82ccc57729027dafe13443285308ac4aa6e",
+    "commitAuthor": "jamesrudh-arch",
+    "volumeMounts": [
+     "/data"
+    ],
+    "commitMessage": "Blender asset production system: 3 REAL .blend assets (validated+exported) + MCP protocol-tested 11/11 under real Blender 5.0.1 + CF model deprecation fix\n\n- world/Blender/: full blueprint Part 6 structure + nexusblender automation library\n  (procedural modelling, PBR materials, packed 512^2 T_* textures, UV, COL_ collision,\n  real decimated LODs ~50%/~20%, metadata JSON, naming conventions)\n- 3 real assets: SM_House (38,756 tris), SM_Shop (31,764), SM_Prop_StreetLamp (4,128)\n  \u2014 all within blueprint budgets; validator exit 0 (validation/ValidationReport.json);\n  GLB exports + meta sidecars; Cycles CPU evidence previews\n- Real-Blender MCP protocol test 11/11 (scripts/test_blender_mcp.py): real TCP socket,\n  main-thread bpy execution per the addon contract; caught+fixed 2 real addon bugs\n  (args-dict dispatcher blow-up, empty wire floor disc)\n- CF Workers AI default model updated: llama-3.1-8b-instruct DEPRECATED 2026-05-30\n  (HTTP 410 \u2014 caught by the real production LLM test); llama-3.3-70b-instruct-fp8-fast\n  verified live (HTTP 200 + real completion against the owner's account)\n- Security deep-audit: placeholder detector (20+ identical chars = template, not\n  credential); 3/3 pass, 1448 git objects clean\n- world/Unreal/Python/import_blender_assets.py: the Blender->Unreal import hop\n  (authored; executes on the owner UE machine per blocker B2)",
+    "rootDirectory": null,
+    "serviceManifest": {
+     "build": {
+      "builder": "DOCKERFILE",
+      "buildCommand": null,
+      "nixpacksPlan": null,
+      "watchPatterns": [],
+      "dockerfilePath": "/Dockerfile",
+      "buildEnvironment": "V3",
+      "nixpacksConfigPath": null
+     },
+     "deploy": {
+      "region": null,
+      "runtime": "V2",
+      "numReplicas": 1,
+      "cronSchedule": null,
+      "startCommand": null,
+      "limitOverride": null,
+      "overlapSeconds": null,
+      "drainingSeconds": null,
+      "healthcheckPath": null,
+      "preDeployCommand": null,
+      "sleepApplication": false,
+      "useLegacyStacker": false,
+      "ipv6EgressEnabled": false,
+      "multiRegionConfig": {
+       "sfo": {
+        "numReplicas": 1
+       }
+      },
+      "requiredMountPath": null,
+      "restartPolicyType": "ON_FAILURE",
+      "healthcheckTimeout": null,
+      "registryCredentials": null,
+      "preDeployTimeoutSeconds": null,
+      "restartPolicyMaxRetries": 10
+     }
+    },
+    "nixpacksProviders": [],
+    "fileServiceManifest": {},
+    "propertyFileMapping": {}
+   }
+  },
+  {
+   "id": "e8565952-eb31-44eb-a788-f4c74882d6b5",
+   "status": "REMOVED",
+   "createdAt": "2026-11-13T16:50:42.745Z",
+   "meta": {
+    "plan": "trial",
+    "repo": "jamesrudh-arch/Jarvis-Nexus",
+    "branch": "main",
+    "logsV2": true,
+    "reason": "deploy",
+    "runtime": "V2",
+    "buildOnly": false,
+    "commitHash": "d7ba91bcc3024a08df2f74fd3d195d50e7cfedec",
+    "imageDigest": "sha256:66adafcdd92c1b323d2f3b168872741602179279c87a9bb5feb12b7b2fd2f9bc",
+    "commitAuthor": "jamesrudh-arch",
+    "volumeMounts": [
+     "/data"
+    ],
+    "commitMessage": "Merge origin/main (Phases 0-3, Gate 0 security, Groq provider) with parallel sessions 7-8 (EOS real-OAuth, avatar NaN armor superset, CF Workers AI + OpenAI providers)\n\n- Both lines independently fixed the same avatar NaN black-void bug; unified on the production-proven fail-closed guard + computeInspectYaw + 4-layer armor\n- registry.ts: union of all providers \u2014 cloudflare_workers_ai, groq_cloud, openai (opt-in), openai_compatible, zai_cloud_route; free-tier-first default chain\n- unreal/ -> world/Unreal/ restructure adopted (their F-C1 disposition); salvaged AutoExposure renderer setting + MetaHumanPlugin + EOS example config into JarvisWorld\n- eos.ts: current session-7 OAuth-verified detail text + world/Unreal consumer paths\n- Docs: both narratives preserved (theirs primary, parallel line marked)\n- Verification: 100/100 unit tests, tsc clean, production build clean, FastAPI CORE 43/43",
+    "rootDirectory": null,
+    "serviceManifest": {
+     "build": {
+      "builder": "DOCKERFILE",
+      "buildCommand": null,
+      "nixpacksPlan": null,
+      "watchPatterns": [],
+      "dockerfilePath": "/Dockerfile",
+      "buildEnvironment": "V3",
+      "nixpacksConfigPath": null
+     },
+     "deploy": {
+      "region": null,
+      "runtime": "V2",
+      "numReplicas": 1,
+      "cronSchedule": null,
+      "startCommand": null,
+      "limitOverride": null,
+      "overlapSeconds": null,
+      "drainingSeconds": null,
+      "healthcheckPath": null,
+      "preDeployCommand": null,
+      "sleepApplication": false,
+      "useLegacyStacker": false,
+      "ipv6EgressEnabled": false,
+      "multiRegionConfig": {
+       "sfo": {
+        "numReplicas": 1
+       }
+      },
+      "requiredMountPath": null,
+      "restartPolicyType": "ON_FAILURE",
+      "healthcheckTimeout": null,
+      "registryCredentials": null,
+      "preDeployTimeoutSeconds": null,
+      "restartPolicyMaxRetries": 10
+     }
+    },
+    "nixpacksProviders": [],
+    "fileServiceManifest": {},
+    "propertyFileMapping": {}
+   }
+  },
+  {
+   "id": "8da98f3b-35f9-4f0e-a04d-04e3f4095de7",
+   "status": "REMOVED",
+   "createdAt": "2026-11-13T09:47:58.986Z",
+   "meta": {
+    "plan": "trial",
+    "repo": "jamesrudh-arch/Jarvis-Nexus",
+    "branch": "main",
+    "logsV2": true,
+    "reason": "deploy",
+    "runtime": "V2",
+    "buildOnly": false,
+    "commitHash": "c7fa7c936b49c0b83c2aa40bc2267357e2ac3b72",
+    "imageDigest": "sha256:d64958c59096c35c1569b7987fc80210cbbee6e7229e6379cf40af8e262f849d",
+    "commitAuthor": "jamesrudh-arch",
+    "volumeMounts": [
+     "/data"
+    ],
+    "commitMessage": "Phase 3 (Unreal foundation) RESTORED after sandbox-recycle loss\n\nThe original Phase 3 work (merge af94759, tag phase-3-authored) was never\npushed (B6: .env.local wiped) and was lost with the recycled sandbox. This\ncommit re-authors it exactly per download/PHASE-3-REPORT.md's specification\nand re-verifies it to the same evidence standard:\n\n- world/Unreal/: JarvisWorld.uproject (UE 5.5), Config (WP hash 512 m,\n  ProjectID 8806666E405E42C1836AD3DA511CFBB1, v0.3.0-phase3), targets +\n  module (BuildSettingsVersion.V5), JarvisGeoLibrary (Krueger 6th-order TM,\n  authoritative conversion), JarvisWorldIdentity (PREFIX-NNN), 4 automation\n  tests, Python layer (jarvis_geo mirror, create_test_map, validate_project),\n  Build scripts, README steps 1-9.\n- F-C1 migration re-applied: git mv unreal/Plugins/JarvisNexusEOS and\n  unreal/Python/jarvis_http_bridge.py into world/Unreal/; legacy .uproject +\n  Config removed; unreal/README.md rewritten as tombstone; path references\n  updated (eos.ts, unrealBridge.ts, INTEGRATIONS.md); .gitignore (EOS json\n  path, package-lock.json, __pycache__).\n- docs/blueprint/CHANGES.md Entry 002 re-recorded.\n\nEvidence re-run this session: geo_verify ALL PASS (round-trip 0.000005 mm /\n10,010 pts; PROJ cross-check 0.000003 mm / 2,000 pts); geo_verify_cpp ALL\nPASS (g++ -O2 -Wall -Wextra, C++ vs PROJ 0.0005 mm); py_compile 4/4; JSON\n2/2; real build attempt -> exit 1 'UE_ROOT is not set' (B2); npm test 80/80;\ntsc 0 errors; next build SUCCESS; FastAPI CORE 43/43.\n\nB6 unblocked: repo/.env.local restored (GITHUB_TOKEN from credentials.env).",
+    "rootDirectory": null,
+    "serviceManifest": {
+     "build": {
+      "builder": "DOCKERFILE",
+      "buildCommand": null,
+      "nixpacksPlan": null,
+      "watchPatterns": [],
+      "dockerfilePath": "/Dockerfile",
+      "buildEnvironment": "V3",
+      "nixpacksConfigPath": null
+     },
+     "deploy": {
+      "region": null,
+      "runtime": "V2",
+      "numReplicas": 1,
+      "cronSchedule": null,
+      "startCommand": null,
+      "limitOverride": null,
+      "overlapSeconds": null,
+      "drainingSeconds": null,
+      "healthcheckPath": null,
+      "preDeployCommand": null,
+      "sleepApplication": false,
+      "useLegacyStacker": false,
+      "ipv6EgressEnabled": false,
+      "multiRegionConfig": {
+       "sfo": {
+        "numReplicas": 1
+       }
+      },
+      "requiredMountPath": null,
+      "restartPolicyType": "ON_FAILURE",
+      "healthcheckTimeout": null,
+      "registryCredentials": null,
+      "preDeployTimeoutSeconds": null,
+      "restartPolicyMaxRetries": 10
+     }
+    },
+    "nixpacksProviders": [],
+    "fileServiceManifest": {},
+    "propertyFileMapping": {}
+   }
+  },
+  {
+   "id": "4308c41b-4d63-4176-bcf6-0466e21690b8",
+   "status": "REMOVED",
+   "createdAt": "2026-11-13T02:44:31.420Z",
+   "meta": {
+    "plan": "trial",
+    "repo": "jamesrudh-arch/Jarvis-Nexus",
+    "branch": "main",
+    "logsV2": true,
+    "reason": "deploy",
+    "runtime": "V2",
+    "buildOnly": false,
+    "commitHash": "241cee3d11ce2759f90eca170d0adefe6fb94368",
+    "imageDigest": "sha256:ab9e6e4ecda2c063c5cc1047b40260eb70f9d244426fe3dc240b07eaac42aac0",
+    "commitAuthor": "jamesrudh-arch",
+    "volumeMounts": [
+     "/data"
+    ],
+    "commitMessage": "Merge phase-2-technology-register: register complete",
+    "rootDirectory": null,
+    "serviceManifest": {
+     "build": {
+      "builder": "DOCKERFILE",
+      "buildCommand": null,
+      "nixpacksPlan": null,
+      "watchPatterns": [],
+      "dockerfilePath": "/Dockerfile",
+      "buildEnvironment": "V3",
+      "nixpacksConfigPath": null
+     },
+     "deploy": {
+      "region": null,
+      "runtime": "V2",
+      "numReplicas": 1,
+      "cronSchedule": null,
+      "startCommand": null,
+      "limitOverride": null,
+      "overlapSeconds": null,
+      "drainingSeconds": null,
+      "healthcheckPath": null,
+      "preDeployCommand": null,
+      "sleepApplication": false,
+      "useLegacyStacker": false,
+      "ipv6EgressEnabled": false,
+      "multiRegionConfig": {
+       "sfo": {
+        "numReplicas": 1
+       }
+      },
+      "requiredMountPath": null,
+      "restartPolicyType": "ON_FAILURE",
+      "healthcheckTimeout": null,
+      "registryCredentials": null,
+      "preDeployTimeoutSeconds": null,
+      "restartPolicyMaxRetries": 10
+     }
+    },
+    "nixpacksProviders": [],
+    "fileServiceManifest": {},
+    "propertyFileMapping": {}
+   }
+  },
+  {
+   "id": "55160514-c612-4abd-8030-4daaae82ef6a",
+   "status": "REMOVED",
+   "createdAt": "2026-11-13T02:40:55.515Z",
+   "meta": {
+    "plan": "trial",
+    "repo": "jamesrudh-arch/Jarvis-Nexus",
+    "branch": "main",
+    "logsV2": true,
+    "reason": "deploy",
+    "runtime": "V2",
+    "buildOnly": false,
+    "commitHash": "e769c90d88dfac64c29b56387ba61660569c56c5",
+    "imageDigest": "sha256:783aa6aae8adc9452c4fe37ef41b6aad39098b84ccd525264c38f77730531696",
+    "commitAuthor": "jamesrudh-arch",
+    "volumeMounts": [
+     "/data"
+    ],
+    "commitMessage": "Merge phase-1-security: Phase 1 COMPLETE (241/241 verification)",
+    "rootDirectory": null,
+    "serviceManifest": {
+     "build": {
+      "builder": "DOCKERFILE",
+      "buildCommand": null,
+      "nixpacksPlan": null,
+      "watchPatterns": [],
+      "dockerfilePath": "/Dockerfile",
+      "buildEnvironment": "V3",
+      "nixpacksConfigPath": null
+     },
+     "deploy": {
+      "region": null,
+      "runtime": "V2",
+      "numReplicas": 1,
+      "cronSchedule": null,
+      "startCommand": null,
+      "limitOverride": null,
+      "overlapSeconds": null,
+      "drainingSeconds": null,
+      "healthcheckPath": null,
+      "preDeployCommand": null,
+      "sleepApplication": false,
+      "useLegacyStacker": false,
+      "ipv6EgressEnabled": false,
+      "multiRegionConfig": {
+       "sfo": {
+        "numReplicas": 1
+       }
+      },
+      "requiredMountPath": null,
+      "restartPolicyType": "ON_FAILURE",
+      "healthcheckTimeout": null,
+      "registryCredentials": null,
+      "preDeployTimeoutSeconds": null,
+      "restartPolicyMaxRetries": 10
+     }
+    },
+    "nixpacksProviders": [],
+    "fileServiceManifest": {},
+    "propertyFileMapping": {}
+   }
+  },
+  {
+   "id": "aafa9093-b780-46d3-b144-d2783127b537",
+   "status": "REMOVED",
+   "createdAt": "2026-11-13T02:27:02.095Z",
+   "meta": {
+    "plan": "trial",
+    "repo": "jamesrudh-arch/Jarvis-Nexus",
+    "branch": "main",
+    "logsV2": true,
+    "reason": "deploy",
+    "runtime": "V2",
+    "buildOnly": false,
+    "commitHash": "73a78a46e1e77480c61c320dd233ad00d93c41d9",
+    "imageDigest": "sha256:866b4d3f0d3c78745c0e75b01945350f8e919882ab2aaa9c300745b4f6d7682b",
+    "commitAuthor": "jamesrudh-arch",
+    "volumeMounts": [
+     "/data"
+    ],
+    "commitMessage": "Merge phase-0b-blueprint-intake: verbatim blueprint intake COMPLETE (byte-verified, 7 files, coverage closes exactly)",
+    "rootDirectory": null,
+    "serviceManifest": {
+     "build": {
+      "builder": "DOCKERFILE",
+      "buildCommand": null,
+      "nixpacksPlan": null,
+      "watchPatterns": [],
+      "dockerfilePath": "/Dockerfile",
+      "buildEnvironment": "V3",
+      "nixpacksConfigPath": null
+     },
+     "deploy": {
+      "region": null,
+      "runtime": "V2",
+      "numReplicas": 1,
+      "cronSchedule": null,
+      "startCommand": null,
+      "limitOverride": null,
+      "overlapSeconds": null,
+      "drainingSeconds": null,
+      "healthcheckPath": null,
+      "preDeployCommand": null,
+      "sleepApplication": false,
+      "useLegacyStacker": false,
+      "ipv6EgressEnabled": false,
+      "multiRegionConfig": {
+       "sfo": {
+        "numReplicas": 1
+       }
+      },
+      "requiredMountPath": null,
+      "restartPolicyType": "ON_FAILURE",
+      "healthcheckTimeout": null,
+      "registryCredentials": null,
+      "preDeployTimeoutSeconds": null,
+      "restartPolicyMaxRetries": 10
+     }
+    },
+    "nixpacksProviders": [],
+    "fileServiceManifest": {},
+    "propertyFileMapping": {}
+   }
+  },
+  {
+   "id": "6a332001-37a8-4d70-98c6-931125015b66",
+   "status": "REMOVED",
+   "createdAt": "2026-11-13T01:59:34.331Z",
+   "meta": {
+    "plan": "trial",
+    "repo": "jamesrudh-arch/Jarvis-Nexus",
+    "branch": "main",
+    "logsV2": true,
+    "reason": "deploy",
+    "runtime": "V2",
+    "buildOnly": false,
+    "commitHash": "b5adae35f79d2d4080d39309cccddd6bdbd1ac2b",
+    "imageDigest": "sha256:a66bc863e8ca13061c925a0dbcb466ede44e6622e4078b979e53d52a2dd2735d",
+    "commitAuthor": "jamesrudh-arch",
+    "volumeMounts": [
+     "/data"
+    ],
+    "commitMessage": "docs: fix typo in Phase 0 report heading (EXECECUTED -> EXECUTED)",
+    "rootDirectory": null,
+    "serviceManifest": {
+     "build": {
+      "builder": "DOCKERFILE",
+      "buildCommand": null,
+      "nixpacksPlan": null,
+      "watchPatterns": [],
+      "dockerfilePath": "/Dockerfile",
+      "buildEnvironment": "V3",
+      "nixpacksConfigPath": null
+     },
+     "deploy": {
+      "region": null,
+      "runtime": "V2",
+      "numReplicas": 1,
+      "cronSchedule": null,
+      "startCommand": null,
+      "limitOverride": null,
+      "overlapSeconds": null,
+      "drainingSeconds": null,
+      "healthcheckPath": null,
+      "preDeployCommand": null,
+      "sleepApplication": false,
+      "useLegacyStacker": false,
+      "ipv6EgressEnabled": false,
+      "multiRegionConfig": {
+       "sfo": {
+        "numReplicas": 1
+       }
+      },
+      "requiredMountPath": null,
+      "restartPolicyType": "ON_FAILURE",
+      "healthcheckTimeout": null,
+      "registryCredentials": null,
+      "preDeployTimeoutSeconds": null,
+      "restartPolicyMaxRetries": 10
+     }
+    },
+    "nixpacksProviders": [],
+    "fileServiceManifest": {},
+    "propertyFileMapping": {}
+   }
+  },
+  {
+   "id": "5bcd2790-f0e3-4101-b931-3f8ec50734e0",
+   "status": "REMOVED",
+   "createdAt": "2026-11-13T01:56:19.544Z",
+   "meta": {
+    "plan": "trial",
+    "repo": "jamesrudh-arch/Jarvis-Nexus",
+    "branch": "main",
+    "logsV2": true,
+    "reason": "deploy",
+    "runtime": "V2",
+    "buildOnly": false,
+    "commitHash": "174bae73d89398f7d7701ecf73f86a6764b0e6b9",
+    "imageDigest": "sha256:d05748f8f057f7fd6730ef301dc529e20ad578d80612343c2054972eb3608b22",
+    "commitAuthor": "jamesrudh-arch",
+    "volumeMounts": [
+     "/data"
+    ],
+    "commitMessage": "Phase 0 (session 9): evidence-backed repository + environment re-audit under the new Master Directive\n\n- 105/105 tests pass (62 Next.js + 43 FastAPI CORE), tsc clean, build SUCCESS\n- Guard matrix re-verified live (dev server + standalone): anon 403 / wrong 403 / correct 200\n- CRITICAL B1: Railway production app DOWN (Application not found) - owner dashboard action needed\n- Blockers B2 (Unreal), B3 (Blender), B4 (Groq key), B5 (EOS portal) recorded\n- Structural gaps vs new directive mapped (docs/blueprint/, world/Unreal/, world/Blender/, assets)\n- Stopped as directed: Phase 0B awaits owner GO + blueprint-file decision\n- Documentation-only commit; zero source changes; rollback: git revert HEAD",
+    "rootDirectory": null,
+    "serviceManifest": {
+     "build": {
+      "builder": "DOCKERFILE",
+      "buildCommand": null,
+      "nixpacksPlan": null,
+      "watchPatterns": [],
+      "dockerfilePath": "/Dockerfile",
+      "buildEnvironment": "V3",
+      "nixpacksConfigPath": null
+     },
+     "deploy": {
+      "region": null,
+      "runtime": "V2",
+      "numReplicas": 1,
+      "cronSchedule": null,
+      "startCommand": null,
+      "limitOverride": null,
+      "overlapSeconds": null,
+      "drainingSeconds": null,
+      "healthcheckPath": null,
+      "preDeployCommand": null,
+      "sleepApplication": false,
+      "useLegacyStacker": false,
+      "ipv6EgressEnabled": false,
+      "multiRegionConfig": {
+       "sfo": {
+        "numReplicas": 1
+       }
+      },
+      "requiredMountPath": null,
+      "restartPolicyType": "ON_FAILURE",
+      "healthcheckTimeout": null,
+      "registryCredentials": null,
+      "preDeployTimeoutSeconds": null,
+      "restartPolicyMaxRetries": 10
+     }
+    },
+    "nixpacksProviders": [],
+    "fileServiceManifest": {},
+    "propertyFileMapping": {}
+   }
+  },
+  {
+   "id": "3cfda071-7932-4256-91c9-ea800afe6dce",
+   "status": "REMOVED",
+   "createdAt": "2026-11-13T01:38:50.791Z",
+   "meta": {
+    "plan": "trial",
+    "repo": "jamesrudh-arch/Jarvis-Nexus",
+    "branch": "main",
+    "logsV2": true,
+    "reason": "deploy",
+    "runtime": "V2",
+    "buildOnly": false,
+    "commitHash": "040c91c33adc51d7d26c738482e5dcc2be7aa978",
+    "imageDigest": "sha256:c4e85f5d67c38ad53c84a1ef32b647fad7cbf04c8e7ff645a85ae37ea66bf4bc",
+    "commitAuthor": "jamesrudh-arch",
+    "volumeMounts": [
+     "/data"
+    ],
+    "commitMessage": "fix(health): report the real process boot time, not request time\n\nThe 'boot' field returned new Date().toISOString() per request, so every health\ncheck showed a different 'boot' timestamp \u2014 misleading for deploy/restart\ndetection (discovered while watching the owner-guard deploy land). Now captured\nonce at module load, matching the FastAPI CORE health semantics.",
+    "rootDirectory": null,
+    "serviceManifest": {
+     "build": {
+      "builder": "DOCKERFILE",
+      "buildCommand": null,
+      "nixpacksPlan": null,
+      "watchPatterns": [],
+      "dockerfilePath": "/Dockerfile",
+      "buildEnvironment": "V3",
+      "nixpacksConfigPath": null
+     },
+     "deploy": {
+      "region": null,
+      "runtime": "V2",
+      "numReplicas": 1,
+      "cronSchedule": null,
+      "startCommand": null,
+      "limitOverride": null,
+      "overlapSeconds": null,
+      "drainingSeconds": null,
+      "healthcheckPath": null,
+      "preDeployCommand": null,
+      "sleepApplication": false,
+      "useLegacyStacker": false,
+      "ipv6EgressEnabled": false,
+      "multiRegionConfig": {
+       "sfo": {
+        "numReplicas": 1
+       }
+      },
+      "requiredMountPath": null,
+      "restartPolicyType": "ON_FAILURE",
+      "healthcheckTimeout": null,
+      "registryCredentials": null,
+      "preDeployTimeoutSeconds": null,
+      "restartPolicyMaxRetries": 10
+     }
+    },
+    "nixpacksProviders": [],
+    "fileServiceManifest": {},
+    "propertyFileMapping": {}
+   }
+  }
+ ],
+ "variable_names": [
+  "CLOUDFLARE_ACCOUNT_ID",
+  "CLOUDFLARE_API_TOKEN",
+  "DATABASE_URL",
+  "EPIC_CLIENT_ID",
+  "EPIC_CLIENT_SECRET",
+  "EPIC_DEPLOYMENT_ID",
+  "EPIC_PRODUCT_ID",
+  "EPIC_SANDBOX_IDS",
+  "GITHUB_REPO",
+  "GITHUB_TOKEN",
+  "KAGGLE_API_TOKEN_1",
+  "KAGGLE_API_TOKEN_2",
+  "KAGGLE_API_TOKEN_3",
+  "KAGGLE_API_TOKEN_4",
+  "KAGGLE_API_TOKEN_5",
+  "KAGGLE_API_TOKEN_6",
+  "NEXUS_CF_AI_MODEL",
+  "NEXUS_LLM_PROVIDERS",
+  "NEXUS_STORAGE_BUCKET",
+  "OPENAI_API_KEY",
+  "OPENAI_MODEL",
+  "OWNER_EMAIL",
+  "OWNER_KEY",
+  "RAILWAY_API_TOKEN",
+  "RAILWAY_ENVIRONMENT",
+  "RAILWAY_ENVIRONMENT_ID",
+  "RAILWAY_ENVIRONMENT_NAME",
+  "RAILWAY_PRIVATE_DOMAIN",
+  "RAILWAY_PROJECT_ID",
+  "RAILWAY_PROJECT_NAME",
+  "RAILWAY_PUBLIC_DOMAIN",
+  "RAILWAY_SERVICE_ID",
+  "RAILWAY_SERVICE_JARVIS_NEXUS_URL",
+  "RAILWAY_SERVICE_NAME",
+  "RAILWAY_STATIC_URL",
+  "RAILWAY_VOLUME_ID",
+  "RAILWAY_VOLUME_MOUNT_PATH",
+  "RAILWAY_VOLUME_NAME",
+  "SUPABASE_ACCESS_TOKEN",
+  "SUPABASE_DB_PASSWORD",
+  "SUPABASE_SERVICE_ROLE_KEY",
+  "SUPABASE_URL"
+ ]
+}

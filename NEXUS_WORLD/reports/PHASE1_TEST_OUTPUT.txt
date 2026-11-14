@@ -1,0 +1,50 @@
+[PASS] A1 world + geography built (8 levels) — {'building': 64, 'city': 8, 'continent': 2, 'country': 2, 'district': 16, 'neighbourhood': 32, 'state': 4, 'world': 1}
+[PASS] A2 duplicate world.created rejected
+[PASS] A3 120 ticks advanced — tick=120
+[PASS] A4 state hash identical after restart — e61a7591fc6a588d vs e61a7591fc6a588d
+[PASS] A4b tick preserved across restart — tick=120
+[PASS] A5 replayed state hash identical to live state — e61a7591fc6a588d vs e61a7591fc6a588d
+[PASS] A6 entity identity preserved across restart
+[PASS] A6b ID counter continues without collision — next=ent-orga-000002 after ent-orga-000001
+[PASS] A7 same seed + same ops => identical state hash — e61a7591fc6a588d vs e61a7591fc6a588d
+[PASS] A8a 144 ticks = 1 simulated day
+[PASS] A8b timezone offset applied (+3h)
+[PASS] A8c day/night boundary (06:00 local = day)
+[PASS] A8d season: Jan = winter (north), summer (south)
+[PASS] A8e season roll: +90 days = spring (north)
+[PASS] A9 ancestry walk building→world covers all 8 levels — worl→cont→coun→stat→city→dist→neig→buil
+[PASS] A9b no orphan geography nodes
+[PASS] B1 all regions owned by single initial owner — 4 regions
+[PASS] B2 transfer with wrong from_owner rejected
+[PASS] B3 transfer with correct owner succeeds
+[PASS] B4 lease renewal extends expiry — {'region_id': 'geo-stat-000001', 'owner': 'sim-engine-1', 'lease_expires_tick': 100120, 'lease_expired': False}
+[PASS] B5 ownership survives restart
+[PASS] C1 observer cannot execute simulate command
+[PASS] C2 founder executes world.status
+[PASS] C3 duplicate command_id does not execute twice
+[PASS] C4 external action requires explicit approval
+[PASS] C4b approved external action executes and is audited
+[PASS] C5 unknown capability rejected and audited
+[PASS] C6 all command outcomes present in audit log — 7 entries
+[PASS] D1 world created via API
+[PASS] D1b duplicate world creation -> 409
+[PASS] D2 /health open to anonymous observers
+[PASS] D3 anonymous POST /world/tick forbidden (403)
+[PASS] D4 invalid token -> 401
+[PASS] D5 founder advances 144 ticks (1 day)
+[PASS] D5b /world/state reports day-2 sim time — 2026-01-02T00:00:00
+[PASS] D6 re-posted tick batch applies no duplicate tick events — tick=288, tick_events=288
+[PASS] D7 event feed pagination honours since_seq + limit — pages: [1, 2, 3] then [4, 5, 6, 7, 8]
+[PASS] D8 transfer with wrong owner -> 409
+[PASS] D8b correct transfer -> 200 + owner updated
+[PASS] D9 command endpoint executes via orchestrator
+[PASS] D9b duplicate command_id returns prior outcome
+[PASS] D10 world survives API-server restart — tick after restart=288
+[PASS] D10b region ownership visible after restart
+[PASS] E1 provider routed and result returned
+[PASS] E2 unknown provider raises ProviderError
+[PASS] E3 duplicate provider registration rejected
+[PASS] E4 route log records routing decisions
+[PASS] F1 failing handler isolated; others still run — seen=[7, 70], errors=1
+
+=== PHASE 1 RESULT: 48/48 checks passed in 2545.2 ms on 2-core host ===

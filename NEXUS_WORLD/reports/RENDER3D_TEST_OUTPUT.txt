@@ -1,0 +1,19 @@
+NEXUS WORLD 3D pipeline acceptance run 2026-11-13 21:57:59
+[PASS] R1 scene spec complete (buildings/roads/residents/time) — b=64 r=42 res=24 hour=9
+[PASS] R2 bpy venv driver available (bpy 5.3) — blender=5.0.1
+[PASS] R3 top-view render produced + visually inspected — bytes=274290 bright=148.1 colors=2137
+[PASS] R4 street-view render produced + inspected — bright=196.0
+[PASS] R5 night render visible-but-dim (day/night cycle is real) — bright=40.73
+[PASS] R6 inspection REJECTS a corrupted (all-black) frame — failed=['brightness_ok', 'colorfulness_ok', 'nonempty', 'saturation_ok', 'sharpness_ok', 'variance_ok']
+[PASS] R7 auto-correction heals a deliberately broken render — attempts=2 corrections=1 final=correction.png
+[PASS] R8 USD export (Unreal pipeline, Blender side) — bytes=36443
+[PASS] R9 glTF export — bytes=499444
+[PASS] R10 FBX export (battle-tested UE import format) — bytes=518796
+[PASS] R11 Blender MCP server: real stdio handshake + discovery — tools=['animate_scene', 'blender_version', 'build_characters', 'build_scene', 'build_terrain_scene', 'export_scene', 'export_unreal_bundle', 'render_view', 'run_physics', 'scene_info']
+[PASS] R12 MCP blender_version real call — blender=5.0.1 objects=3
+[PASS] R13 MCP build_scene (real bpy scene construction) — objects=157
+[PASS] R14 MCP render_view (real Cycles render over MCP) — bytes=165794
+[PASS] R15 MCP path-confinement rejects workspace escapes
+[PASS] R16 MCP export_scene (USD over MCP) — bytes=36427
+[PASS] R17 keyframe animation of a simulated day (real fcurves) — fcurves=144 blend_bytes=192974
+RESULT: 17/17 PASS

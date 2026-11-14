@@ -1,0 +1,86 @@
+{
+ "bundle": "p4_acceptance_bundle",
+ "generated_utc": "2026-11-13T21:58:42Z",
+ "files": [
+  {
+   "file": "manifest.json",
+   "bytes": 2666
+  },
+  {
+   "file": "nexus_world.fbx",
+   "bytes": 66732
+  },
+  {
+   "file": "nexus_world.glb",
+   "bytes": 70700
+  },
+  {
+   "file": "nexus_world.usd",
+   "bytes": 16916
+  }
+ ],
+ "export_result": {
+  "bundle_dir": "/home/z/my-project/NEXUS_WORLD/workspace/exports/p4_acceptance_bundle",
+  "elapsed_ms": 204.5,
+  "files": [
+   {
+    "bytes": 16916,
+    "elapsed_ms": 21.3,
+    "fmt": "usd",
+    "ok": true,
+    "path": "/home/z/my-project/NEXUS_WORLD/workspace/exports/p4_acceptance_bundle/nexus_world.usd"
+   },
+   {
+    "bytes": 66732,
+    "elapsed_ms": 55.2,
+    "fmt": "fbx",
+    "ok": true,
+    "path": "/home/z/my-project/NEXUS_WORLD/workspace/exports/p4_acceptance_bundle/nexus_world.fbx"
+   },
+   {
+    "bytes": 70700,
+    "elapsed_ms": 127.9,
+    "fmt": "glb",
+    "ok": true,
+    "path": "/home/z/my-project/NEXUS_WORLD/workspace/exports/p4_acceptance_bundle/nexus_world.glb"
+   }
+  ],
+  "ok": true
+ },
+ "naming_conventions": {
+  "nx_terrain": "SM_Terrain",
+  "nx_water": "SM_Water",
+  "nx_park": "SM_ParkGround",
+  "nx_tree": "SM_Tree_{trunk|crown}",
+  "nx_rock": "SM_Rock",
+  "nx_char": "SK_Character_{part} (rig: nx_rig -> SK_{id})",
+  "nx_bird": "SM_Bird / wing parts parent-animated",
+  "nx_quadruped": "SM_Quadruped",
+  "bld:": "SM_Building_{id}",
+  "res-body:": "legacy markers (kept for parity renders)"
+ },
+ "conventions": {
+  "axis": "Blender is Z-up right-handed; UE is Z-up left-handed. USD import into UE 5.4+ handles the conversion natively; FBX bundle exports with -Z forward / Y up + baked space transform; glTF with +Y up.",
+  "units": "Blender native metres. UE works in centimetres \u2014 USD carries metres-per-unit metadata and UE converts on import; the FBX export applies unit scale.",
+  "materials": "Principled BSDF names map to M_<name> on import (USD/gltf carry materials; FBX carries lambert-ish approximations).",
+  "animation": "Armature bone animation exports through all three formats (FBX bake_anim, glTF export_animations, USD native); UE imports as AnimSequences on the SK_ skeleton.",
+  "import_tool": "mcp unreal_server.import_asset(asset_path=<bundle file>, dest_path='/Game/NEXUS') \u2014 see docs/UNREAL_MCP_REQUIREMENTS.md"
+ },
+ "unreal_import": {
+  "tool": "mcp_servers/unreal_server.py::import_asset",
+  "dest_path": "/Game/NEXUS",
+  "verified_import": false,
+  "note": "import verified only after real UE 5.4+ editor execution \u2014 see UNREAL_MCP_REQUIREMENTS.md \u00a75"
+ },
+ "world": {
+  "grid": 64,
+  "parks": 17,
+  "trees": 160,
+  "rocks": 21,
+  "water_cells": 196
+ },
+ "scene": {
+  "buildings": 3,
+  "residents": 6
+ }
+}

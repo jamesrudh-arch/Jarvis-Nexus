@@ -1,0 +1,37 @@
+=== SMART FAILOVER VERIFICATION EVIDENCE (Session 10, 2026-11-13T22:31:29Z) ===
+Branch: feat/smart-failover @ 84a1831 (base: 535bfc3 = deployed production commit)
+
+--- UNIT TEST SUITE (node --test, Node v24.22.2 type-stripping) ---
+✔ backupValidation: valid payload passes and counts (1.512817ms)
+✔ B3 regression: the seed conditions that used to silently fail on `and` (0.264813ms)
+✔ fail-safe: unparseable or unknown variables never match (0.119178ms)
+✔ validateFaceTrack rejects malformed payloads (fail-safe to local engines) (0.213032ms)
+(node:10500) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/z/my-project/.worktrees/prodline/src/lib/nexus/providers/failover.ts is not specified and it doesn't parse as CommonJS.
+✔ classify: network — DNS / transport failures (0.133753ms)
+✔ breaker: stays closed below the consecutive-failure threshold (0.486508ms)
+✔ breaker: opens when consecutive failures reach the threshold (0.197456ms)
+✔ breaker: auth failure opens the circuit on the FIRST failure (never self-heals) (0.09706ms)
+✔ breaker: failed probe re-opens with an EXPONENTIALLY longer cooldown (0.147192ms)
+✔ board: failoverSnapshot shape is telemetry-ready (0.236856ms)
+✔ runWithFailover: throwing attempt closure is contained as a provider failure (0.216435ms)
+✔ runWithFailover: NEXUS_FAILOVER_DISABLED=1 kill switch bypasses breakers (0.225817ms)
+✔ rateLimit: no failures → allowed (0.766405ms)
+✔ rateLimit: 4 failures → still allowed, 5th → locked out (0.186353ms)
+✔ rateLimit: Retry-After seconds computed from the oldest failure (0.137626ms)
+✔ aliasBoneName maps UE5 names, strips mixamorig prefixes, passes unknowns through (0.208152ms)
+✔ SpeechSequencer: failed fetch falls back to silent speak (audio null) (10.79601ms)
+✔ ACTIVE: instructions pass through with the wake prefix stripped (1.309317ms)
+ℹ tests 134
+ℹ suites 0
+ℹ pass 134
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1774.289575
+
+--- TYPECHECK ---
+tsc: CLEAN (exit 0)
+
+--- BUILD (bun run build, Next 16) ---
+next build: SUCCESS (all /api/v1 routes compiled — see session log)

@@ -1,0 +1,44 @@
+{
+ "generated_utc": "2026-11-13T18:44:56Z",
+ "client": "nexus-continuation/1.0",
+ "project_detail": {
+  "http": 200,
+  "data": {
+   "project": {
+    "id": "f3e6f010-61df-4e97-bc5e-1f7dd695c4d3",
+    "name": "reasonable-heart",
+    "updatedAt": "2026-11-12T14:49:18.299Z",
+    "environments": {
+     "edges": [
+      {
+       "node": {
+        "id": "86a07ea1-0e97-4873-9cad-35e5fbfe8807",
+        "name": "production",
+        "isEphemeral": false
+       }
+      }
+     ]
+    },
+    "services": {
+     "edges": [
+      {
+       "node": {
+        "id": "8f8a9401-5e27-4449-a1cb-01271906b8f7",
+        "name": "Jarvis-Nexus"
+       }
+      }
+     ]
+    }
+   }
+  },
+  "errors": null
+ },
+ "github_repos_query": {
+  "http": 200,
+  "body": "{'errors': [{'message': 'Not Authorized', 'locations': [{'line': 1, 'column': 3}], 'path': ['githubRepos'], 'extensions': {'code': 'INTERNAL_SERVER_ERROR'}, 'traceId': '3377059994601486115'}], 'data':"
+ },
+ "githubRepoDeploy_probe": {
+  "http": 200,
+  "body": "{'errors': [{'message': \"Only public repos can be deployed via the URL. This repo is either not public or doesn't exist.\", 'locations': [{'line': 3, 'column': 3}], 'path': ['githubRepoDeploy'], 'extensions': {'code': 'BAD_USER_INPUT'}, 'traceId': '8971873186385248494'}], 'data': None}"
+ }
+}
