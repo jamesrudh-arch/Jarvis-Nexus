@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck (tsc --noEmit)
+        run: bun run typecheck
+
+      - name: Registry consistency validation
+        run: bun tools/registry-validate.ts
+
+      - name: Unit tests
+        run: bun test tests/unit
+
+      - name: Integration + scenario tests (offline providers only)
+        run: |
+          # CI has no owner secrets: live-model tests self-skip (skipIf),
+          # echo-provider paths and the bundled MCP server still run.
+          bun test tests/integration tests/scenarios tests/persistence

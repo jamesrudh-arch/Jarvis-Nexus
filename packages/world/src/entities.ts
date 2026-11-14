@@ -2,10 +2,10 @@
  * NEXUS WORLD entities — factories and helpers (directive §7.2).
  * Canonical entity models with stable ids and explicit relationships.
  */
-import { nexusId, ID_PREFIXES, seededRandom, type Vector3 } from "@nexus/core";
+import { nexusId, ID_PREFIXES, seededRandom } from "@nexus/core";
 import type {
   WorldSchema, ResidentSchema, VehicleSchema, PropertySchema,
-  BusinessSchema, AccountSchema,
+  BusinessSchema, AccountSchema, SimulationFidelityValue, ResidentActivityValue, Vector3,
 } from "@nexus/contracts";
 import type { z } from "zod";
 

@@ -143,7 +143,7 @@ export class McpGateway {
   /** Health check across all servers (§4.2). */
   async healthCheck(): Promise<Array<{ name: string; state: string; tools: number; lastError?: string }>> {
     for (const entry of this.servers.values()) {
-      if (entry.state === "connected" && !this.clients.has(entry.name)) {
+      if (entry.state === "connected" && !this.clients.has(entry.registration.name)) {
         entry.state = "registered"; // stale connection after restart
         this.persist(entry);
       }
@@ -160,7 +160,7 @@ export class McpGateway {
   async invoke(inv: McpInvocation, invokedBy = "system"): Promise<Result<McpInvocationResult>> {
     const started = this.clock.nowMs();
     const entry = this.servers.get(inv.serverName);
-    const auditBase = {
+    const auditBase: Omit<McpAuditEntry, "outcome" | "durationMs"> = {
       id: nexusId(ID_PREFIXES.audit),
       serverName: inv.serverName, toolName: inv.toolName,
       args: inv.args, invokedBy, at: new Date().toISOString(),
@@ -247,13 +247,13 @@ export class McpGateway {
     });
   }
 
-  private auditFail(audit: McpAuditEntry & { durationMs?: number }, outcome: McpAuditEntry["outcome"], message: string, started: number): Result<McpInvocationResult> {
+  private auditFail(audit: Omit<McpAuditEntry, "outcome" | "durationMs">, outcome: McpAuditEntry["outcome"], message: string, started: number): Result<McpInvocationResult> {
     const durationMs = this.clock.nowMs() - started;
     this.recordAudit({ ...audit, outcome, errorDetail: message.slice(0, 300), durationMs });
     return err(new NexusError("TOOL_ERROR", `${audit.serverName}.${audit.toolName}: ${message}`));
   }
 
-  private recordAudit(a: McpAuditEntry & { durationMs?: number }): void {
+  private recordAudit(a: Omit<McpAuditEntry, "outcome" | "durationMs"> & { outcome: McpAuditEntry["outcome"]; durationMs: number; errorDetail?: string }): void {
     this.db.run(
       `INSERT INTO mcp_audit (id, server_name, tool_name, outcome, invoked_by, at) VALUES (?, ?, ?, ?, ?, ?)`,
       a.id, a.serverName, a.toolName, a.outcome, a.invokedBy, a.at,

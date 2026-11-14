@@ -14,7 +14,7 @@ import {
   type Result, NexusError, systemClock, type Clock,
 } from "@nexus/core";
 import type {
-  AgentContract, NaeiTask, AgentRole, NaeiTaskStatus,
+  AgentContract, NaeiTask, AgentRole, NaeiTaskStatusValue,
 } from "@nexus/contracts";
 import type { NexusDb } from "@nexus/db";
 import type { ModelFabric } from "@nexus/model-fabric";
@@ -110,7 +110,7 @@ export class NaeiTaskRepository {
     return row ? (JSON.parse(row.doc) as NaeiTask) : null;
   }
 
-  list(filter?: { status?: NaeiTaskStatus }): NaeiTask[] {
+  list(filter?: { status?: NaeiTaskStatusValue }): NaeiTask[] {
     const rows = filter?.status
       ? this.db.all<{ doc: string }>("SELECT doc FROM naei_tasks WHERE status = ? ORDER BY created_at", filter.status)
       : this.db.all<{ doc: string }>("SELECT doc FROM naei_tasks ORDER BY created_at DESC LIMIT 200");

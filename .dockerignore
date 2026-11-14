@@ -1,0 +1,14 @@
+node_modules
+data
+download
+upload
+skills
+.zscripts
+examples
+mini-services
+public
+tool-results
+.git
+.env*
+*.log
+agent-ctx

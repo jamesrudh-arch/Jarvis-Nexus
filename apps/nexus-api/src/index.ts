@@ -55,9 +55,11 @@ export function createApp(cfg: NexusApiConfig) {
     title: "NEXUS Test Tools",
     description: "Bundled test MCP server proving the gateway end-to-end",
     version: "1.0.0",
-    transport: { type: "stdio", command: "bun", args: [join(testServerDir, "server.ts")] },
+    transport: { type: "stdio", command: "bun", args: [join(testServerDir, "server.ts")], env: {} },
     permission: "auto",
+    capabilities: ["echo", "arithmetic", "world_probe"],
     timeoutMs: 15_000,
+    healthCheckIntervalMs: 60_000,
   });
 
   const worldRuntime = new WorldRuntime(db);

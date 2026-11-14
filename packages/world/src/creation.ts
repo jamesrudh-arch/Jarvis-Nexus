@@ -5,7 +5,7 @@
  * infrastructure). Geometry production (Blender/Unreal) consumes the spec
  * downstream; persistence and validation happen here.
  */
-import { nexusId, ID_PREFIXES, ok, err, type Result } from "@nexus/core";
+import { nexusId, ID_PREFIXES, ok, err, NexusError, type Result } from "@nexus/core";
 import type { WorldEvent } from "@nexus/contracts";
 import type { World } from "./entities";
 import { createProperty, createBusiness, createAccount, createResident, createVehicle } from "./entities";
@@ -105,7 +105,7 @@ export class CreationEngine {
       this.store.saveWorld(world);
       return ok({ spec, event, created });
     } catch (e) {
-      return err(new Error(`construction failed: ${String(e)}`));
+      return err(new NexusError("INTERNAL_ERROR", `construction failed: ${String(e)}`));
     }
   }
 

@@ -1,0 +1,28 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "5.8",
+	"Category": "",
+	"Description": "NEXUS WORLD — persistent civilisation client. Authoritative world state lives in the NEXUS API (event-sourced); this project renders and interacts with it.",
+	"Modules": [
+		{
+			"Name": "NexusWorld",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"Engine",
+				"HTTP",
+				"Json"
+			]
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "ModelingToolsEditorMode",
+			"Enabled": true
+		},
+		{
+			"Name": "WorldPartition",
+			"Enabled": true
+		}
+	]
+}

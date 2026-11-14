@@ -149,6 +149,8 @@ export class EconomyEngine {
           knowledge: [{ residentId: input.buyerResident.id, level: "direct_observation" }],
           payload: { sku: item.sku, quantity: input.quantity, itemTotal, businessId: business.id, transactionId: pay.value.transactionId },
         });
+        // the transaction's causal event is the purchase (not the intermediate transfer)
+        this.db.run("UPDATE transactions SET event_ref = ? WHERE id = ?", evt.id, pay.value.transactionId);
 
         // buyer learns the purchase happened
         const resident = this.store.getResident(input.buyerResident.id)!;

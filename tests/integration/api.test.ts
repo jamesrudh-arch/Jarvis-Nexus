@@ -31,16 +31,17 @@ afterAll(() => {
 });
 
 const base = () => `http://localhost:${port}`;
+const json = async (r: Response): Promise<any> => await r.json(); // eslint-disable-line @typescript-eslint/no-explicit-any
 
 describe("API foundation", () => {
   test("root contract", async () => {
-    const r = await (await fetch(base())).json();
+    const r = await json(await fetch(base()));
     expect(r.service).toBe("NEXUS API");
     expect(r.subsystems).toContain("jarvis");
   });
 
   test("health reports all components", async () => {
-    const r = await (await fetch(base() + "/health/detailed")).json();
+    const r = await json(await fetch(base() + "/health/detailed"));
     expect(["healthy", "degraded", "unhealthy"]).toContain(r.overall);
     const names = r.components.map((c: { component: string }) => c.component);
     expect(names).toContain("database");
@@ -60,7 +61,7 @@ describe("MCP gateway — integration acceptance (directive §4.4)", () => {
   test("server starts, connects, tools discovered", async () => {
     const r = await fetch(base() + "/mcp/servers/io.nexus.test-tools/tools");
     expect(r.status).toBe(200);
-    const body = await r.json();
+    const body = await json(r);
     const tools = body.data as Array<{ toolName: string }>;
     expect(tools.map((t) => t.toolName)).toEqual(["echo", "add", "world_status"]);
   });
@@ -72,7 +73,7 @@ describe("MCP gateway — integration acceptance (directive §4.4)", () => {
       body: JSON.stringify({ serverName: "io.nexus.test-tools", toolName: "echo", args: { message: "nexus-fabric-check" } }),
     });
     expect(r.status).toBe(200);
-    const body = await r.json();
+    const body = await json(r);
     expect(body.data.ok).toBe(true);
     expect(body.data.result).toBe("echo:nexus-fabric-check");
     expect(body.data.durationMs).toBeGreaterThan(0);
@@ -85,12 +86,12 @@ describe("MCP gateway — integration acceptance (directive §4.4)", () => {
       body: JSON.stringify({ serverName: "io.nexus.test-tools", toolName: "add", args: { a: 1 } }),
     });
     expect(r.status).toBe(400);
-    const body = await r.json();
+    const body = await json(r);
     expect(body.error).toContain("missing required args");
   });
 
   test("audit trail records invocations", async () => {
-    const r = await (await fetch(base() + "/mcp/audit?limit=10")).json();
+    const r = await json(await fetch(base() + "/mcp/audit?limit=10"));
     const entries = r.data as Array<{ serverName: string; toolName: string; outcome: string }>;
     expect(entries.length).toBeGreaterThanOrEqual(2);
     expect(entries.some((e) => e.outcome === "rejected")).toBe(true);
@@ -100,7 +101,7 @@ describe("MCP gateway — integration acceptance (directive §4.4)", () => {
 
 describe("NEXUS WORLD via API", () => {
   test("world state is live with bootstrap civilisation", async () => {
-    const r = await (await fetch(base() + "/world/state")).json();
+    const r = await json(await fetch(base() + "/world/state"));
     expect(r.data.world.name).toBe("NEXUS Prime");
     expect(r.data.residents).toBeGreaterThan(0);
     expect(r.data.properties).toBeGreaterThan(0);
@@ -108,7 +109,7 @@ describe("NEXUS WORLD via API", () => {
   });
 
   test("simulation advance ticks and generates history (owner auth)", async () => {
-    const before = await (await fetch(base() + "/world/state")).json();
+    const before = await json(await fetch(base() + "/world/state"));
     const key = process.env.OWNER_KEY!;
     const r = await fetch(base() + "/world/advance", {
       method: "POST",
@@ -116,15 +117,15 @@ describe("NEXUS WORLD via API", () => {
       body: JSON.stringify({ ticks: 70 }), // 70 x 10min = ~11.7 sim-hours: crosses 09:00 salary run
     });
     expect(r.status).toBe(200);
-    const report = await r.json();
+    const report = await json(r);
     expect(report.data.simTimeAfter).toBeGreaterThan(report.data.simTimeBefore);
-    const after = await (await fetch(base() + "/world/state")).json();
+    const after = await json(await fetch(base() + "/world/state"));
     expect(after.data.events).toBeGreaterThan(before.data.events);
   });
 
   test("residents expose knowledge derived from experience", async () => {
-    const res = await (await fetch(base() + "/world/residents")).json();
-    const r = await (await fetch(base() + "/world/residents/" + res.data[0].id)).json();
+    const res = await json(await fetch(base() + "/world/residents"));
+    const r = await json(await fetch(base() + "/world/residents/" + res.data[0].id));
     expect(r.data.id).toBeTruthy();
     expect(Array.isArray(r.knowledge)).toBe(true);
   });
@@ -136,7 +137,7 @@ describe("memory subsystem via API", () => {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ scope: "integration", tier: "semantic", kind: "fact", title: "Integration test memory", content: "The integration suite wrote this memory.", importance: 0.8 }),
     });
-    const list = await (await fetch(base() + "/memory/integration")).json();
+    const list = await json(await fetch(base() + "/memory/integration"));
     expect((list.data as unknown[]).length).toBeGreaterThan(0);
   });
 });
@@ -148,7 +149,7 @@ describe("JARVIS orchestrator end-to-end (Scenario A shape)", () => {
       body: JSON.stringify({ objective: "Check the status of the NEXUS WORLD simulation and summarise it in one sentence." }),
     });
     expect(r.status).toBe(201);
-    const body = await r.json();
+    const body = await json(r);
     const task = body.data as { state: string; plan: unknown[]; stepResults: unknown[]; evaluation?: { objectiveMet: boolean } };
     expect(["COMPLETED", "RECOVERY_REQUIRED"]).toContain(task.state);
     expect(task.plan.length).toBeGreaterThan(0);
@@ -158,7 +159,7 @@ describe("JARVIS orchestrator end-to-end (Scenario A shape)", () => {
   });
 
   test("task repository persists tasks", async () => {
-    const r = await (await fetch(base() + "/jarvis/tasks")).json();
+    const r = await json(await fetch(base() + "/jarvis/tasks"));
     expect(Array.isArray(r.data)).toBe(true);
   });
 });
@@ -181,7 +182,7 @@ describe("NAEI via API (Scenario B shape)", () => {
       }),
     });
     expect(submit.status).toBe(201);
-    const submitted = (await submit.json()).data as { id: string };
+    const submitted = (await json(submit)).data as { id: string };
 
     // long-running execution: start + poll to terminal state (§6.3)
     const start = await fetch(base() + "/naei/execute", {
@@ -192,9 +193,9 @@ describe("NAEI via API (Scenario B shape)", () => {
     let task: { id: string; status: string; verification?: { verdict: string; verifierAgentId: string }; assignedAgentId?: string; result?: { analysis: string } } | null = null;
     const deadline = Date.now() + 90_000;
     while (Date.now() < deadline) {
-      const poll = await (await fetch(base() + "/naei/tasks/" + submitted.id)).json();
+      const poll = await json(await fetch(base() + "/naei/tasks/" + submitted.id));
       task = poll.data;
-      if (["VERIFIED", "FAILED", "ESCALATED", "AWAITING_APPROVAL"].includes(task.status)) break;
+      if (task && ["VERIFIED", "FAILED", "ESCALATED", "AWAITING_APPROVAL"].includes(task.status)) break;
       await new Promise((r) => setTimeout(r, 1_000));
     }
     expect(task).not.toBeNull();

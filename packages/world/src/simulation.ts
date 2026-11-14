@@ -9,7 +9,7 @@
  * - Director generates world-level events from conditions (§7.6)
  */
 import { clamp, seededRandom, nexusId, ID_PREFIXES } from "@nexus/core";
-import type { WorldEvent, SimulationFidelity } from "@nexus/contracts";
+import type { WorldEvent, SimulationFidelityValue } from "@nexus/contracts";
 import type { World, Resident, Vehicle } from "./entities";
 import type { WorldStore } from "./persistence";
 import { LifeEngine, SIM_MINUTES_PER_TICK } from "./life";
@@ -27,7 +27,7 @@ export interface TickReport {
 }
 
 /** How many tick-steps a resident gets per simulation advance, by fidelity. */
-const FIDELITY_TICK_STEPS: Record<SimulationFidelity, number> = {
+const FIDELITY_TICK_STEPS: Record<SimulationFidelityValue, number> = {
   HIGH: 1,
   MEDIUM: 3,      // every 3rd step
   ABSTRACT: 10,   // coarse background simulation
@@ -77,7 +77,7 @@ export class SimulationEngine {
       // fidelity assignment by distance from active centre
       for (const r of residents) {
         const dist = Math.hypot(r.position.x - centre.x, r.position.z - centre.z);
-        const target: SimulationFidelity =
+        const target: SimulationFidelityValue =
           dist <= world.config.highFidelityRadius ? "HIGH"
           : dist <= world.config.mediumFidelityRadius ? "MEDIUM"
           : "ABSTRACT";

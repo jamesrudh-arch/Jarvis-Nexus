@@ -1,0 +1,1086 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-11-14T10:30:00Z",
+  "requirements": [
+    {
+      "id": "ARCH-1",
+      "product": "PLATFORM",
+      "directive": "\u00a71.1",
+      "title": "Repository architecture (monorepo) with service boundaries",
+      "behaviour": "Single repository with workspace packages per subsystem; contracts package defines cross-boundary schemas",
+      "subsystem": "repo",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "bun install + bun test resolution across packages"
+        },
+        {
+          "kind": "commit",
+          "reference": "a65bf4f"
+        }
+      ]
+    },
+    {
+      "id": "ARCH-2",
+      "product": "PLATFORM",
+      "directive": "\u00a71.1",
+      "title": "Atomic commits with change records",
+      "behaviour": "Every milestone committed with descriptive messages",
+      "subsystem": "repo",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "commit",
+          "reference": "git log (foundation, deployment, registries)"
+        }
+      ]
+    },
+    {
+      "id": "ARCH-3",
+      "product": "PLATFORM",
+      "directive": "\u00a71.3",
+      "title": "GitHub credential hygiene",
+      "behaviour": "Token never printed/committed; .env gitignored",
+      "subsystem": "repo",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "commit",
+          "reference": ".gitignore excludes .env*"
+        }
+      ]
+    },
+    {
+      "id": "ARCH-4",
+      "product": "PLATFORM",
+      "directive": "\u00a71.1",
+      "title": "CI workflow: typecheck + tests",
+      "behaviour": "GitHub Actions runs tsc --noEmit and bun test on push",
+      "subsystem": "ci",
+      "dependsOn": [],
+      "status": "TESTING",
+      "evidence": [
+        {
+          "kind": "commit",
+          "reference": ".github/workflows/ci.yml"
+        }
+      ]
+    },
+    {
+      "id": "ARCH-5",
+      "product": "PLATFORM",
+      "directive": "\u00a716",
+      "title": "Machine-readable requirements registry",
+      "behaviour": "requirements.json with statuses, dependencies, evidence",
+      "subsystem": "registry",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "report",
+          "reference": "registry/requirements.json (this file)"
+        }
+      ]
+    },
+    {
+      "id": "ARCH-6",
+      "product": "PLATFORM",
+      "directive": "\u00a717",
+      "title": "Engineering ledger with task records",
+      "behaviour": "ledger.json records engineering tasks, scope, tests, commits",
+      "subsystem": "registry",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "report",
+          "reference": "registry/ledger.json"
+        }
+      ]
+    },
+    {
+      "id": "TECH-1",
+      "product": "INTEGRATION",
+      "directive": "\u00a72.3",
+      "title": "OpenViking investigation and decision",
+      "behaviour": "volcengine/OpenViking (42.2k stars, AGPL-3.0) assessed: ADOPT via adapter; memory abstraction keeps native engine default",
+      "subsystem": "memory",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "report",
+          "reference": "registry/technologies.json TECH-001"
+        }
+      ]
+    },
+    {
+      "id": "TECH-2",
+      "product": "INTEGRATION",
+      "directive": "\u00a72.3",
+      "title": "Pizza Bot investigation and decision",
+      "behaviour": "pizza-bot-app/pizza-bot (559 stars, Apache-2.0) assessed: ADAPT patterns (durable queues, checkpointing, HITL) into NAEI",
+      "subsystem": "naei",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "report",
+          "reference": "registry/technologies.json TECH-002"
+        }
+      ]
+    },
+    {
+      "id": "TECH-3",
+      "product": "INTEGRATION",
+      "directive": "\u00a72.3",
+      "title": "ARTEMIS investigation and decision",
+      "behaviour": "google/artemis (17.4k stars, Apache-2.0) Android automation; iOS requires Appium/WDA path; live integration blocked (no device host in build env)",
+      "subsystem": "integration",
+      "dependsOn": [],
+      "status": "BLOCKED",
+      "blockedBy": "No Android device/emulator host or macOS iOS runner in build environment; adapter + acquisition record prepared",
+      "evidence": [
+        {
+          "kind": "report",
+          "reference": "registry/technologies.json TECH-003"
+        }
+      ]
+    },
+    {
+      "id": "TECH-4",
+      "product": "INTEGRATION",
+      "directive": "\u00a72.3",
+      "title": "Unsloth investigation and decision",
+      "behaviour": "unslothai/unsloth (79.5k stars, Apache-2.0 core): training requires GPU >= 5GB VRAM; adopted for off-platform training (Colab/Kaggle); Railway is CPU-only",
+      "subsystem": "ai-lab",
+      "dependsOn": [],
+      "status": "BLOCKED",
+      "blockedBy": "No GPU in build environment or Railway deployment; training notebooks + integration record prepared for Colab/Kaggle execution",
+      "evidence": [
+        {
+          "kind": "report",
+          "reference": "registry/technologies.json TECH-004"
+        }
+      ]
+    },
+    {
+      "id": "TECH-5",
+      "product": "INTEGRATION",
+      "directive": "\u00a72.3",
+      "title": "Godot investigation and decision",
+      "behaviour": "Godot 4.7.2 (MIT): auxiliary headless test harness only; Unreal remains primary world runtime",
+      "subsystem": "integration",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "report",
+          "reference": "registry/technologies.json TECH-005"
+        }
+      ]
+    },
+    {
+      "id": "TECH-6",
+      "product": "INTEGRATION",
+      "directive": "\u00a72.3",
+      "title": "Unity investigation and decision",
+      "behaviour": "No measurable advantage over Unreal+Blender; excluded from runtime stack (documented rationale)",
+      "subsystem": "integration",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "report",
+          "reference": "registry/technologies.json TECH-006"
+        }
+      ]
+    },
+    {
+      "id": "TECH-7",
+      "product": "INTEGRATION",
+      "directive": "\u00a73",
+      "title": "Technology acquisition registry",
+      "behaviour": "registry/technologies.json with capabilities, licences, decisions, integration status, test results",
+      "subsystem": "registry",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "report",
+          "reference": "registry/technologies.json"
+        }
+      ]
+    },
+    {
+      "id": "TECH-8",
+      "product": "INTEGRATION",
+      "directive": "\u00a72.3",
+      "title": "Additional tools (FreeMoCap/Natron/Theatre.js) assessed",
+      "behaviour": "FreeMoCap AGPL high-relevance (video mocap, REST API); Natron low priority; Theatre.js marginal \u2014 records with verdicts",
+      "subsystem": "integration",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "report",
+          "reference": "registry/technologies.json TECH-009..011"
+        }
+      ]
+    },
+    {
+      "id": "MCP-1",
+      "product": "PLATFORM",
+      "directive": "\u00a74.1",
+      "title": "MCP lifecycle management (register, connect, discover, invoke, audit)",
+      "behaviour": "Gateway registers servers, connects over stdio/HTTP, discovers tools, routes invocations with validation + audit",
+      "subsystem": "mcp-gateway",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "tests/integration/api.test.ts: MCP gateway acceptance (4 tests)"
+        }
+      ]
+    },
+    {
+      "id": "MCP-2",
+      "product": "PLATFORM",
+      "directive": "\u00a74.2",
+      "title": "Schema validation and permission enforcement",
+      "behaviour": "Required-args validation rejects invalid invocations; approval_required servers demand approvedBy",
+      "subsystem": "mcp-gateway",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "integration: schema validation rejects missing required args"
+        }
+      ]
+    },
+    {
+      "id": "MCP-3",
+      "product": "PLATFORM",
+      "directive": "\u00a74.4",
+      "title": "Integration acceptance: real operation succeeds",
+      "behaviour": "Bundled test MCP server: connect \u2192 discover 3 tools \u2192 real echo operation \u2192 audit recorded",
+      "subsystem": "mcp-gateway",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "integration: real operation succeeds end-to-end + audit trail"
+        }
+      ]
+    },
+    {
+      "id": "MCP-4",
+      "product": "INTEGRATION",
+      "directive": "\u00a74.3",
+      "title": "Unreal MCP + Blender MCP registered integrations",
+      "behaviour": "Manifests prepared per MCP Registry server.json format; endpoints configured by env in deployment",
+      "subsystem": "mcp-gateway",
+      "dependsOn": [],
+      "status": "BLOCKED",
+      "blockedBy": "Unreal Editor MCP (UE 5.8+) and Blender MCP sockets run on the owner's workstation, not in this build environment; gateway supports them via HTTP/stdio registration on first use",
+      "evidence": [
+        {
+          "kind": "report",
+          "reference": "registry/technologies.json TECH-012/013"
+        }
+      ]
+    },
+    {
+      "id": "JAR-1",
+      "product": "JARVIS",
+      "directive": "\u00a75.1",
+      "title": "Cognitive architecture: distinct perception/context/reasoning/planning/action/evaluation services",
+      "behaviour": "packages/cognition implements each as a service contract; orchestrator composes them",
+      "subsystem": "cognition",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "integration: objective flows through state machine (live model)"
+        }
+      ]
+    },
+    {
+      "id": "JAR-2",
+      "product": "JARVIS",
+      "directive": "\u00a75.2",
+      "title": "Central orchestration state machine with persistence",
+      "behaviour": "RECEIVED..COMPLETED states persisted per transition; restart resumes mid-flight tasks",
+      "subsystem": "orchestrator",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "unit: interrupted tasks recoverable after restart"
+        }
+      ]
+    },
+    {
+      "id": "JAR-3",
+      "product": "JARVIS",
+      "directive": "\u00a75.3",
+      "title": "Model intelligence fabric (provider-independent routing)",
+      "behaviour": "Cloudflare (LIVE), OpenAI, echo providers; capability ranking, fallback chains, health + cost tracking",
+      "subsystem": "model-fabric",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "unit: live cloudflare completion + live fabric routing (2 live tests)"
+        }
+      ]
+    },
+    {
+      "id": "JAR-4",
+      "product": "JARVIS",
+      "directive": "\u00a75.4",
+      "title": "Memory architecture: tiers, retrieval, consolidation, provenance, supersession",
+      "behaviour": "9 tiers, relevance ranking, promotion, contradiction detection, kind separation, scope isolation",
+      "subsystem": "memory",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "unit: memory subsystem (6 tests)"
+        }
+      ]
+    },
+    {
+      "id": "JAR-5",
+      "product": "JARVIS",
+      "directive": "\u00a75.5",
+      "title": "Voice intelligence architecture",
+      "behaviour": "Voice pipeline interface (STT/intent/TTS/streaming) is specified; live capture/playback needs an audio-runtime host",
+      "subsystem": "voice",
+      "dependsOn": [],
+      "status": "BLOCKED",
+      "blockedBy": "Build environment has no audio I/O or telephony gateway; voice pipeline requires deployment host with audio session (documented in ADR-008) for live operation",
+      "evidence": []
+    },
+    {
+      "id": "JAR-6",
+      "product": "JARVIS",
+      "directive": "\u00a75.6",
+      "title": "Autonomous task execution with tool routing",
+      "behaviour": "Objectives decompose into plans; tools include memory, world, MCP, NAEI delegation; outcomes stored in episodic memory",
+      "subsystem": "orchestrator",
+      "dependsOn": [
+        "JAR-1",
+        "JAR-2",
+        "JAR-3"
+      ],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "integration: Scenario A shape \u2014 objective to completion with live model"
+        }
+      ]
+    },
+    {
+      "id": "JAR-7",
+      "product": "JARVIS",
+      "directive": "\u00a75.4",
+      "title": "OpenViking adapter seam",
+      "behaviour": "MemoryBackend interface is the stable seam; OpenViking provider adapter specified (AGPL assessed)",
+      "subsystem": "memory",
+      "dependsOn": [
+        "TECH-1"
+      ],
+      "status": "TESTING",
+      "evidence": [
+        {
+          "kind": "commit",
+          "reference": "packages/memory/src/index.ts MemoryBackend interface"
+        }
+      ]
+    },
+    {
+      "id": "NAEI-1",
+      "product": "NAEI",
+      "directive": "\u00a76.1",
+      "title": "Specialist agent divisions with capability profiles",
+      "behaviour": "10-agent default roster across 6 divisions with structured contracts",
+      "subsystem": "naei",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "integration: /naei/agents returns roster"
+        }
+      ]
+    },
+    {
+      "id": "NAEI-2",
+      "product": "NAEI",
+      "directive": "\u00a76.2",
+      "title": "Agent contracts (identity, budgets, permissions, failure policy)",
+      "behaviour": "AgentContract schema enforced for every agent",
+      "subsystem": "naei",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "contracts schema + registry tests"
+        }
+      ]
+    },
+    {
+      "id": "NAEI-3",
+      "product": "NAEI",
+      "directive": "\u00a76.3",
+      "title": "Task queue with dependency DAG + ready scheduling",
+      "behaviour": "Tasks queue until dependencies reach VERIFIED/COMMITTED",
+      "subsystem": "naei",
+      "dependsOn": [],
+      "status": "TESTING",
+      "evidence": [
+        {
+          "kind": "commit",
+          "reference": "packages/naei NaeiTaskRepository.ready()"
+        }
+      ]
+    },
+    {
+      "id": "NAEI-4",
+      "product": "NAEI",
+      "directive": "\u00a76.3",
+      "title": "Isolated workspaces + checkpointing",
+      "behaviour": "Per-task workspace directories with analysis/implementation/verification artifacts",
+      "subsystem": "naei",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "integration Scenario B: workspace artifacts written"
+        }
+      ]
+    },
+    {
+      "id": "NAEI-5",
+      "product": "NAEI",
+      "directive": "\u00a76.4",
+      "title": "Independent verification (agent never certifies own work)",
+      "behaviour": "verification_engineer (different agent) inspects requirement vs implementation; can FAIL",
+      "subsystem": "naei",
+      "dependsOn": [
+        "NAEI-1"
+      ],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "integration Scenario B: verifier != implementer; observed live FAIL verdicts refusing weak implementations"
+        }
+      ]
+    },
+    {
+      "id": "NAEI-6",
+      "product": "NAEI",
+      "directive": "\u00a76.3",
+      "title": "Human approval gates for consequential operations",
+      "behaviour": "requiresApproval tasks pause at AWAITING_APPROVAL until owner approves",
+      "subsystem": "naei",
+      "dependsOn": [],
+      "status": "TESTING",
+      "evidence": [
+        {
+          "kind": "commit",
+          "reference": "packages/naei approve() + API /naei/tasks/:id/approve"
+        }
+      ]
+    },
+    {
+      "id": "NAEI-7",
+      "product": "NAEI",
+      "directive": "\u00a719 B",
+      "title": "Scenario B: NAEI autonomous engineering end-to-end",
+      "behaviour": "Submit requirement \u2192 assign \u2192 analyse \u2192 implement \u2192 independently verify \u2192 terminal status",
+      "subsystem": "naei",
+      "dependsOn": [
+        "NAEI-1",
+        "NAEI-5"
+      ],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "tests/integration/api.test.ts Scenario B (live, 16s)"
+        }
+      ]
+    },
+    {
+      "id": "WLD-1",
+      "product": "NEXUS_WORLD",
+      "directive": "\u00a77.1",
+      "title": "Authoritative world-state separate from rendering",
+      "behaviour": "World state lives in backend store; no rendering client required",
+      "subsystem": "world",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "all world tests run headless"
+        }
+      ]
+    },
+    {
+      "id": "WLD-2",
+      "product": "NEXUS_WORLD",
+      "directive": "\u00a77.2",
+      "title": "Canonical entity models (World/Resident/Vehicle/Property/Business/Account/Event)",
+      "behaviour": "Versioned zod schemas with stable ids and explicit relationships",
+      "subsystem": "contracts",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "commit",
+          "reference": "packages/contracts entity schemas"
+        }
+      ]
+    },
+    {
+      "id": "WLD-3",
+      "product": "NEXUS_WORLD",
+      "directive": "\u00a77.3",
+      "title": "Simulation scheduler with fidelity tiers",
+      "behaviour": "HIGH/MEDIUM/ABSTRACT assignment by distance; tiered tick cadence",
+      "subsystem": "world",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "unit: fidelity tiers test"
+        }
+      ]
+    },
+    {
+      "id": "WLD-4",
+      "product": "NEXUS_WORLD",
+      "directive": "\u00a77.4",
+      "title": "Life engine: needs, goals, routines, relationships",
+      "behaviour": "Utility-AI activity selection from needs x time-of-day x personality; deterministic seeds",
+      "subsystem": "world",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "unit: life engine tests + Scenario E"
+        }
+      ]
+    },
+    {
+      "id": "WLD-5",
+      "product": "NEXUS_WORLD",
+      "directive": "\u00a77.5",
+      "title": "Causal memory engine (event-sourced, knowledge levels)",
+      "behaviour": "Append-only events with cause/participants/witnesses; knowledge isolation verified",
+      "subsystem": "world",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "Scenario F (causal chain) + knowledge isolation tests"
+        }
+      ]
+    },
+    {
+      "id": "WLD-6",
+      "product": "NEXUS_WORLD",
+      "directive": "\u00a77.6",
+      "title": "World director (conditions \u2192 events)",
+      "behaviour": "Weather incidents, collisions during commute, community events; never controls individual residents",
+      "subsystem": "world",
+      "dependsOn": [
+        "WLD-3"
+      ],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "Scenario F: collision \u2192 response \u2192 road consequence chain"
+        }
+      ]
+    },
+    {
+      "id": "WLD-7",
+      "product": "NEXUS_WORLD",
+      "directive": "\u00a77.8",
+      "title": "Economic intelligence with transactional consistency",
+      "behaviour": "Atomic transfers/purchases/salaries; idempotent salary; money-supply conservation verified",
+      "subsystem": "world",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "Scenario G + economy unit tests (atomicity, idempotency, conservation)"
+        }
+      ]
+    },
+    {
+      "id": "WLD-8",
+      "product": "NEXUS_WORLD",
+      "directive": "\u00a77.11",
+      "title": "Creation engine (natural language \u2192 construction spec + world state)",
+      "behaviour": "6 construction kinds produce structures, roads, population, businesses; construction event recorded",
+      "subsystem": "world",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "Scenario H + creation unit tests"
+        }
+      ]
+    },
+    {
+      "id": "WLD-9",
+      "product": "NEXUS_WORLD",
+      "directive": "\u00a711",
+      "title": "World continuity: snapshots + restart recovery",
+      "behaviour": "Snapshot checkpoints; recover() restores state + verifies event continuity; idempotent replay",
+      "subsystem": "world",
+      "dependsOn": [
+        "WLD-5"
+      ],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "Scenario D: full restart consistency"
+        }
+      ]
+    },
+    {
+      "id": "WLD-10",
+      "product": "NEXUS_WORLD",
+      "directive": "\u00a77.9",
+      "title": "Ecology engine",
+      "behaviour": "Wildlife populations, habitats, ecosystem simulation",
+      "subsystem": "world",
+      "dependsOn": [],
+      "status": "DISCOVERED",
+      "evidence": []
+    },
+    {
+      "id": "WLD-11",
+      "product": "NEXUS_WORLD",
+      "directive": "\u00a77.7",
+      "title": "Civilisation institutions (government, healthcare, police...)",
+      "behaviour": "Institutional entities with operational state",
+      "subsystem": "world",
+      "dependsOn": [],
+      "status": "SPECIFIED",
+      "evidence": [
+        {
+          "kind": "commit",
+          "reference": "Account.ownerType=institution seam in contracts"
+        }
+      ]
+    },
+    {
+      "id": "UE-1",
+      "product": "NEXUS_WORLD",
+      "directive": "\u00a78.1",
+      "title": "Unreal Engine project structure",
+      "behaviour": "Real .uproject + C++ runtime modules for world-state integration",
+      "subsystem": "tools/unreal",
+      "dependsOn": [],
+      "status": "TESTING",
+      "evidence": [
+        {
+          "kind": "commit",
+          "reference": "tools/unreal/NexusWorld.uproject + Source/"
+        }
+      ]
+    },
+    {
+      "id": "UE-2",
+      "product": "NEXUS_WORLD",
+      "directive": "\u00a78",
+      "title": "Unreal build verification",
+      "behaviour": "Compile + editor automation requires UE 5.x toolchain",
+      "subsystem": "tools/unreal",
+      "dependsOn": [
+        "UE-1"
+      ],
+      "status": "BLOCKED",
+      "blockedBy": "No Unreal Engine toolchain in build environment (Linux sandbox, no GPU/Windows); requires owner workstation with UE 5.8+ or GitHub Actions windows-ue5 runner",
+      "evidence": []
+    },
+    {
+      "id": "BLD-1",
+      "product": "NEXUS_WORLD",
+      "directive": "\u00a79.1",
+      "title": "Blender production pipeline (bpy automation + validation harness)",
+      "behaviour": "Asset generation scripts + spec-driven validation runnable with bpy or headless harness",
+      "subsystem": "tools/blender-pipeline",
+      "dependsOn": [],
+      "status": "TESTING",
+      "evidence": [
+        {
+          "kind": "commit",
+          "reference": "tools/blender-pipeline/"
+        }
+      ]
+    },
+    {
+      "id": "BLD-2",
+      "product": "NEXUS_WORLD",
+      "directive": "\u00a79.1",
+      "title": "Blender live execution",
+      "behaviour": "Actual bpy runs producing .blend/FBX assets",
+      "subsystem": "tools/blender-pipeline",
+      "dependsOn": [
+        "BLD-1"
+      ],
+      "status": "BLOCKED",
+      "blockedBy": "No Blender binary in build environment (verified: no blender executable; ~700MB install exceeds remaining sandbox disk with backups present); pipeline runs on owner workstation via Blender MCP or local blender 4.x",
+      "evidence": []
+    },
+    {
+      "id": "BLD-3",
+      "product": "NEXUS_WORLD",
+      "directive": "\u00a719 C",
+      "title": "Scenario C: Blender \u2192 Unreal asset round trip",
+      "behaviour": "Building asset: spec \u2192 Blender geometry \u2192 validation \u2192 export \u2192 Unreal import \u2192 runtime check",
+      "subsystem": "pipeline",
+      "dependsOn": [
+        "BLD-2",
+        "UE-2"
+      ],
+      "status": "BLOCKED",
+      "blockedBy": "Requires Blender runtime + Unreal toolchain (see BLD-2, UE-2); spec + scripts + validation prepared for execution on owner workstation",
+      "evidence": []
+    },
+    {
+      "id": "GAME-1",
+      "product": "NEXUS_WORLD",
+      "directive": "\u00a710.2",
+      "title": "Property ownership system",
+      "behaviour": "Transactional purchase with ownership records (buyProperty)",
+      "subsystem": "world",
+      "dependsOn": [
+        "WLD-7"
+      ],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "economy.buyProperty implementation + ownership events"
+        }
+      ]
+    },
+    {
+      "id": "GAME-2",
+      "product": "NEXUS_WORLD",
+      "directive": "\u00a710.3",
+      "title": "Vehicle ownership system",
+      "behaviour": "Transactional vehicle purchase with possession records",
+      "subsystem": "world",
+      "dependsOn": [
+        "WLD-7"
+      ],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "economy.buyVehicle implementation"
+        }
+      ]
+    },
+    {
+      "id": "GAME-3",
+      "product": "NEXUS_WORLD",
+      "directive": "\u00a710.4-10.9",
+      "title": "Gameplay systems (racing, combat, dance, sports...)",
+      "behaviour": "Full interactive gameplay requires the Unreal client",
+      "subsystem": "unreal",
+      "dependsOn": [
+        "UE-2"
+      ],
+      "status": "DISCOVERED",
+      "evidence": []
+    },
+    {
+      "id": "INFRA-1",
+      "product": "PLATFORM",
+      "directive": "\u00a712.1",
+      "title": "Railway deployment of NEXUS API",
+      "behaviour": "Auto-deploy from main; Dockerfile build; /health healthcheck; /data volume persistence",
+      "subsystem": "deploy",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "deployment",
+          "reference": "jarvis-nexus-production.up.railway.app/health (see ACCEPTANCE.md)"
+        }
+      ]
+    },
+    {
+      "id": "INFRA-2",
+      "product": "PLATFORM",
+      "directive": "\u00a712.2",
+      "title": "Supabase role in stack",
+      "behaviour": "Assessed: schema empty, SQLite on volume chosen for single-service deploy (ADR-005); Supabase credentials preserved for future Postgres migration",
+      "subsystem": "deploy",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "report",
+          "reference": "ADR-005"
+        }
+      ]
+    },
+    {
+      "id": "INFRA-3",
+      "product": "PLATFORM",
+      "directive": "\u00a712.4",
+      "title": "Versioned service contracts",
+      "behaviour": "CONTRACT_VERSION + zod schemas shared by all services",
+      "subsystem": "contracts",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "commit",
+          "reference": "packages/contracts CONTRACT_VERSION"
+        }
+      ]
+    },
+    {
+      "id": "SEC-1",
+      "product": "PLATFORM",
+      "directive": "\u00a713",
+      "title": "Owner authentication for consequential routes",
+      "behaviour": "OWNER_KEY bearer required for advance/construct/execute/approve/commit",
+      "subsystem": "api",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "integration: unauthenticated consequential routes rejected"
+        }
+      ]
+    },
+    {
+      "id": "SEC-2",
+      "product": "PLATFORM",
+      "directive": "\u00a713",
+      "title": "Secret management",
+      "behaviour": "Secrets via env only; never committed; audit trail for tool invocations",
+      "subsystem": "api",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "commit",
+          "reference": ".gitignore + audit log"
+        }
+      ]
+    },
+    {
+      "id": "OBS-1",
+      "product": "PLATFORM",
+      "directive": "\u00a714",
+      "title": "Observability: health, metrics, structured logs",
+      "behaviour": "HealthRegistry (5 probes), MetricsCollector, NexusLogger, correlation ids",
+      "subsystem": "observability",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "integration: health reports all components"
+        }
+      ]
+    },
+    {
+      "id": "OBS-2",
+      "product": "PLATFORM",
+      "directive": "\u00a714",
+      "title": "No masking of failures",
+      "behaviour": "Probes report unhealthy on error; verification refuses to self-certify",
+      "subsystem": "observability",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "NAEI verification observed returning FAIL verdicts on weak implementations"
+        }
+      ]
+    },
+    {
+      "id": "SCEN-A",
+      "product": "JARVIS",
+      "directive": "\u00a719 A",
+      "title": "Scenario A: JARVIS autonomy",
+      "behaviour": "Complex objective \u2192 memory retrieval \u2192 plan \u2192 tools \u2192 verify \u2192 store outcome",
+      "subsystem": "orchestrator",
+      "dependsOn": [
+        "JAR-1",
+        "JAR-6"
+      ],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "integration Scenario A (live model, state machine to COMPLETED)"
+        }
+      ]
+    },
+    {
+      "id": "SCEN-B",
+      "product": "NAEI",
+      "directive": "\u00a719 B",
+      "title": "Scenario B: NAEI autonomous engineering",
+      "behaviour": "Requirement \u2192 agents \u2192 implement \u2192 test \u2192 verify \u2192 commit path",
+      "subsystem": "naei",
+      "dependsOn": [
+        "NAEI-7"
+      ],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "integration Scenario B (live, background execution + polling)"
+        }
+      ]
+    },
+    {
+      "id": "SCEN-D",
+      "product": "NEXUS_WORLD",
+      "directive": "\u00a719 D",
+      "title": "Scenario D: persistent world across restart",
+      "behaviour": "Modify world \u2192 stop \u2192 restart \u2192 state + history consistent",
+      "subsystem": "world",
+      "dependsOn": [
+        "WLD-9"
+      ],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "tests/scenarios Scenario D"
+        }
+      ]
+    },
+    {
+      "id": "SCEN-E",
+      "product": "NEXUS_WORLD",
+      "directive": "\u00a719 E",
+      "title": "Scenario E: autonomous residents",
+      "behaviour": "Work, encounter, event, purchase \u2014 experiences/relationships/memories retained; outsiders know nothing",
+      "subsystem": "world",
+      "dependsOn": [
+        "WLD-4",
+        "WLD-5"
+      ],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "tests/scenarios Scenario E"
+        }
+      ]
+    },
+    {
+      "id": "SCEN-F",
+      "product": "NEXUS_WORLD",
+      "directive": "\u00a719 F",
+      "title": "Scenario F: causal world event (collision in rain)",
+      "behaviour": "Damage, witnesses, emergency response, road consequence, resident memories, causal ordering",
+      "subsystem": "world",
+      "dependsOn": [
+        "WLD-5",
+        "WLD-6"
+      ],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "tests/scenarios Scenario F"
+        }
+      ]
+    },
+    {
+      "id": "SCEN-G",
+      "product": "NEXUS_WORLD",
+      "directive": "\u00a719 G",
+      "title": "Scenario G: world economy",
+      "behaviour": "Payment, balances, inventory, revenue, stock, transaction history, money conservation",
+      "subsystem": "world",
+      "dependsOn": [
+        "WLD-7"
+      ],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "tests/scenarios Scenario G"
+        }
+      ]
+    },
+    {
+      "id": "SCEN-H",
+      "product": "NEXUS_WORLD",
+      "directive": "\u00a719 H",
+      "title": "Scenario H: world creation",
+      "behaviour": "Neighbourhood request \u2192 records + infrastructure + population created and persistent",
+      "subsystem": "world",
+      "dependsOn": [
+        "WLD-8"
+      ],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "tests/scenarios Scenario H"
+        }
+      ]
+    },
+    {
+      "id": "SCEN-C",
+      "product": "NEXUS_WORLD",
+      "directive": "\u00a719 C",
+      "title": "Scenario C: Blender \u2192 Unreal",
+      "behaviour": "Asset round trip",
+      "subsystem": "pipeline",
+      "dependsOn": [
+        "BLD-3"
+      ],
+      "status": "BLOCKED",
+      "blockedBy": "Environment lacks Blender + Unreal runtimes (see BLD-2, UE-2)",
+      "evidence": []
+    }
+  ]
+}

@@ -8,7 +8,7 @@
  *  - Knowledge propagation is explicit: residents only know events recorded
  *    for them (world_truth vs direct_observation vs reported/rumour).
  */
-import { nexusId, ID_PREFIXES, safeJsonStringify, ok, err, type Result } from "@nexus/core";
+import { nexusId, ID_PREFIXES, safeJsonStringify, ok, err, NexusError, type Result } from "@nexus/core";
 import type { WorldEvent } from "@nexus/contracts";
 import type { NexusDb } from "@nexus/db";
 import { EventStoreRepo, SnapshotRepo } from "@nexus/db";
@@ -134,8 +134,14 @@ export class WorldStore {
   // Causal event history (append-only, idempotent)
   // -------------------------------------------------------------------------
 
-  recordEvent(evt: Omit<WorldEvent, "id"> & { id?: string }): WorldEvent {
-    const full: WorldEvent = { ...evt, id: evt.id ?? nexusId(ID_PREFIXES.event) } as WorldEvent;
+  recordEvent(evt: Omit<WorldEvent, "id" | "participants" | "witnesses" | "evidence" | "effects" | "knowledge">
+      & Partial<Pick<WorldEvent, "participants" | "witnesses" | "evidence" | "effects" | "knowledge">>
+      & { id?: string }): WorldEvent {
+    const full: WorldEvent = {
+      participants: [], witnesses: [], evidence: [], effects: [], knowledge: [],
+      ...evt,
+      id: evt.id ?? nexusId(ID_PREFIXES.event),
+    } as WorldEvent;
     this.eventRepo.appendIdempotent({
       id: full.id, worldId: full.worldId, type: full.type, simTime: full.simTime, doc: full,
     });
@@ -158,7 +164,7 @@ export class WorldStore {
 
   snapshot(worldId: string, label: string): Result<{ snapshotId: string; simTime: number; lastSeq: number }> {
     const world = this.getWorld(worldId);
-    if (!world) return err(new Error(`world ${worldId} not found`));
+    if (!world) return err(new NexusError("NOT_FOUND", `world ${worldId} not found`));
     const contents: SnapshotContents = {
       world,
       residents: this.listResidents(worldId),

@@ -7,14 +7,15 @@
  * for exceptional situations and is invoked by the orchestrator, not here.
  */
 import { clamp, seededRandom, weightedPick } from "@nexus/core";
-import type { Resident, ResidentActivity, World } from "./entities";
+import type { Resident, World } from "./entities";
+import type { ResidentActivityValue } from "@nexus/contracts";
 import type { WorldStore } from "./persistence";
 
 /** Sim minutes per tick step. */
 export const SIM_MINUTES_PER_TICK = 10;
 
 interface ActivityOption {
-  activity: ResidentActivity;
+  activity: ResidentActivityValue;
   detail: string;
   weight: number;
 }
@@ -73,7 +74,7 @@ export class LifeEngine {
     return chosen ?? { activity: "idle", detail: "idle", weight: 1 };
   }
 
-  private applyActivityEffects(r: Resident, activity: ResidentActivity): void {
+  private applyActivityEffects(r: Resident, activity: ResidentActivityValue): void {
     switch (activity) {
       case "sleeping": r.needs.energy = clamp(r.needs.energy + 6, 0, 100); r.needs.comfort = clamp(r.needs.comfort + 1, 0, 100); break;
       case "eating": r.needs.hunger = clamp(r.needs.hunger + 8, 0, 100); break;

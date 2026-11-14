@@ -198,7 +198,7 @@ export const TaskState = z.enum([
   "RECEIVED", "INTERPRETED", "CONTEXTUALISED", "PLANNED", "VALIDATED",
   "AUTHORISED", "EXECUTING", "EVALUATING", "COMPLETED", "RECOVERY_REQUIRED",
 ]);
-export type TaskState = z.infer<typeof TaskState>;
+export type TaskStateValue = z.infer<typeof TaskState>;
 
 export const PlanStepSchema = z.object({
   stepId: z.string(),
@@ -285,7 +285,7 @@ export const NaeiTaskStatus = z.enum([
   "QUEUED", "ASSIGNED", "RUNNING", "AWAITING_APPROVAL", "VERIFYING",
   "VERIFIED", "COMMITTED", "FAILED", "ESCALATED",
 ]);
-export type NaeiTaskStatus = z.infer<typeof NaeiTaskStatus>;
+export type NaeiTaskStatusValue = z.infer<typeof NaeiTaskStatus>;
 
 export const NaeiTaskSchema = z.object({
   id: IdSchema,
@@ -318,7 +318,7 @@ export const NaeiTaskSchema = z.object({
 export const Vector3Schema = z.object({ x: z.number(), y: z.number(), z: z.number() });
 
 export const SimulationFidelity = z.enum(["HIGH", "MEDIUM", "ABSTRACT"]);
-export type SimulationFidelity = z.infer<typeof SimulationFidelity>;
+export type SimulationFidelityValue = z.infer<typeof SimulationFidelity>;
 
 export const WorldSchema = z.object({
   id: IdSchema,
@@ -353,7 +353,7 @@ export const ResidentActivity = z.enum([
   "sleeping", "idle", "eating", "working", "commuting", "shopping",
   "socialising", "maintaining_home", "leisure", "exercising", "responding_to_event",
 ]);
-export type ResidentActivity = z.infer<typeof ResidentActivity>;
+export type ResidentActivityValue = z.infer<typeof ResidentActivity>;
 
 export const ResidentSchema = z.object({
   id: IdSchema,
@@ -448,7 +448,7 @@ export const TransactionSchema = z.object({
 // ---------------------------------------------------------------------------
 
 export const KnowledgeLevel = z.enum(["world_truth", "direct_observation", "reported", "rumour", "belief", "incorrect"]);
-export type KnowledgeLevel = z.infer<typeof KnowledgeLevel>;
+export type KnowledgeLevelValue = z.infer<typeof KnowledgeLevel>;
 
 export const WorldEventSchema = z.object({
   id: IdSchema,
@@ -579,3 +579,40 @@ export const EnvelopeSchema = <T extends z.ZodTypeAny>(inner: T) =>
 // ===========================================================================
 
 export const CONTRACT_VERSION = "1.0.0" as const;
+
+// ===========================================================================
+// Inferred types — the canonical entity/API types (single source of truth)
+// ===========================================================================
+
+export type Requirement = z.infer<typeof RequirementSchema>;
+export type LedgerTask = z.infer<typeof LedgerTaskSchema>;
+export type TechnologyRecord = z.infer<typeof TechnologyRecordSchema>;
+export type CapabilityProfile = z.infer<typeof CapabilityProfileSchema>;
+export type ModelDescriptor = z.infer<typeof ModelDescriptorSchema>;
+export type CompletionRequest = z.infer<typeof CompletionRequestSchema>;
+export type CompletionResponse = z.infer<typeof CompletionResponseSchema>;
+export type MemoryRecord = z.infer<typeof MemoryRecordSchema>;
+export type MemoryQuery = z.infer<typeof MemoryQuerySchema>;
+export type JarvisTask = z.infer<typeof JarvisTaskSchema>;
+export type PlanStep = z.infer<typeof PlanStepSchema>;
+export type ExecutionStepResult = z.infer<typeof ExecutionStepResultSchema>;
+export type AgentContract = z.infer<typeof AgentContractSchema>;
+export type AgentRole = z.infer<typeof AgentRoleSchema>;
+export type NaeiTask = z.infer<typeof NaeiTaskSchema>;
+export type Vector3 = z.infer<typeof Vector3Schema>;
+export type World = z.infer<typeof WorldSchema>;
+export type Resident = z.infer<typeof ResidentSchema>;
+export type Vehicle = z.infer<typeof VehicleSchema>;
+export type Property = z.infer<typeof PropertySchema>;
+export type Business = z.infer<typeof BusinessSchema>;
+export type Account = z.infer<typeof AccountSchema>;
+export type Transaction = z.infer<typeof TransactionSchema>;
+export type WorldEvent = z.infer<typeof WorldEventSchema>;
+export type McpTransport = z.infer<typeof McpTransportSchema>;
+export type McpServerRegistration = z.infer<typeof McpServerRegistrationSchema>;
+export type McpToolDescriptor = z.infer<typeof McpToolDescriptorSchema>;
+export type McpInvocation = z.infer<typeof McpInvocationSchema>;
+export type McpInvocationResult = z.infer<typeof McpInvocationResultSchema>;
+export type McpAuditEntry = z.infer<typeof McpAuditEntrySchema>;
+export type HealthStatus = z.infer<typeof HealthStatusSchema>;
+export type Metric = z.infer<typeof MetricSchema>;

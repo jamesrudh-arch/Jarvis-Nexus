@@ -12,7 +12,7 @@ import {
   nexusId, ID_PREFIXES, ok, err, safeJsonStringify,
   type Result, NexusError, systemClock, type Clock,
 } from "@nexus/core";
-import type { JarvisTask, TaskState, ExecutionStepResult, PlanStep } from "@nexus/contracts";
+import type { JarvisTask, TaskStateValue, ExecutionStepResult, PlanStep } from "@nexus/contracts";
 import type { NexusDb } from "@nexus/db";
 import {
   PerceptionService, ReasoningService, PlanningService, EvaluationService,
@@ -60,7 +60,7 @@ export class TaskRepository {
     return row ? (JSON.parse(row.doc) as JarvisTask) : null;
   }
 
-  list(filter?: { state?: TaskState }): JarvisTask[] {
+  list(filter?: { state?: TaskStateValue }): JarvisTask[] {
     const rows = filter?.state
       ? this.db.all<{ doc: string }>("SELECT doc FROM jarvis_tasks WHERE state = ? ORDER BY created_at DESC", filter.state)
       : this.db.all<{ doc: string }>("SELECT doc FROM jarvis_tasks ORDER BY created_at DESC LIMIT 200");
@@ -178,7 +178,9 @@ export class JarvisOrchestrator {
     // ---- CONTEXTUALISED → PLANNED
     if (task.state === "CONTEXTUALISED") {
       const plan = await this.planning.decompose(task.objective, "capability-driven", this.tools.listTools());
-      const steps: PlanStep[] = plan.ok ? plan.value.map((s) => ({ ...s, params: {} })) : PlanningService.fallbackPlan(task.objective);
+      const steps: PlanStep[] = plan.ok
+        ? plan.value.map((s) => ({ ...s, params: {} }))
+        : PlanningService.fallbackPlan(task.objective).map((s) => ({ ...s, params: {} }));
       task.plan = steps;
       task.stepResults = steps.map((s) => ({ stepId: s.stepId, status: "PENDING" }));
       task.state = "PLANNED";

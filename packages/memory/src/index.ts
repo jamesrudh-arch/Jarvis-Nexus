@@ -9,7 +9,7 @@
  * stable seam for an OpenViking provider adapter (registry record TECH-001).
  */
 import {
-  nexusId, ID_PREFIXES, ok, err, type Clock, systemClock, type Result,
+  nexusId, ID_PREFIXES, ok, err, NexusError, type Clock, systemClock, type Result,
 } from "@nexus/core";
 import type { MemoryRecord, MemoryQuery, MemoryTier, MemoryKind } from "@nexus/contracts";
 import type { NexusDb, Repos } from "@nexus/db";
@@ -49,7 +49,7 @@ export class SqliteMemoryBackend implements MemoryBackend {
       );
       return ok(undefined);
     } catch (e) {
-      return err(new Error(String(e)));
+      return err(new NexusError("INTERNAL_ERROR", String(e)));
     }
   }
 
