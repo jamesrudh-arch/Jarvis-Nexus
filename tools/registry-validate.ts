@@ -21,7 +21,14 @@ const reqSchema = (r: (typeof reqs)[number]) => {
   if (!STATUSES.has(r.status)) errors.push(`${r.id}: invalid status ${r.status}`);
   for (const dep of r.dependsOn) if (!ids.has(dep)) errors.push(`${r.id}: unknown dependency ${dep}`);
   if (r.status === "VERIFIED" && r.evidence.length === 0) errors.push(`${r.id}: VERIFIED without evidence`);
-  if (r.status === "BLOCKED" && !r.blockedBy) errors.push(`${r.id}: BLOCKED without blockedBy reason`);
+  if (r.status === "BLOCKED") {
+    if (!r.blockedBy) errors.push(`${r.id}: BLOCKED without blockedBy reason`);
+    // directive §20: five-point documentation — never a bare BLOCKED
+    const b = r.blocker as { limitation?: string; technicalEvidence?: string; minimumAdditionalCapability?: string; continuesIndependently?: string } | undefined;
+    if (!b || !b.limitation || !b.technicalEvidence || !b.minimumAdditionalCapability || !b.continuesIndependently) {
+      errors.push(`${r.id}: BLOCKED without 4-point blocker documentation {limitation, technicalEvidence, minimumAdditionalCapability, continuesIndependently} (directive §20)`);
+    }
+  }
   if (r.status === "BLOCKED" && r.evidence.length > 0) warn.push(`${r.id}: BLOCKED but carries evidence (documentation-only is fine)`);
 };
 

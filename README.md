@@ -3,8 +3,7 @@
 Autonomous AI ecosystem: **JARVIS** (persistent personal intelligence), **NEXUS WORLD** (persistent civilisation simulation, Unreal Engine 5 primary runtime), **NAEI** (autonomous engineering workforce).
 
 This repository is the authoritative source of the clean-slate reconstruction
-(authorised ground-zero reset 2026-11-14; see `RESET.md` and
-`download/reset_20261114/RESET_EVIDENCE.md` for the reset evidence record).
+(authorised ground-zero reset 2026-11-14; see `RESET.md` for the reset record).
 
 ## Architecture
 
@@ -49,7 +48,11 @@ bun run start                # NEXUS API on :3000
 Environment (`.env`, never committed): `CLOUDFLARE_API_TOKEN`,
 `CLOUDFLARE_ACCOUNT_ID` (live model provider), `OPENAI_API_KEY` (works from
 Railway US egress; sandbox region is blocked by OpenAI — ADR-007),
-`OWNER_KEY` (owner authentication for consequential routes).
+`OWNER_KEY` (owner authentication for every consequential route — objectives,
+NAEI tasks, MCP invoke/audit, memory writes, world advance/construct/snapshot,
+approvals; header-only, constant-time compared). `NEXUS_ALLOW_ECHO` opts the
+deterministic echo test stub back in for local development; in the API it is
+OFF by default so a missing-credentials deployment fails loudly (ADR-007).
 
 ## Deployment
 
@@ -73,10 +76,12 @@ Railway auto-deploys `main` (Dockerfile + `railway.json`; healthcheck
 ## Testing
 
 ```bash
-bun run test:unit          # 29 unit tests
-bun run test:integration   # 14 integration tests (live model + live MCP when credentials present)
+bun run test:unit          # 42 unit tests (incl. economy conservation, MCP gateway, approval gate)
+bun run test:integration   # 22 integration tests (live model + live MCP when credentials present)
 bun run test:scenarios     # directive §19 scenarios D–H (A/B in integration)
 ```
 
-Live tests self-skip without credentials (`test.skipIf`), so CI runs green
-with offline providers.
+70 tests total: 66 pass and 4 credential-gated live tests self-skip
+(`test.skipIf`), so CI runs green with offline providers. The suite is
+environment-independent: the owner key used by integration tests is injected
+deterministically, and the 401-without-key matrix is asserted separately.

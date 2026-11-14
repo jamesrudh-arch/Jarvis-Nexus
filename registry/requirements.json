@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "generatedAt": "2026-11-14T10:30:00Z",
+  "generatedAt": "2026-11-14T14:30:00Z",
   "requirements": [
     {
       "id": "ARCH-1",
@@ -62,11 +62,15 @@
       "behaviour": "GitHub Actions runs tsc --noEmit and bun test on push",
       "subsystem": "ci",
       "dependsOn": [],
-      "status": "TESTING",
+      "status": "VERIFIED",
       "evidence": [
         {
           "kind": "commit",
           "reference": ".github/workflows/ci.yml"
+        },
+        {
+          "kind": "test",
+          "reference": "CI verify job on main: typecheck + registry validation + full suite (70 tests) green on the remediation commit"
         }
       ]
     },
@@ -149,7 +153,13 @@
           "kind": "report",
           "reference": "registry/technologies.json TECH-003"
         }
-      ]
+      ],
+      "blocker": {
+        "limitation": "No Android device/emulator host; iOS automation requires macOS+Xcode (Appium/WDA path). The build environment and Railway deployment are Linux-only.",
+        "technicalEvidence": "registry/technologies.json TECH-003 research record (2026-11-14), verified against primary sources incl. google/artemis repository state",
+        "minimumAdditionalCapability": "Device host: Linux+ADB for Android; macOS runner for iOS",
+        "continuesIndependently": "Acquisition record + integration plan complete; the MCP gateway accepts the registration on first use"
+      }
     },
     {
       "id": "TECH-4",
@@ -166,7 +176,13 @@
           "kind": "report",
           "reference": "registry/technologies.json TECH-004"
         }
-      ]
+      ],
+      "blocker": {
+        "limitation": "QLoRA training of 7-8B models requires GPU with >= 5-6 GB VRAM; Railway is CPU-only and the build environment has no GPU.",
+        "technicalEvidence": "Unsloth requirements documentation verified in registry/technologies.json TECH-004",
+        "minimumAdditionalCapability": "Colab/Kaggle T4 (free tier) or a rented GPU",
+        "continuesIndependently": "Dataset preparation is CPU-capable; export targets the model fabric's OpenAI-compatible adapter"
+      }
     },
     {
       "id": "TECH-5",
@@ -265,6 +281,10 @@
         {
           "kind": "test",
           "reference": "integration: schema validation rejects missing required args"
+        },
+        {
+          "kind": "test",
+          "reference": "audit repair de428c3: approval_required rejection unit-tested (tests/unit/mcp-gateway.test.ts)"
         }
       ]
     },
@@ -299,7 +319,13 @@
           "kind": "report",
           "reference": "registry/technologies.json TECH-012/013"
         }
-      ]
+      ],
+      "blocker": {
+        "limitation": "Unreal Editor MCP and Blender MCP servers run on the owner's workstation; neither runtime exists in the build environment.",
+        "technicalEvidence": "registry/technologies.json TECH-012/013 (Epic UE 5.8 MCP docs; mcp-for-blender README)",
+        "minimumAdditionalCapability": "Owner workstation with UE 5.8+ and Blender 4.x, reachable by the gateway over HTTP",
+        "continuesIndependently": "Gateway verified end-to-end with the bundled test server (directive \u00a74.4); HTTP transport ready"
+      }
     },
     {
       "id": "JAR-1",
@@ -315,7 +341,8 @@
           "kind": "test",
           "reference": "integration: objective flows through state machine (live model)"
         }
-      ]
+      ],
+      "outstandingWork": "Cognition results carry no provider/fallback provenance; planner emits per-step params but no cross-step output chaining"
     },
     {
       "id": "JAR-2",
@@ -346,8 +373,13 @@
         {
           "kind": "test",
           "reference": "unit: live cloudflare completion + live fabric routing (2 live tests)"
+        },
+        {
+          "kind": "commit",
+          "reference": "audit repair de428c3: echo provider OFF by default (NEXUS_ALLOW_ECHO=true to opt in) \u2014 degraded mode fails loudly instead of silently (ADR-007)"
         }
-      ]
+      ],
+      "outstandingWork": "Per-call provider provenance is not plumbed into task records (aggregate health only)"
     },
     {
       "id": "JAR-4",
@@ -363,7 +395,8 @@
           "kind": "test",
           "reference": "unit: memory subsystem (6 tests)"
         }
-      ]
+      ],
+      "outstandingWork": "Consolidation promotion uses exact normalised-title matching (not semantic similarity); accessLevel not enforced; contradiction detection is a negation-word heuristic"
     },
     {
       "id": "JAR-5",
@@ -375,7 +408,13 @@
       "dependsOn": [],
       "status": "BLOCKED",
       "blockedBy": "Build environment has no audio I/O or telephony gateway; voice pipeline requires deployment host with audio session (documented in ADR-008) for live operation",
-      "evidence": []
+      "evidence": [],
+      "blocker": {
+        "limitation": "No audio input/output or telephony gateway in the build environment or the Railway container.",
+        "technicalEvidence": "Environment audit; ADR-008 records the decision",
+        "minimumAdditionalCapability": "Host with audio sessions or a SIP/telephony integration",
+        "continuesIndependently": "Orchestrator seam + provider-agnostic fabric in place"
+      }
     },
     {
       "id": "JAR-6",
@@ -413,7 +452,8 @@
           "kind": "commit",
           "reference": "packages/memory/src/index.ts MemoryBackend interface"
         }
-      ]
+      ],
+      "outstandingWork": "No second MemoryBackend implementation exists yet; the seam is verified only"
     },
     {
       "id": "NAEI-1",
@@ -627,6 +667,10 @@
         {
           "kind": "test",
           "reference": "Scenario F: collision \u2192 response \u2192 road consequence chain"
+        },
+        {
+          "kind": "commit",
+          "reference": "audit repair de428c3: director no longer sets resident.currentActivity (WLD-6 invariant restored); community_event carries event.knowledge"
         }
       ]
     },
@@ -643,6 +687,10 @@
         {
           "kind": "test",
           "reference": "Scenario G + economy unit tests (atomicity, idempotency, conservation)"
+        },
+        {
+          "kind": "test",
+          "reference": "audit repair de428c3: paySalary atomic via kv dedup marker in the same transaction; transfer strictly two-sided; see tests/unit/world-conservation.test.ts"
         }
       ]
     },
@@ -672,13 +720,18 @@
       "dependsOn": [
         "WLD-5"
       ],
-      "status": "VERIFIED",
+      "status": "TESTING",
       "evidence": [
         {
           "kind": "test",
           "reference": "Scenario D: full restart consistency"
+        },
+        {
+          "kind": "commit",
+          "reference": "audit repair de428c3: torn-write restore implemented (persistence.restoreSnapshot, exact incl. removing post-checkpoint rows)"
         }
-      ]
+      ],
+      "outstandingWork": "Event-sourced projection rebuild (replay events to reconstruct state) is not implemented; recovery is write-through + torn-write snapshot restore"
     },
     {
       "id": "WLD-10",
@@ -735,7 +788,13 @@
       ],
       "status": "BLOCKED",
       "blockedBy": "No Unreal Engine toolchain in build environment (Linux sandbox, no GPU/Windows); requires owner workstation with UE 5.8+ or GitHub Actions windows-ue5 runner",
-      "evidence": []
+      "evidence": [],
+      "blocker": {
+        "limitation": "No Unreal Engine toolchain, GPU or Windows in the build environment.",
+        "technicalEvidence": "Build environment audit 2026-11-14 (no UE binaries; Linux CPU sandbox)",
+        "minimumAdditionalCapability": "Owner workstation with UE 5.8+ (native MCP) or a GitHub Actions windows-ue5 runner",
+        "continuesIndependently": "tools/unreal source + world-state bridge contract are ready; NEXUS API serves authoritative state"
+      }
     },
     {
       "id": "BLD-1",
@@ -765,7 +824,13 @@
       ],
       "status": "BLOCKED",
       "blockedBy": "No Blender binary in build environment (verified: no blender executable; ~700MB install exceeds remaining sandbox disk with backups present); pipeline runs on owner workstation via Blender MCP or local blender 4.x",
-      "evidence": []
+      "evidence": [],
+      "blocker": {
+        "limitation": "No Blender binary in the build environment; a ~700 MB install exceeds the remaining disk.",
+        "technicalEvidence": "Build environment audit 2026-11-14 (no blender executable; df)",
+        "minimumAdditionalCapability": "Blender 4.x on the owner workstation, or ~1 GB free disk in the sandbox",
+        "continuesIndependently": "tools/blender-pipeline scripts + headless spec validator run in CI; MCP registration ready"
+      }
     },
     {
       "id": "BLD-3",
@@ -780,7 +845,13 @@
       ],
       "status": "BLOCKED",
       "blockedBy": "Requires Blender runtime + Unreal toolchain (see BLD-2, UE-2); spec + scripts + validation prepared for execution on owner workstation",
-      "evidence": []
+      "evidence": [],
+      "blocker": {
+        "limitation": "Requires both external runtimes: Blender live execution (BLD-2) and the Unreal toolchain (UE-2).",
+        "technicalEvidence": "Same technical evidence as BLD-2 and UE-2",
+        "minimumAdditionalCapability": "Both runtimes attached to the pipeline",
+        "continuesIndependently": "Spec -> validation -> export path implemented; workstation execution documented"
+      }
     },
     {
       "id": "GAME-1",
@@ -797,6 +868,10 @@
         {
           "kind": "test",
           "reference": "economy.buyProperty implementation + ownership events"
+        },
+        {
+          "kind": "test",
+          "reference": "audit repair de428c3: buyProperty conserves money via world treasury and records possessionIds in parity; see tests/unit/world-conservation.test.ts"
         }
       ]
     },
@@ -904,6 +979,10 @@
         {
           "kind": "test",
           "reference": "integration: unauthenticated consequential routes rejected"
+        },
+        {
+          "kind": "test",
+          "reference": "audit repair de428c3: full auth matrix in tests/integration/security.test.ts \u2014 15 consequential routes x 401, wrong-key 401, query-string key rejected"
         }
       ]
     },
@@ -920,6 +999,10 @@
         {
           "kind": "commit",
           "reference": ".gitignore + audit log"
+        },
+        {
+          "kind": "commit",
+          "reference": "audit repair de428c3: constant-time owner-key comparison; header-only auth (no ?key=)"
         }
       ]
     },
@@ -1093,18 +1176,166 @@
       ]
     },
     {
-      "id": "SCEN-C",
-      "product": "NEXUS_WORLD",
-      "directive": "\u00a719 C",
-      "title": "Scenario C: Blender \u2192 Unreal",
-      "behaviour": "Asset round trip",
-      "subsystem": "pipeline",
+      "id": "LAB-1",
+      "product": "PLATFORM",
+      "directive": "Product blueprints: \u00a734 (files 5/6); \u00a77 (file 1); Part 10-11 (files 2-3)",
+      "title": "NEXUS Laboratory workflows",
+      "behaviour": "Actual laboratory workflows: research, experimentation, engineering, software development, model evaluation, simulation, asset production, prototyping, creative workflows, results management \u2014 with 12-field experiment records, seed reproducibility and SIMULATION PREDICTION labelling",
+      "subsystem": "laboratory",
+      "dependsOn": [],
+      "status": "DISCOVERED",
+      "evidence": []
+    },
+    {
+      "id": "EMB-1",
+      "product": "JARVIS",
+      "directive": "Product blueprints: \u00a713-14 (files 5/6); Part 13 (file 2)",
+      "title": "JARVIS embodiment: persistent digital-human character",
+      "behaviour": "Persistent adult digital-human character: 66-bone rig, blendshapes, lip-sync, convincing facial proportions, natural eyes, gaze behaviour, facial expression, blinking; shared body/voice/intelligence state; preserve existing rig assets",
+      "subsystem": "embodiment",
       "dependsOn": [
-        "BLD-3"
+        "JAR-5"
       ],
-      "status": "BLOCKED",
-      "blockedBy": "Environment lacks Blender + Unreal runtimes (see BLD-2, UE-2)",
+      "status": "DISCOVERED",
+      "evidence": []
+    },
+    {
+      "id": "SEC-3",
+      "product": "PLATFORM",
+      "directive": "Product blueprints: \u00a74 (file 1); Part 4 (file 2); Part 13 (file 3)",
+      "title": "Seven owner switches",
+      "behaviour": "Master, Microphone, Camera, Autonomy, Remote Compute, Computer Control, Embodiment \u2014 enforced on BOTH client and server; Microphone and Camera must default to OFF after every fresh session and restart",
+      "subsystem": "api",
+      "dependsOn": [
+        "SEC-1"
+      ],
+      "status": "DISCOVERED",
+      "evidence": []
+    },
+    {
+      "id": "WLD-12",
+      "product": "NEXUS_WORLD",
+      "directive": "Product blueprint file 3: \u00a74.3-4.4",
+      "title": "Regional population targets and settlement quotas",
+      "behaviour": "Highlands 150,000; Western 400,000; Central 900,000; Eastern 450,000; Southern 300,000; Coastal 350,000. At least 8 villages, minimum 40 buildings per village, minimum 200 per town; 6 regions, 7 settlements, 11 capital districts, 5 km x 7 km footprint",
+      "subsystem": "world",
+      "dependsOn": [],
+      "status": "DISCOVERED",
+      "evidence": []
+    },
+    {
+      "id": "WLD-13",
+      "product": "NEXUS_WORLD",
+      "directive": "Product blueprint file 3: \u00a710.2, Part 15",
+      "title": "World-time calendar and performance targets",
+      "behaviour": "One simulated world day = 24 real minutes at 1x; support pause, 1x, 10x, 100x; four seasons of 91 days; 1080p at average 60 FPS (minimum 30); simulation tick under 16 ms; save under 5 s; load under 30 s",
+      "subsystem": "world",
+      "dependsOn": [
+        "UE-2"
+      ],
+      "status": "DISCOVERED",
+      "evidence": []
+    },
+    {
+      "id": "WLD-14",
+      "product": "NEXUS_WORLD",
+      "directive": "Master Directive \u00a77.10",
+      "title": "NEXUS REALITY ENGINE",
+      "behaviour": "Collision, physics, material interactions, doors, furniture, movable objects, water, vegetation, weather, lighting, shadows, reflections, fire, smoke, dust, vehicle damage, environmental reactions, spatial audio",
+      "subsystem": "unreal",
+      "dependsOn": [
+        "UE-2"
+      ],
+      "status": "DISCOVERED",
+      "evidence": []
+    },
+    {
+      "id": "GAME-4",
+      "product": "NEXUS_WORLD",
+      "directive": "Master Directive \u00a710.1",
+      "title": "Player: persistent character",
+      "behaviour": "Persistent character with customisation, first-person and third-person, movement, interaction, inventory, skills, finances, reputation",
+      "subsystem": "unreal",
+      "dependsOn": [
+        "UE-2"
+      ],
+      "status": "DISCOVERED",
+      "evidence": []
+    },
+    {
+      "id": "TECH-9",
+      "product": "INTEGRATION",
+      "directive": "Product blueprint file 4: \u00a722-24",
+      "title": "Selective 50-day AI training programme",
+      "behaviour": "Maximum initial programme window 50 days with a day-by-day schedule (days 1-5 inventory ... 45-50 final selection); SFT/LoRA/QLoRA/distillation methods; teacher-student independence rules",
+      "subsystem": "ai-lab",
+      "dependsOn": [
+        "TECH-4"
+      ],
+      "status": "DISCOVERED",
+      "evidence": []
+    },
+    {
+      "id": "PROC-1",
+      "product": "PLATFORM",
+      "directive": "Master Directive \u00a715.3",
+      "title": "8-field evidence format for verified requirements",
+      "behaviour": "Every verified requirement carries: requirement ID, implementation reference, test reference, execution result, evidence, verification agent, timestamp, relevant commit (the registry evidence objects currently carry 2 fields)",
+      "subsystem": "registry",
+      "dependsOn": [
+        "ARCH-5"
+      ],
+      "status": "SPECIFIED",
+      "evidence": [
+        {
+          "kind": "report",
+          "reference": "audit 2026-11-14: gap recorded; registry schema extension outstanding"
+        }
+      ]
+    },
+    {
+      "id": "PROC-2",
+      "product": "PLATFORM",
+      "directive": "Master Directive \u00a720",
+      "title": "Five-point blocker documentation for every BLOCKED requirement",
+      "behaviour": "Exact limitation, technical evidence, minimum additional capability, compatible solution, and what continues independently \u2014 never a bare BLOCKED",
+      "subsystem": "registry",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "bun tools/registry-validate.ts (CI step) enforces the 4-field blocker object on every BLOCKED entry; all 7 BLOCKED entries carry it after the 2026-11-14 re-intake"
+        }
+      ]
+    },
+    {
+      "id": "PROC-3",
+      "product": "PLATFORM",
+      "directive": "Master Directive \u00a722",
+      "title": "Four-category acceptance reporting, never combined",
+      "behaviour": "IMPLEMENTED / VERIFIED / DEPLOYED / BLOCKED reported as four separate categories; no 10/10 rating for incomplete work",
+      "subsystem": "docs",
+      "dependsOn": [],
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "kind": "report",
+          "reference": "docs/ACCEPTANCE.md rewritten 2026-11-14 in the four-category format with per-subsystem ratings"
+        }
+      ]
+    },
+    {
+      "id": "PROC-4",
+      "product": "PLATFORM",
+      "directive": "Master Directive \u00a721",
+      "title": "Session persistence and resumability",
+      "behaviour": "Engineering workflow persists current milestone, active tasks and the exact next action; termination and resumption protocols",
+      "subsystem": "process",
+      "dependsOn": [],
+      "status": "DISCOVERED",
       "evidence": []
     }
-  ]
+  ],
+  "intakeNote": "Re-intake 2026-11-14 after the independent audit: the original '7 files, byte-verified, coverage closes exactly' claim was false (two files were byte-identical; the registry cited only the Master Directive, dropping the five product blueprints). This registry now also carries the previously dropped requirements as DISCOVERED/SPECIFIED \u2014 never fake-verified."
 }

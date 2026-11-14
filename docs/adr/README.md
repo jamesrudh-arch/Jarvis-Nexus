@@ -78,8 +78,10 @@ live from the build environment; OpenAI adapter identical in shape and
 verified from Railway's US egress (the sandbox's egress region is blocked by
 OpenAI with `unsupported_country_region_territory` — provider-level
 geo-restriction, not a credential failure); `echo` deterministic provider for
-tests and degraded operation (never silently: `NEXUS_DISABLE_ECHO` guards
-production paths; routing always prefers real providers).
+tests. **Echo is OFF by default in the API (2026-11-14 audit change):** a
+deployment without real provider credentials must fail loudly, never serve
+deterministic fallbacks as "intelligence". Opt back in explicitly for local
+development with `NEXUS_ALLOW_ECHO=true`.
 
 **Rationale:** directive §5.3 forbids hardcoding one provider; fallback
 chains, health tracking and cost accounting are first-class.

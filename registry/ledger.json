@@ -1,20 +1,471 @@
 {
   "version": "1.0.0",
   "tasks": [
-    { "taskId": "T-001", "requirementIds": ["ARCH-1", "ARCH-2", "ARCH-3"], "scope": "Monorepo architecture: workspace packages, tsconfig paths, .gitignore, repo governance", "dependencies": [], "filesAffected": ["package.json", "tsconfig.json", ".gitignore", "packages/*/package.json"], "acceptanceCriteria": ["bun install resolves workspaces", "packages import each other via @nexus/*", "secrets excluded"], "status": "DONE", "tests": ["bun install", "bun test (cross-package imports)"], "commit": "a65bf4f" },
-    { "taskId": "T-002", "requirementIds": ["JAR-3"], "scope": "Model fabric: cloudflare (live), openai, echo providers; routing, fallback, health, cost tracking", "dependencies": ["T-001"], "filesAffected": ["packages/model-fabric/src/index.ts"], "acceptanceCriteria": ["live cloudflare completion round-trip", "capability-based ranking", "fallback chain"], "status": "DONE", "tests": ["tests/unit/model-fabric.test.ts (10 tests incl. 2 live)"], "commit": "a65bf4f" },
-    { "taskId": "T-003", "requirementIds": ["ARCH-5"], "scope": "Contracts package: entity schemas, API contracts, agent contracts, MCP manifests", "dependencies": ["T-001"], "filesAffected": ["packages/contracts/src/index.ts"], "acceptanceCriteria": ["zod schemas parse valid entities", "CONTRACT_VERSION exported"], "status": "DONE", "tests": ["implicit via all consumers"], "commit": "a65bf4f" },
-    { "taskId": "T-004", "requirementIds": ["INFRA-3"], "scope": "DB layer: bun:sqlite, migrations, repositories, event store, snapshots", "dependencies": ["T-001"], "filesAffected": ["packages/db/src/index.ts"], "acceptanceCriteria": ["migrations idempotent", "event store append-only + idempotent appends", "snapshot round-trip"], "status": "DONE", "tests": ["world + scenario tests"], "commit": "a65bf4f" },
-    { "taskId": "T-005", "requirementIds": ["JAR-4", "JAR-7"], "scope": "Memory subsystem: tiers, ranked retrieval, consolidation, contradictions, supersession, scope isolation, OpenViking seam", "dependencies": ["T-004"], "filesAffected": ["packages/memory/src/index.ts"], "acceptanceCriteria": ["relevance ranking", "episodic->semantic promotion", "contradiction detection", "tombstoning"], "status": "DONE", "tests": ["tests/unit/memory-orchestrator.test.ts (6 memory tests)"], "commit": "pending" },
-    { "taskId": "T-006", "requirementIds": ["JAR-1", "JAR-2", "JAR-6"], "scope": "Cognition services + JARVIS orchestrator state machine with persistence and recovery", "dependencies": ["T-002", "T-005"], "filesAffected": ["packages/cognition/src/index.ts", "packages/orchestrator/src/index.ts"], "acceptanceCriteria": ["state transitions persisted", "plan validation (cycles, unknown deps)", "bounded recovery", "restart resume"], "status": "DONE", "tests": ["tests/unit/memory-orchestrator.test.ts (4 orchestrator tests)", "integration Scenario A"], "commit": "pending" },
-    { "taskId": "T-007", "requirementIds": ["NAEI-1", "NAEI-2", "NAEI-3", "NAEI-4", "NAEI-5", "NAEI-6", "NAEI-7"], "scope": "NAEI engine: agent registry + contracts, task queue with DAG, workspaces, checkpoints, independent verification, approval gates", "dependencies": ["T-002"], "filesAffected": ["packages/naei/src/index.ts"], "acceptanceCriteria": ["10-agent roster", "workspace artifacts per phase", "verifier != implementer", "live PASS/FAIL verdicts"], "status": "DONE", "tests": ["integration Scenario B (live, 16s)"], "commit": "pending" },
-    { "taskId": "T-008", "requirementIds": ["WLD-1", "WLD-2", "WLD-3", "WLD-4", "WLD-5", "WLD-6", "WLD-7", "WLD-8", "WLD-9", "GAME-1", "GAME-2"], "scope": "NEXUS WORLD: entity models, event-sourced causal history, snapshots/recovery, fidelity-tier scheduler, life engine, transactional economy, director, creation engine", "dependencies": ["T-004"], "filesAffected": ["packages/world/src/*"], "acceptanceCriteria": ["atomic economy ops", "idempotent salaries", "knowledge isolation", "fidelity tiers", "restart consistency"], "status": "DONE", "tests": ["tests/unit/world.test.ts (9)", "tests/scenarios (D,E,F,G,H)"], "commit": "pending" },
-    { "taskId": "T-009", "requirementIds": ["MCP-1", "MCP-2", "MCP-3", "TECH-7", "TECH-8"], "scope": "MCP gateway: registry (server.json-shaped), stdio+HTTP transports, discovery, validation, timeouts, audit + bundled test server", "dependencies": ["T-004"], "filesAffected": ["packages/mcp-gateway/src/index.ts"], "acceptanceCriteria": ["real tool operation through gateway", "schema rejection", "audit entries", "§4.4 acceptance met"], "status": "DONE", "tests": ["integration MCP section (4 tests)"], "commit": "pending" },
-    { "taskId": "T-010", "requirementIds": ["OBS-1", "OBS-2", "SEC-1", "SEC-2"], "scope": "Observability (health/metrics/logs) + API service with owner auth", "dependencies": ["T-006", "T-007", "T-008", "T-009"], "filesAffected": ["packages/observability/src/index.ts", "apps/nexus-api/src/*"], "acceptanceCriteria": ["health probes never mask failures", "consequential routes require owner key"], "status": "DONE", "tests": ["integration: health + auth tests"], "commit": "pending" },
-    { "taskId": "T-011", "requirementIds": ["TECH-1", "TECH-2", "TECH-3", "TECH-4", "TECH-5", "TECH-6", "TECH-8"], "scope": "Technology acquisition: 3 parallel research operations, 13 registry records with verified provenance", "dependencies": [], "filesAffected": ["registry/technologies.json"], "acceptanceCriteria": ["every claim sourced from primary artifacts", "decisions: adopt/adapt/extract/reject with rationale"], "status": "DONE", "tests": [], "commit": "pending" },
-    { "taskId": "T-012", "requirementIds": ["INFRA-1"], "scope": "Deployment: Dockerfile + railway.json + healthcheck; push triggers Railway auto-deploy; live verification", "dependencies": ["T-010"], "filesAffected": ["Dockerfile", "railway.json", ".dockerignore"], "acceptanceCriteria": ["Railway build succeeds", "/health 200 from production URL", "volume persistence"], "status": "DONE", "tests": ["live deployment probe (ACCEPTANCE.md)"], "commit": "pending" },
-    { "taskId": "T-013", "requirementIds": ["UE-1", "BLD-1"], "scope": "Unreal project scaffolding (.uproject, C++ world-state bridge module) + Blender production pipeline (bpy scripts + validation harness)", "dependencies": ["T-008"], "filesAffected": ["tools/unreal/*", "tools/blender-pipeline/*"], "acceptanceCriteria": ["real source files compilable in UE 5.8+/Blender 4.x environments", "honest BLOCKED status for live verification"], "status": "DONE", "tests": ["blender-pipeline validation harness (structural checks)"], "commit": "pending" },
-    { "taskId": "T-014", "requirementIds": ["ARCH-4"], "scope": "CI workflow: bun setup, typecheck, tests on push/PR", "dependencies": ["T-001"], "filesAffected": [".github/workflows/ci.yml"], "acceptanceCriteria": ["workflow runs tsc --noEmit + bun test"], "status": "DONE", "tests": ["workflow dispatch on push"], "commit": "pending" },
-    { "taskId": "T-015", "requirementIds": ["WLD-10", "WLD-11", "GAME-3", "JAR-5", "UE-2", "BLD-2", "BLD-3", "SCEN-C", "TECH-3", "TECH-4"], "scope": "Remaining scope with documented blockers: ecology, institutions, full gameplay, voice I/O, Unreal/Blender live runtimes, GPU training, device automation", "dependencies": ["T-008", "T-013"], "filesAffected": [], "acceptanceCriteria": ["every blocker documented with exact limitation + minimum additional capability (directive §20)"], "status": "BLOCKED", "tests": [], "notes": "See registry/requirements.json blockedBy fields and docs/ACCEPTANCE.md" }
+    {
+      "taskId": "T-001",
+      "requirementIds": [
+        "ARCH-1",
+        "ARCH-2",
+        "ARCH-3"
+      ],
+      "scope": "Monorepo architecture: workspace packages, tsconfig paths, .gitignore, repo governance",
+      "dependencies": [],
+      "filesAffected": [
+        "package.json",
+        "tsconfig.json",
+        ".gitignore",
+        "packages/*/package.json"
+      ],
+      "acceptanceCriteria": [
+        "bun install resolves workspaces",
+        "packages import each other via @nexus/*",
+        "secrets excluded"
+      ],
+      "status": "DONE",
+      "tests": [
+        "bun install",
+        "bun test (cross-package imports)"
+      ],
+      "commit": "a65bf4f"
+    },
+    {
+      "taskId": "T-002",
+      "requirementIds": [
+        "JAR-3"
+      ],
+      "scope": "Model fabric: cloudflare (live), openai, echo providers; routing, fallback, health, cost tracking",
+      "dependencies": [
+        "T-001"
+      ],
+      "filesAffected": [
+        "packages/model-fabric/src/index.ts"
+      ],
+      "acceptanceCriteria": [
+        "live cloudflare completion round-trip",
+        "capability-based ranking",
+        "fallback chain"
+      ],
+      "status": "DONE",
+      "tests": [
+        "tests/unit/model-fabric.test.ts (10 tests incl. 2 live)"
+      ],
+      "commit": "a65bf4f"
+    },
+    {
+      "taskId": "T-003",
+      "requirementIds": [
+        "ARCH-5"
+      ],
+      "scope": "Contracts package: entity schemas, API contracts, agent contracts, MCP manifests",
+      "dependencies": [
+        "T-001"
+      ],
+      "filesAffected": [
+        "packages/contracts/src/index.ts"
+      ],
+      "acceptanceCriteria": [
+        "zod schemas parse valid entities",
+        "CONTRACT_VERSION exported"
+      ],
+      "status": "DONE",
+      "tests": [
+        "implicit via all consumers"
+      ],
+      "commit": "a65bf4f"
+    },
+    {
+      "taskId": "T-004",
+      "requirementIds": [
+        "INFRA-3"
+      ],
+      "scope": "DB layer: bun:sqlite, migrations, repositories, event store, snapshots",
+      "dependencies": [
+        "T-001"
+      ],
+      "filesAffected": [
+        "packages/db/src/index.ts"
+      ],
+      "acceptanceCriteria": [
+        "migrations idempotent",
+        "event store append-only + idempotent appends",
+        "snapshot round-trip"
+      ],
+      "status": "DONE",
+      "tests": [
+        "world + scenario tests"
+      ],
+      "commit": "a65bf4f"
+    },
+    {
+      "taskId": "T-005",
+      "requirementIds": [
+        "JAR-4",
+        "JAR-7"
+      ],
+      "scope": "Memory subsystem: tiers, ranked retrieval, consolidation, contradictions, supersession, scope isolation, OpenViking seam",
+      "dependencies": [
+        "T-004"
+      ],
+      "filesAffected": [
+        "packages/memory/src/index.ts"
+      ],
+      "acceptanceCriteria": [
+        "relevance ranking",
+        "episodic->semantic promotion",
+        "contradiction detection",
+        "tombstoning"
+      ],
+      "status": "DONE",
+      "tests": [
+        "tests/unit/memory-orchestrator.test.ts (6 memory tests)"
+      ],
+      "commit": "a65bf4f"
+    },
+    {
+      "taskId": "T-006",
+      "requirementIds": [
+        "JAR-1",
+        "JAR-2",
+        "JAR-6"
+      ],
+      "scope": "Cognition services + JARVIS orchestrator state machine with persistence and recovery",
+      "dependencies": [
+        "T-002",
+        "T-005"
+      ],
+      "filesAffected": [
+        "packages/cognition/src/index.ts",
+        "packages/orchestrator/src/index.ts"
+      ],
+      "acceptanceCriteria": [
+        "state transitions persisted",
+        "plan validation (cycles, unknown deps)",
+        "bounded recovery",
+        "restart resume"
+      ],
+      "status": "DONE",
+      "tests": [
+        "tests/unit/memory-orchestrator.test.ts (4 orchestrator tests)",
+        "integration Scenario A"
+      ],
+      "commit": "a65bf4f"
+    },
+    {
+      "taskId": "T-007",
+      "requirementIds": [
+        "NAEI-1",
+        "NAEI-2",
+        "NAEI-3",
+        "NAEI-4",
+        "NAEI-5",
+        "NAEI-6",
+        "NAEI-7"
+      ],
+      "scope": "NAEI engine: agent registry + contracts, task queue with DAG, workspaces, checkpoints, independent verification, approval gates",
+      "dependencies": [
+        "T-002"
+      ],
+      "filesAffected": [
+        "packages/naei/src/index.ts"
+      ],
+      "acceptanceCriteria": [
+        "10-agent roster",
+        "workspace artifacts per phase",
+        "verifier != implementer",
+        "live PASS/FAIL verdicts"
+      ],
+      "status": "DONE",
+      "tests": [
+        "integration Scenario B (live, 16s)"
+      ],
+      "commit": "a65bf4f"
+    },
+    {
+      "taskId": "T-008",
+      "requirementIds": [
+        "WLD-1",
+        "WLD-2",
+        "WLD-3",
+        "WLD-4",
+        "WLD-5",
+        "WLD-6",
+        "WLD-7",
+        "WLD-8",
+        "WLD-9",
+        "GAME-1",
+        "GAME-2"
+      ],
+      "scope": "NEXUS WORLD: entity models, event-sourced causal history, snapshots/recovery, fidelity-tier scheduler, life engine, transactional economy, director, creation engine",
+      "dependencies": [
+        "T-004"
+      ],
+      "filesAffected": [
+        "packages/world/src/*"
+      ],
+      "acceptanceCriteria": [
+        "atomic economy ops",
+        "idempotent salaries",
+        "knowledge isolation",
+        "fidelity tiers",
+        "restart consistency"
+      ],
+      "status": "DONE",
+      "tests": [
+        "tests/unit/world.test.ts (9)",
+        "tests/scenarios (D,E,F,G,H)"
+      ],
+      "commit": "a65bf4f"
+    },
+    {
+      "taskId": "T-009",
+      "requirementIds": [
+        "MCP-1",
+        "MCP-2",
+        "MCP-3",
+        "TECH-7",
+        "TECH-8"
+      ],
+      "scope": "MCP gateway: registry (server.json-shaped), stdio+HTTP transports, discovery, validation, timeouts, audit + bundled test server",
+      "dependencies": [
+        "T-004"
+      ],
+      "filesAffected": [
+        "packages/mcp-gateway/src/index.ts"
+      ],
+      "acceptanceCriteria": [
+        "real tool operation through gateway",
+        "schema rejection",
+        "audit entries",
+        "\u00a74.4 acceptance met"
+      ],
+      "status": "DONE",
+      "tests": [
+        "integration MCP section (4 tests)"
+      ],
+      "commit": "a65bf4f"
+    },
+    {
+      "taskId": "T-010",
+      "requirementIds": [
+        "OBS-1",
+        "OBS-2",
+        "SEC-1",
+        "SEC-2"
+      ],
+      "scope": "Observability (health/metrics/logs) + API service with owner auth",
+      "dependencies": [
+        "T-006",
+        "T-007",
+        "T-008",
+        "T-009"
+      ],
+      "filesAffected": [
+        "packages/observability/src/index.ts",
+        "apps/nexus-api/src/*"
+      ],
+      "acceptanceCriteria": [
+        "health probes never mask failures",
+        "consequential routes require owner key"
+      ],
+      "status": "DONE",
+      "tests": [
+        "integration: health + auth tests"
+      ],
+      "commit": "a65bf4f"
+    },
+    {
+      "taskId": "T-011",
+      "requirementIds": [
+        "TECH-1",
+        "TECH-2",
+        "TECH-3",
+        "TECH-4",
+        "TECH-5",
+        "TECH-6",
+        "TECH-8"
+      ],
+      "scope": "Technology acquisition: 3 parallel research operations, 13 registry records with verified provenance",
+      "dependencies": [],
+      "filesAffected": [
+        "registry/technologies.json"
+      ],
+      "acceptanceCriteria": [
+        "every claim sourced from primary artifacts",
+        "decisions: adopt/adapt/extract/reject with rationale"
+      ],
+      "status": "DONE",
+      "tests": [],
+      "commit": "945a78d"
+    },
+    {
+      "taskId": "T-012",
+      "requirementIds": [
+        "INFRA-1"
+      ],
+      "scope": "Deployment: Dockerfile + railway.json + healthcheck; push triggers Railway auto-deploy; live verification",
+      "dependencies": [
+        "T-010"
+      ],
+      "filesAffected": [
+        "Dockerfile",
+        "railway.json",
+        ".dockerignore"
+      ],
+      "acceptanceCriteria": [
+        "Railway build succeeds",
+        "/health 200 from production URL",
+        "volume persistence"
+      ],
+      "status": "DONE",
+      "tests": [
+        "live deployment probe (ACCEPTANCE.md)"
+      ],
+      "commit": "af8bf00"
+    },
+    {
+      "taskId": "T-013",
+      "requirementIds": [
+        "UE-1",
+        "BLD-1"
+      ],
+      "scope": "Unreal project scaffolding (.uproject, C++ world-state bridge module) + Blender production pipeline (bpy scripts + validation harness)",
+      "dependencies": [
+        "T-008"
+      ],
+      "filesAffected": [
+        "tools/unreal/*",
+        "tools/blender-pipeline/*"
+      ],
+      "acceptanceCriteria": [
+        "real source files compilable in UE 5.8+/Blender 4.x environments",
+        "honest BLOCKED status for live verification"
+      ],
+      "status": "DONE",
+      "tests": [
+        "blender-pipeline validation harness (structural checks)"
+      ],
+      "commit": "945a78d"
+    },
+    {
+      "taskId": "T-014",
+      "requirementIds": [
+        "ARCH-4"
+      ],
+      "scope": "CI workflow: bun setup, typecheck, tests on push/PR",
+      "dependencies": [
+        "T-001"
+      ],
+      "filesAffected": [
+        ".github/workflows/ci.yml"
+      ],
+      "acceptanceCriteria": [
+        "workflow runs tsc --noEmit + bun test"
+      ],
+      "status": "DONE",
+      "tests": [
+        "workflow dispatch on push"
+      ],
+      "commit": "945a78d"
+    },
+    {
+      "taskId": "T-015",
+      "requirementIds": [
+        "WLD-10",
+        "WLD-11",
+        "GAME-3",
+        "JAR-5",
+        "UE-2",
+        "BLD-2",
+        "BLD-3",
+        "TECH-3",
+        "TECH-4"
+      ],
+      "scope": "Remaining scope with documented blockers: ecology, institutions, full gameplay, voice I/O, Unreal/Blender live runtimes, GPU training, device automation",
+      "dependencies": [
+        "T-008",
+        "T-013"
+      ],
+      "filesAffected": [],
+      "acceptanceCriteria": [
+        "every blocker documented with exact limitation + minimum additional capability (directive \u00a720)"
+      ],
+      "status": "BLOCKED",
+      "tests": [],
+      "notes": "See registry/requirements.json blockedBy fields and docs/ACCEPTANCE.md"
+    },
+    {
+      "taskId": "T-016",
+      "requirementIds": [
+        "ARCH-4",
+        "WLD-6",
+        "WLD-7",
+        "WLD-9",
+        "GAME-1",
+        "JAR-1",
+        "JAR-3",
+        "JAR-4",
+        "JAR-7",
+        "MCP-2",
+        "SEC-1",
+        "SEC-2",
+        "SCEN-A",
+        "SCEN-B",
+        "SCEN-D",
+        "SCEN-E",
+        "SCEN-F",
+        "SCEN-G",
+        "SCEN-H",
+        "LAB-1",
+        "EMB-1",
+        "SEC-3",
+        "WLD-12",
+        "WLD-13",
+        "WLD-14",
+        "GAME-4",
+        "TECH-9",
+        "PROC-1",
+        "PROC-2",
+        "PROC-3",
+        "PROC-4"
+      ],
+      "scope": "Independent audit + defect remediation + registry re-intake (2026-11-14)",
+      "dependencies": [
+        "T-010",
+        "T-012"
+      ],
+      "filesAffected": [
+        "packages/world/src/economy.ts",
+        "packages/world/src/simulation.ts",
+        "packages/world/src/creation.ts",
+        "packages/world/src/persistence.ts",
+        "packages/mcp-gateway/src/index.ts",
+        "packages/memory/src/index.ts",
+        "packages/cognition/src/index.ts",
+        "packages/orchestrator/src/index.ts",
+        "packages/db/src/index.ts",
+        "packages/db/src/migrate-cli.ts",
+        "packages/model-fabric/src/index.ts",
+        "packages/contracts/src/index.ts",
+        "apps/nexus-api/src/index.ts",
+        "tests/**"
+      ],
+      "acceptanceCriteria": [
+        "all 15 defect classes re-audited with evidence",
+        "CRITICAL economy atomicity repaired with regression tests (no double-pay under crash/concurrency)",
+        "money conservation holds for all purchase kinds",
+        "approval-gate release path works (approve endpoint effective)",
+        "full security matrix green (unauth 401s, bounded metrics, fail-visible health)",
+        "registry honest: \u00a720 five-point blockers, \u00a722 four-category acceptance, dropped blueprint scope restored",
+        "CI green on the remediation commit"
+      ],
+      "status": "DONE",
+      "tests": [
+        "bun test (70 tests: 66 pass, 4 credential-gated live skips, 0 failures)",
+        "bun run typecheck (0 errors)",
+        "bun tools/registry-validate.ts (consistent)"
+      ],
+      "commit": "de428c3",
+      "notes": "Registry/ledger/docs updates referencing this task are committed separately (the commit that contains this line)."
+    }
   ]
 }
