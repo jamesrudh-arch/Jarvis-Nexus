@@ -33,6 +33,10 @@ export interface ProviderAdapter {
 
 export class CloudflareAdapter implements ProviderAdapter {
   readonly provider = "cloudflare" as const;
+  /** Per-request timeout (FC-04 repair): a hung provider connection must fail
+   *  fast into the retry/fallback path instead of stalling the caller. */
+  private static readonly COMPLETE_TIMEOUT_MS = 30_000;
+  private static readonly HEALTH_TIMEOUT_MS = 10_000;
   constructor(
     private readonly accountId: string,
     private readonly apiToken: string,
@@ -52,6 +56,7 @@ export class CloudflareAdapter implements ProviderAdapter {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ messages, max_tokens: req.maxTokens ?? 1024, temperature: req.temperature }),
+          signal: AbortSignal.timeout(CloudflareAdapter.COMPLETE_TIMEOUT_MS),
         },
       );
       if (!res.ok) {
@@ -90,7 +95,7 @@ export class CloudflareAdapter implements ProviderAdapter {
     try {
       const res = await this.fetchFn(
         `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/ai/models/search?per_page=1`,
-        { headers: { Authorization: `Bearer ${this.apiToken}` } },
+        { headers: { Authorization: `Bearer ${this.apiToken}` }, signal: AbortSignal.timeout(CloudflareAdapter.HEALTH_TIMEOUT_MS) },
       );
       return ok(res.ok);
     } catch (e) {
@@ -128,6 +133,9 @@ export class CloudflareAdapter implements ProviderAdapter {
 
 export class OpenAIAdapter implements ProviderAdapter {
   readonly provider = "openai" as const;
+  /** Per-request timeout (FC-04 repair) — see CloudflareAdapter. */
+  private static readonly COMPLETE_TIMEOUT_MS = 30_000;
+  private static readonly HEALTH_TIMEOUT_MS = 10_000;
   constructor(
     private readonly apiKey: string,
     private readonly baseUrl = "https://api.openai.com/v1",
@@ -161,6 +169,7 @@ export class OpenAIAdapter implements ProviderAdapter {
         method: "POST",
         headers: { Authorization: `Bearer ${this.apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(OpenAIAdapter.COMPLETE_TIMEOUT_MS),
       });
       if (!res.ok) {
         const text = (await res.text()).slice(0, 300);
@@ -195,6 +204,7 @@ export class OpenAIAdapter implements ProviderAdapter {
     try {
       const res = await this.fetchFn(`${this.baseUrl}/models`, {
         headers: { Authorization: `Bearer ${this.apiKey}` },
+        signal: AbortSignal.timeout(OpenAIAdapter.HEALTH_TIMEOUT_MS),
       });
       return ok(res.ok);
     } catch (e) {

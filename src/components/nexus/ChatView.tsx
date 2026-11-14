@@ -182,6 +182,7 @@ export function ChatView() {
               }
             }}
             title={speak ? (speaking ? "Speaking — tap to stop voice output" : "Voice replies on") : "Voice replies off"}
+            aria-label={speak ? (speaking ? "Stop voice output" : "Voice replies on") : "Voice replies off"}
           >
             {speak ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
           </Button>
@@ -189,6 +190,7 @@ export function ChatView() {
             size="icon"
             variant="ghost"
             title="Clear conversation"
+            aria-label="Clear conversation"
             onClick={async () => {
               await fetch("/api/chat", { method: "DELETE" });
               setMessages([]);
@@ -204,7 +206,7 @@ export function ChatView() {
         {messages.length === 0 && !history.isLoading && (
           <div className="text-center text-sm text-zinc-600 py-16">
             Ask JARVIS about the world, its residents, the simulation architecture —
-            or anything else. Voice input uses real server-side speech recognition.
+            or anything else. Voice input uses on-device speech recognition (server providers report availability honestly).
           </div>
         )}
         {messages.map((m, i) => (
@@ -274,6 +276,7 @@ export function ChatView() {
             onClick={toggleRecording}
             disabled={asrBusy}
             title="Hold a conversation with your voice"
+            aria-label="Hold a conversation with your voice"
           >
             {asrBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : recording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
           </Button>
@@ -283,12 +286,12 @@ export function ChatView() {
             placeholder={recording ? "listening…" : "Message JARVIS…"}
             className="flex-1 rounded-lg bg-zinc-900 border border-zinc-800 px-4 py-2.5 text-sm outline-none focus:border-emerald-600/60 transition-colors"
           />
-          <Button type="submit" size="icon" disabled={!input.trim() || chat.isPending}>
+          <Button type="submit" size="icon" disabled={!input.trim() || chat.isPending} aria-label="Send message">
             {chat.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </form>
         <p className="text-[10px] text-zinc-600 mt-2">
-          GLM reasoning via server SDK · speech recognition + synthesis are real API calls, not browser simulation
+          Reasoning via the NEXUS orchestrator (model fabric) · voice uses on-device Web Speech; server voice providers report availability honestly
         </p>
       </div>
     </div>

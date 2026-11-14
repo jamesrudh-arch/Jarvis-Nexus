@@ -1,5 +1,9 @@
 name: CI
 
+# Least-privilege GITHUB_TOKEN (B-04 R4): CI only reads the repository.
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main]
