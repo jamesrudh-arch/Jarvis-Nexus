@@ -480,15 +480,47 @@ export function createApp(cfg: NexusApiConfig) {
     const worlds = worldRuntime.store.listWorlds();
     if (worlds.length === 0) return c.json({ error: "not_found" }, 404);
     const w = worlds[0]!;
+    const residents = worldRuntime.store.listResidents(w.id);
+    const actionDistribution: Record<string, number> = {};
+    for (const r of residents) {
+      actionDistribution[r.currentActivity] = (actionDistribution[r.currentActivity] ?? 0) + 1;
+    }
     return c.json({
       data: {
         world: w,
-        residents: worldRuntime.store.listResidents(w.id).length,
+        residents: residents.length,
         properties: worldRuntime.store.listProperties(w.id).length,
         businesses: worldRuntime.store.listBusinesses(w.id).length,
         vehicles: worldRuntime.store.listVehicles(w.id).length,
         economy: worldRuntime.economy.moneySupply(w.id),
+        economyRecent: worldRuntime.economy.transactionLog(w.id, 8),
         events: db.count("SELECT COUNT(*) AS n FROM world_events WHERE world_id = ?", w.id),
+        memories: db.count("SELECT COUNT(*) AS n FROM memories"),
+        actionDistribution,
+        recentEvents: worldRuntime.store.events(w.id, { limit: 10 }),
+      },
+    });
+  });
+  // Stage 2 Phase 5 V2/V3: layout geometry for the 3D world view — regions,
+  // properties (positions/types) and businesses, straight from the store.
+  app.get("/world/layout", (c) => {
+    const worlds = worldRuntime.store.listWorlds();
+    if (worlds.length === 0) return c.json({ error: "not_found" }, 404);
+    const w = worlds[0]!;
+    return c.json({
+      data: {
+        worldId: w.id,
+        regions: w.regions,
+        properties: worldRuntime.store.listProperties(w.id).map((p) => ({
+          id: p.id, type: p.type, regionId: p.regionId, location: p.location,
+          valuation: p.valuation, ownerId: p.ownerId ?? null,
+        })),
+        businesses: worldRuntime.store.listBusinesses(w.id).map((b) => ({
+          id: b.id, name: b.name, kind: b.kind, regionId: b.regionId,
+          openHours: b.openHours,
+        })),
+        roads: [],
+        note: "road graph not yet represented in the backend store — honest empty array",
       },
     });
   });

@@ -17,16 +17,18 @@ data/
 *.db-journal
 *.db-wal
 
-# sandbox platform scaffolding (untracked by design — see ADR-002)
+# sandbox platform scaffolding (untracked by design — see ADR-002).
+# ADR-008 exception: postcss.config.mjs and public/ ARE tracked — the visual
+# application's build requires them (product code, not environment scaffolding).
 Caddyfile
 components.json
-postcss.config.mjs
 tailwind.config.ts
 eslint.config.mjs
 examples/
 mini-services/
-public/
 .zscripts/
+.next/
+next-env.d.ts
 skills/
 upload/
 download/

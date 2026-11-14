@@ -18,7 +18,8 @@ export const metadata: Metadata = {
   title: "JARVIS NEXUS — Command Centre",
   description:
     "JARVIS NEXUS: AI command centre, autonomous engineering environment and the persistent interactive world of NEXUS WORLD.",
-  icons: { icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg" },
+  manifest: "/manifest.webmanifest",
+  icons: { icon: "/icon.svg" },
 };
 
 export const viewport: Viewport = {

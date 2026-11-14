@@ -2,20 +2,24 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-/** POST { audio_base64 } — real ASR via z-ai-web-dev-sdk (server side). */
+/**
+ * Stage 2 — server-side ASR slot. Provider-independent voice input (STT)
+ * lands in Phase 7; until then this endpoint fails HONESTLY (503) and the
+ * client uses the browser's SpeechRecognition (Web Speech API — supported on
+ * iOS Safari) where available.
+ */
 export async function POST(req: Request) {
+  let bytes = 0;
   try {
-    const body = await req.json().catch(() => ({}));
-    const audio = String(body.audio_base64 ?? "");
-    if (!audio) return NextResponse.json({ error: "audio_base64 required" }, { status: 400 });
-    const { default: ZAI } = await import("z-ai-web-dev-sdk");
-    const zai = await ZAI.create();
-    const result = (await Promise.race([
-      zai.audio.asr.create({ file_base64: audio }),
-      new Promise((_, rej) => setTimeout(() => rej(new Error("asr timeout")), 30000)),
-    ])) as { text?: string };
-    return NextResponse.json({ text: result.text ?? "" });
-  } catch (e) {
-    return NextResponse.json({ error: `asr unavailable: ${(e as Error).message}` }, { status: 503 });
-  }
+    const buf = await req.arrayBuffer();
+    bytes = buf.byteLength;
+  } catch { /* body optional */ }
+  return NextResponse.json(
+    {
+      error: "server ASR provider not configured (Phase 7 voice architecture pending)",
+      fallback: "browser SpeechRecognition (Web Speech API)",
+      received_bytes: bytes,
+    },
+    { status: 503 },
+  );
 }

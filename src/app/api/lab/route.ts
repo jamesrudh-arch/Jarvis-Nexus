@@ -1,51 +1,58 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import summary from "@/data/register-summary.json";
+import technologiesDoc from "../../../../registry/technologies.json";
+import requirementsDoc from "../../../../registry/requirements.json";
 
 export const dynamic = "force-dynamic";
 
 /**
- * NEXUS Laboratory — honest capability manifest. `register` fields are
- * the 2026-11-13 audit conclusions (NEXUS_WORLD/integration/register.json,
- * 95 records). `runtime` fields describe what THIS web runtime can
- * actually execute right now — the Blender/Unreal MCP sidecars are not
- * part of the Next.js process and are reported as such, never faked.
+ * Stage 2 Phase 5 V2 — technology laboratory. Data source: the repository's
+ * engineering registries (registry/technologies.json + requirements.json —
+ * product data in git, imported at build time) with LIVE runtime status from
+ * the backend. Nothing is invented here: every record carries its own
+ * evidence, limitations and audit state from the registry.
  */
+
+interface TechRecord {
+  id: string; name: string; repository?: string; version?: string; licence?: string;
+  provenance?: string; capabilities?: string[]; category?: string;
+  decision?: string; decisionRationale?: string; integrationAdapter?: string;
+  connectedServices?: string[]; compatibility?: unknown; securityAssessment?: string;
+  testResults?: string; operationalStatus?: string; upgradeStrategy?: string;
+}
+
 export async function GET() {
-  const tasks = await db.taskLedger.count();
-  const labRuntime = [
-    {
-      name: "Blender MCP server (headless bpy 5.3)",
-      runtime_status: "offline-in-this-runtime",
-      detail:
-        "Python sidecar with bpy (10 tools: terrain, characters, physics, UE bundle export). Requires the NEXUS_WORLD Python environment (bpy wheel ~330 MB, lost in the last sandbox recycle). Reinstallable: pip install bpy==5.3.* — protocol unchanged.",
-      audit_state: "OPERATIONAL (2026-11-13 evidence: RENDER3D 17/17, NEXUS3D 12/12)",
-    },
-    {
-      name: "Unreal MCP server (Remote Control API client)",
-      runtime_status: "registered-not-operational",
-      detail:
-        "Protocol-verified MCP stdio server (7/7). Editor operations require UE 5.4+ on Windows/GPU hardware — honestly never claimed operational.",
-      audit_state: "REGISTERED (protocol verified; editor unreachable — hardware)",
-    },
-    {
-      name: "GLM cognition + voice (this runtime)",
-      runtime_status: "operational",
-      detail:
-        "Chat, ASR and TTS through the server-side SDK power the JARVIS interface and the resident cognition layer.",
-      audit_state: "OPERATIONAL (live probe on the Providers page)",
-    },
-    {
-      name: "Event-sourced world engine (this runtime)",
-      runtime_status: "operational",
-      detail:
-        "TypeScript port of the deterministic NEXUS engine: needs/goals/mood policy, long-term memory, relationships, weather, meetings — all idempotent events.",
-      audit_state: "OPERATIONAL (drives the World and Residents pages)",
-    },
-  ];
+  const records = (technologiesDoc as { records: TechRecord[] }).records;
+  const requirements = (requirementsDoc as { requirements: Array<{ id: string; status: string; title?: string; description?: string }> }).requirements;
+
+  const by_state: Record<string, number> = {};
+  for (const r of requirements) by_state[r.status] = (by_state[r.status] ?? 0) + 1;
+
+  const notable = records.slice(0, 12).map((t) => ({
+    name: t.name,
+    category: t.category ?? "uncategorised",
+    state: t.operationalStatus ?? "not-operational",
+    purpose: (t.capabilities ?? []).slice(0, 3).join("; ") || "see registry",
+    evidence: t.testResults ?? t.provenance ?? "registry-assessed",
+    limitations: t.decisionRationale ?? t.securityAssessment ?? "—",
+  }));
+
+  const runtime = records.map((t) => ({
+    name: t.name,
+    runtime_status: t.operationalStatus ?? "not-operational",
+    detail: t.integrationAdapter ?? t.decision ?? "—",
+    audit_state: t.provenance ? "provenance-recorded" : "unaudited",
+  }));
+
   return NextResponse.json({
-    register: summary,
-    runtime: labRuntime,
-    task_count: tasks,
+    register: {
+      provenance: "registry/technologies.json (repository engineering registry, build-time import)",
+      total: records.length,
+      by_state,
+      notable,
+    },
+    runtime,
+    task_count: requirements.length,
+    requirements_total: requirements.length,
+    honesty: "States come from the requirements registry; runtime statuses from the technology register. BLOCKED means blocked — no optimistic upgrades.",
   });
 }
