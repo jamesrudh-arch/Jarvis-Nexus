@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useChat, useChatHistory } from "@/hooks/useNexus";
+import { speak as voiceSpeak, stopSpeaking, listenOnce, voiceCapabilities } from "@/lib/voice";
 import { Send, Mic, MicOff, Volume2, VolumeX, Trash2, Loader2, Bot, User } from "lucide-react";
 
 interface Msg {
@@ -23,6 +24,7 @@ export function ChatView() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Msg[]>([]);
   const [speak, setSpeak] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
   const [recording, setRecording] = useState(false);
   const [asrBusy, setAsrBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +32,7 @@ export function ChatView() {
   const history = useChatHistory();
   const bottomRef = useRef<HTMLDivElement>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
+  const browserRecRef = useRef<unknown>(null);
   const chunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -45,22 +48,11 @@ export function ChatView() {
 
   async function speakReply(text: string) {
     if (!speak) return;
-    try {
-      const r = await fetch("/api/voice/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      const body = await r.json();
-      if (body.audio_base64) {
-        const audio = audioRef.current ?? new Audio();
-        audioRef.current = audio;
-        audio.src = `data:audio/mp3;base64,${body.audio_base64}`;
-        audio.play().catch(() => {});
-      }
-    } catch {
-      /* TTS unavailable — honest silent degradation of voice output */
-    }
+    // provider-independent (Phase 7): server TTS if configured, else the
+    // browser's on-device speechSynthesis — both real; honest degradation.
+    const how = await voiceSpeak(text, { onEnd: () => setSpeaking(false) });
+    setSpeaking(how !== "unavailable");
+    if (how === "unavailable") setError("voice output unavailable (no server provider, no speechSynthesis)");
   }
 
   async function send(text?: string) {
@@ -98,11 +90,33 @@ export function ChatView() {
   }
 
   async function toggleRecording() {
+    // provider-independent input (Phase 7): browser SpeechRecognition is the
+    // primary (on-device, live transcription); MediaRecorder+server ASR is the
+    // fallback path when SpeechRecognition is unsupported.
+    const caps = voiceCapabilities();
     if (recording) {
+      // stop whichever path is active
+      if (browserRecRef.current) { try { browserRecRef.current = null; } catch { /* handled by onend */ } }
       recorderRef.current?.stop();
       setRecording(false);
       return;
     }
+    if (caps.sttBrowser) {
+      setRecording(true);
+      setError(null);
+      try {
+        const text = await listenOnce({
+          onInterim: (t) => setInput(t),
+        });
+        setInput(text);
+      } catch (e) {
+        setError(`voice input: ${(e as Error).message}`);
+      } finally {
+        setRecording(false);
+      }
+      return;
+    }
+    // fallback: MediaRecorder → server ASR (503-honest until a server provider exists)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const rec = new MediaRecorder(stream);
@@ -159,8 +173,15 @@ export function ChatView() {
           <Button
             size="icon"
             variant={speak ? "default" : "ghost"}
-            onClick={() => setSpeak((s) => !s)}
-            title={speak ? "Voice replies on" : "Voice replies off"}
+            onClick={() => {
+              const next = !speak;
+              setSpeak(next);
+              if (!next) {
+                stopSpeaking();
+                setSpeaking(false);
+              }
+            }}
+            title={speak ? (speaking ? "Speaking — tap to stop voice output" : "Voice replies on") : "Voice replies off"}
           >
             {speak ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
           </Button>
