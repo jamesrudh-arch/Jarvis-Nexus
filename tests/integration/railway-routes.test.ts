@@ -131,6 +131,15 @@ describe("railway routes — monitoring, intelligence, health integration", () =
     expect(app.tools.requiresApproval("railway.recovery.execute", {})).toBe(true);
   });
 
+  test("credential isolation: no MCP registration or NAEI workspace carries Railway credential material", async () => {
+    const servers = await app.mcp.healthCheck();
+    const serialized = JSON.stringify(servers);
+    expect(serialized.includes("rlwy_")).toBe(false); // no Railway token in any MCP surface
+    // the token exists in the environment — prove the isolation is real, not vacuous
+    expect(Boolean(baseEnv.RAILWAY_API_TOKEN)).toBe(true);
+    expect(baseEnv.RAILWAY_API_TOKEN!.startsWith("rlwy_")).toBe(true);
+  });
+
   test("railway.status tool returns the cached monitoring snapshot", async () => {
     const r = await app.tools.execute("railway.status", {}, { task: { id: "t1" } as never, step: {} as never });
     expect(r.ok).toBe(true);

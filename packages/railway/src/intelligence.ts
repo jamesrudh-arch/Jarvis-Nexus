@@ -272,12 +272,24 @@ export class RailwayIntelligence {
   }
 
   private async operationOutcome(): Promise<RailwayResult<IntelligenceAnswer>> {
-    // Latest plan status — verification results are attached to executions.
-    const history = this.deps.reconciliation.history(1);
-    const answer = `Recovery execution outcomes are recorded per plan (GET /railway/recovery lists them; the audit trail category recovery_execution + verification_outcome carries the evidence). Latest reconciliation: ${history[0]?.summary ?? "none yet"}.`;
+    const plans = this.deps.recovery.recentPlans(5);
+    if (plans.length === 0) {
+      return railwayOk({
+        question: "has_operation_succeeded",
+        answer: "No recovery operations have been planned or executed yet.",
+        status: "answered", evidence: [], asOf: new Date().toISOString(),
+      });
+    }
+    const latest = plans[0]!;
+    const lines = plans.map((p) =>
+      `${p.id}: ${p.step.operationId} on [${p.step.resourceIds.join(",")}] -> ${p.status}` +
+      (p.lastExecution ? ` (verified=${p.lastExecution.verified}; ${p.lastExecution.steps[0]?.verification.method}: ${p.lastExecution.steps[0]?.verification.observed})` : " (not executed)"));
     return railwayOk({
-      question: "has_operation_succeeded", answer, status: "answered",
-      evidence: [], asOf: new Date().toISOString(),
+      question: "has_operation_succeeded",
+      answer: `${lines.length} recovery plan(s) recorded. Latest: ${lines[0]}. Verification outcomes are independently re-queried where the operation class supports it; every decision and execution is in the tamper-evident audit trail (GET /railway/audit?verify=true).`,
+      status: "answered",
+      evidence: plans.map((p) => ({ source: `plan:${p.id}`, summary: `${p.step.operationId} -> ${p.status}${p.lastExecution ? `, verified=${p.lastExecution.verified}` : ""}` })),
+      asOf: latest.lastExecution?.executedAt ?? latest.createdAt,
     });
   }
 }

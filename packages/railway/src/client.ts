@@ -231,9 +231,11 @@ export class RailwayClient {
         this.statsFail++;
         this.breaker.recordFailure(this.now());
         // Safe-retry rule (official docs): queries retry on any transport
-        // failure; MUTATIONS retry only when no connection was established —
-        // a timed-out mutation may already have executed server-side, so
-        // retrying it could double the effect.
+        // failure; MUTATIONS retry only on network errors. RESIDUAL RISK: a
+        // connection reset AFTER the request was sent also surfaces as a
+        // network error — such a retry could double-apply a mutation. The
+        // window is small and documented; owners should prefer idempotent
+        // recovery operations (restart/redeploy/rollback).
         const mutationSafeRetry = operation === "mutation" && error.kind === "NETWORK";
         if (error.retryable && attempt <= this.maxRetries && (operation === "query" || mutationSafeRetry)) {
           const waitMs = computeBackoffMs(attempt, { baseMs: this.backoffBaseMs, capMs: this.backoffCapMs });

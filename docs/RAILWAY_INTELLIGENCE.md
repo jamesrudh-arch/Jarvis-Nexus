@@ -22,7 +22,7 @@ no mutation, ever, during this work (asserted by live test).
 | Cost | `src/usage.ts` | measured (`workspaceUsageTotals`) vs estimated (`estimatedUsage`) kept distinct; volume pressure; configurable thresholds; heuristic-labelled anomalies; no fabricated currency (the schema exposes no workspace USD total for workspace tokens — stated in every report) |
 | Diagnostics | `src/diagnostics.ts` | 14-step investigation; CONFIRMED/PROBABLE/POSSIBLE/UNKNOWN with documented confidence scale (0.9/0.6/0.3/0.1); evidence from logs, lifecycle events, platform status, app health; recommendations carry exact permission levels; results persisted + audited + remembered (memory scope `railway`, tier `operational`) |
 | Authorization | `src/authorization.ts` | L1–L4 permission model; 23-operation registry covering every directive-protected class; **agents are never granted** (an agent's internal approval is not owner authorization); single-use, 15-min, resource-scoped grants; READ-ONLY default refuses all mutations; every decision audited |
-| Recovery | `src/recovery.ts` | L2 planning (no side effects); L3/L4 execution gated by grant + non-read-only; **post-execution independent verification re-queries the actual resulting state** (deployment + service instance) |
+| Recovery | `src/recovery.ts` | L2 planning (no side effects); L3/L4 execution gated by grant + non-read-only; **post-execution independent verification re-queries the actual resulting state for deployment/service operations** (deployment + service instance); other operation classes record the mutation acknowledgement, explicitly labelled as NOT independent verification |
 | Events | `src/events.ts` | webhook receiver: fail-closed when unconfigured, constant-time `X-Webhook-Secret`, zod validation, replay window, fingerprint dedup, out-of-order-safe persistence, **every accepted event reconciled against the authoritative API** (webhooks are prompts, not truth — Railway does not sign payloads, verified in docs); rate-budget-aware poller with jitter + checkpoints |
 | Reconciliation | `src/reconciliation.ts` | actual vs internal diff (missing_in_actual / missing_in_internal / status_mismatch / stale_record); history retained; internal records never silently overwritten; `whatChanged()` |
 | Audit | `src/audit.ts` | SHA-256 hash-chained append-only `railway_audit` table; `verify()` detects modification AND deletion; evidence redacted at write time; no update/delete API exists |
@@ -34,7 +34,7 @@ no mutation, ever, during this work (asserted by live test).
 ## 2. Integration into JARVIS NEXUS
 
 - **HTTP** (`apps/nexus-api/src/index.ts`): 20 routes — public `GET /railway/status`
-  (cached, fail-visible); owner-gated control plane (monitor, discovery, usage, credentials
+  (cached, fail-visible; statuses only — evidence/topology detail is owner-gated); owner-gated control plane (monitor, discovery, usage, credentials
   status, contract check, events, audit (+`?verify=true` chain check), backups, backup
   export, reconcile, diagnose, intelligence, operations registry, recovery plan/authorize/execute);
   `POST /railway/webhook` verified by the per-project secret (constant-time), never the owner key.

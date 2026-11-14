@@ -57,7 +57,7 @@ export const RAILWAY_THREAT_MODEL: readonly ThreatAssessment[] = [
       "MCP servers receive only their declared registration env",
     ],
     requiredMitigation: "keep credential isolation a hard invariant in app wiring",
-    verificationMethod: "unit: integration/railway-routes.test.ts asserts mcp registrations contain no railway token",
+    verificationMethod: "integration: railway-routes.test.ts asserts MCP registrations carry no railway token; code inspection of apps/nexus-api wiring (registration env is empty, NaeiEngine receives no env)",
     residualRisk: "low",
   },
   {

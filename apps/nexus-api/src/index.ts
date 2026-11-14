@@ -502,10 +502,17 @@ export function createApp(cfg: NexusApiConfig) {
 
   // -- RAILWAY (infrastructure intelligence) -----------------------------------------
   // Public: cached monitoring snapshot (non-blocking, fail-visible).
+  // Evidence details are owner-only — the public view carries statuses, not topology.
   app.get("/railway/status", (c) => {
     const report = railway.latestMonitoring();
     if (!report) return c.json({ data: null, note: "no monitoring cycle executed yet — POST /railway/monitor (owner) to run one" });
-    return c.json({ data: report });
+    return c.json({
+      data: {
+        asOf: report.asOf,
+        overall: report.overall,
+        dimensions: report.dimensions.map((d) => ({ dimension: d.dimension, status: d.status, detail: d.detail })),
+      },
+    });
   });
   app.post("/railway/monitor", requireOwner, async (c) => {
     const report = await railway.runMonitoringCycle();

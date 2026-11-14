@@ -44,6 +44,9 @@ export interface RecoveryPlan {
   alternatives: Array<{ operationId?: string; action: string; rationale: string }>;
   createdAt: string;
   status: RecoveryPlanStatus;
+  /** Attached after execution (verification evidence for the owner's question
+   *  "has an approved operation succeeded?"). */
+  lastExecution?: ExecutionReport;
 }
 
 export interface StepExecutionReport {
@@ -142,6 +145,7 @@ export class RecoveryService {
       status: "proposed",
     };
     this.deps.state.set(`plan:${plan.id}`, plan);
+    this.deps.state.appendHistory("plan:index", plan.id, 50);
     this.deps.audit.record({
       category: "recovery_recommendation", severity: "info", component: "railway.recovery",
       outcome: "success", resource: resourceIds.join(","),
@@ -152,6 +156,12 @@ export class RecoveryService {
 
   getPlan(planId: string): RecoveryPlan | null {
     return this.deps.state.get<RecoveryPlan>(`plan:${planId}`);
+  }
+
+  /** Recent plans (newest first) — powers the "has an approved operation succeeded?" answer. */
+  recentPlans(limit = 5): RecoveryPlan[] {
+    const index = this.deps.state.get<string[]>("plan:index") ?? [];
+    return index.slice(-limit).reverse().map((id) => this.getPlan(id)).filter((p): p is RecoveryPlan => p !== null);
   }
 
   /** L3/L4 — authorized execution with independent post-verification. */
@@ -228,6 +238,7 @@ export class RecoveryService {
       verified: verification.matchesExpectation,
     };
     plan.status = verification.matchesExpectation ? "verified" : "failed";
+    plan.lastExecution = report;
     this.deps.state.set(`plan:${planId}`, plan);
     this.deps.audit.record({
       category: verification.matchesExpectation ? "verification_outcome" : "recovery_execution",
@@ -299,9 +310,10 @@ export class RecoveryService {
         return { method: "service instance re-query", observed: `verification query failed: ${siRes.error.kind}`, matchesExpectation: false };
       }
       return {
-        method: "mutation acknowledgement (resource-level re-query not implemented for this operation class)",
+        method: "mutation acknowledgement only (resource-level re-query not implemented for this operation class — verification is NOT independent here)",
         observed: "mutation accepted by API",
-        matchesExpectation: true,
+        // honest conservative posture: an acknowledgement is not state verification
+        matchesExpectation: false,
       };
     } catch (e) {
       return { method: "verification", observed: `verification crashed: ${String(e).slice(0, 160)}`, matchesExpectation: false };

@@ -50,6 +50,20 @@ export class WebhookReceiver {
     this.replayToleranceMs = deps.replayToleranceMs ?? 15 * 60 * 1000;
   }
 
+  /** Unauthenticated rejection logging is throttled (audit-flood protection):
+   *  at most 20 rejection records per rolling 10 minutes. */
+  private rejectionTimes: number[] = [];
+  private recordThrottledRejection(reason: string): void {
+    const nowMs = (this.deps.now ?? Date.now)();
+    this.rejectionTimes = this.rejectionTimes.filter((t) => nowMs - t < 10 * 60 * 1000);
+    if (this.rejectionTimes.length >= 20) return; // throttled — still rejected, just not re-audited
+    this.rejectionTimes.push(nowMs);
+    this.deps.audit.record({
+      category: "webhook", severity: "warning", component: "railway.webhook",
+      outcome: "rejected", evidence: { reason, throttled: this.rejectionTimes.length >= 20 },
+    });
+  }
+
   /** Constant-time secret comparison (never early-return on length). */
   private secretMatches(provided: string | undefined): boolean {
     const expected = this.deps.secret;
@@ -78,13 +92,11 @@ export class WebhookReceiver {
       };
     }
 
-    // 2. constant-time secret verification
+    // 2. constant-time secret verification (rejection audit is throttled so an
+    //    unauthenticated flood cannot grow the audit table without bound)
     const provided = headers["x-webhook-secret"] ?? headers["X-Webhook-Secret"];
     if (!provided || !this.secretMatches(provided)) {
-      this.deps.audit.record({
-        category: "webhook", severity: "warning", component: "railway.webhook",
-        outcome: "rejected", evidence: { reason: "missing or invalid X-Webhook-Secret header" },
-      });
+      this.recordThrottledRejection("missing or invalid X-Webhook-Secret header");
       return {
         ok: false,
         error: new RailwayApiError({ kind: "AUTH", message: "webhook rejected: secret header missing or invalid" }),

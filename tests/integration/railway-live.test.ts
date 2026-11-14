@@ -17,8 +17,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const hasCreds = Boolean(process.env.RAILWAY_API_TOKEN);
-/** Live tests perform real network discovery (~4-15s) — extend the 5s default timeout. */
-const live = (name: string, fn: () => Promise<void>) => test(name, fn, 60_000);
+/** Live tests perform real network discovery (~4-15s) — extend the 5s default
+ *  timeout. Without credentials they SKIP honestly instead of failing. */
+const live = (name: string, fn: () => Promise<void>) =>
+  hasCreds ? test(name, fn, 60_000) : test.skip(name, fn);
 const tmp = mkdtempSync(join(tmpdir(), "nexus_railway_live_"));
 
 function makeLiveIntel(readOnly = true): { intel: RailwayIntel; close: () => void } {

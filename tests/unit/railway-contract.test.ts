@@ -24,7 +24,8 @@ describe("railway API contract (versioned, offline)", () => {
 
   test("SECURITY: no query document fetches variable VALUES (secrets)", () => {
     const all = Object.values(queries as unknown as Record<string, string>).join("\n");
-    expect(all.includes("variables(environmentId")).toBe(false);
+    // the variables query (any form) must never appear in any document
+    expect(/variables\s*\(/.test(all)).toBe(false);
     expect(all.includes("unrendered")).toBe(false);
   });
 

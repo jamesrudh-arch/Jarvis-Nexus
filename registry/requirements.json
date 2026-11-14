@@ -1541,7 +1541,7 @@
       "evidence": [
         {
           "kind": "test",
-          "reference": "tests/unit/railway-railway-exercises.test.ts: Scenario E thresholds + volume pressure + label separation",
+          "reference": "tests/scenarios/railway-exercises.test.ts: Scenario E thresholds + volume pressure + label separation",
           "timestamp": "2026-11-14T19:59:55Z"
         },
         {
