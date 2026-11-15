@@ -1,0 +1,22 @@
+{
+  "probe": "F-2.4A-02 XFF edge behaviour",
+  "startedAt": "2026-11-15T20:38:07.048Z",
+  "target": "https://jarvis-nexus-production.up.railway.app",
+  "note": "read-only; public routes only; self-healing within 60 s",
+  "control": {
+    "status": 200
+  },
+  "phaseA": {
+    "xff": "9.9.9.9",
+    "requests": 245,
+    "statuses": {
+      "200": 245,
+      "429": 0,
+      "other": 0
+    },
+    "first429At": -1,
+    "retryAfter": null
+  },
+  "verdict": "NOT ANSWERABLE AGAINST THE CURRENT DEPLOYMENT: the live code (41092a33) has no rate limiter and no XFF consumer (source-verified); no edge behaviour is claimed — F-2.4A-02 stays UNVERIFIED, bounded by the Stage 2.4B global auth-fail backstop, settled empirically by runbook V-08 after deploy",
+  "finishedAt": "2026-11-15T20:38:50.663Z"
+}

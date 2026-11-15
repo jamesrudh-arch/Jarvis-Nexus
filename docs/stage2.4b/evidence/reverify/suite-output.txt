@@ -1,0 +1,332 @@
+bun test v1.3.14 (0d9b296a)
+
+tests/persistence/restart.test.ts:
+(pass) memory, NAEI registry and world survive restart; event replay is idempotent [11.77ms]
+
+tests/unit/railway-audit.test.ts:
+(pass) railway audit log (tamper-evident) > records carry ids, timestamps, categories, severity, evidence, principal, outcome [4.80ms]
+(pass) railway audit log (tamper-evident) > chain verification passes on honest history [1.90ms]
+(pass) railway audit log (tamper-evident) > TAMPERING with a record's content is detected (hash mismatch) [1.58ms]
+(pass) railway audit log (tamper-evident) > DELETING a record is detected (chain break) [1.63ms]
+(pass) railway audit log (tamper-evident) > credential material can never enter evidence (redaction at write time) [1.38ms]
+
+tests/unit/world.test.ts:
+(pass) world construction (Scenario H backend) > constructs a residential neighbourhood with homes, residents, business, roads [2.76ms]
+(pass) world construction (Scenario H backend) > racing circuit builds track segments and club vehicles [1.78ms]
+(pass) economy (Scenario G) > purchase: payment + inventory + revenue + causal event, atomically [2.82ms]
+(pass) economy (Scenario G) > purchase fails cleanly on insufficient stock without partial effects [1.82ms]
+(pass) economy (Scenario G) > salary payment is idempotent per pay period [2.07ms]
+(pass) life engine (Scenario E) > residents autonomously perform daily activities [12.17ms]
+(pass) life engine (Scenario E) > social encounter creates relationship + mutual knowledge [1.88ms]
+(pass) fidelity tiers (directive §7.3) > residents are assigned fidelity by distance and tick at tier cadence [1.88ms]
+(pass) persistence & recovery (Scenario D) > world state + history survive a full restart (db close/reopen) [5.97ms]
+
+tests/unit/cognition-params.test.ts:
+(pass) planner params (directive §5.1) > planner passes tool params through the sanitiser [0.46ms]
+
+tests/unit/railway-authorization.test.ts:
+(pass) railway authorization (L1-L4 permission model) > operation registry covers the directive's protected operation classes [0.11ms]
+(pass) railway authorization (L1-L4 permission model) > AGENT principals are NEVER granted — an agent's approval is not owner authorization [2.15ms]
+(pass) railway authorization (L1-L4 permission model) > non-owner user principals are denied [1.31ms]
+(pass) railway authorization (L1-L4 permission model) > READ-ONLY mode (default) refuses every mutation even for the owner [1.32ms]
+(pass) railway authorization (L1-L4 permission model) > owner grant is issued, single-use, scoped and expiring [1.96ms]
+(pass) railway authorization (L1-L4 permission model) > non-executable registered operations are denied with an honest reason [1.30ms]
+
+tests/unit/orchestrator-gate.test.ts:
+(pass) JARVIS approval gate (directive §5.2) > consequential plan stalls at VALIDATED; no tool executes without owner approval [4.86ms]
+
+tests/unit/railway-credentials.test.ts:
+(pass) railway credentials > format validation accepts real-shaped tokens and rejects junk [0.07ms]
+(pass) railway credentials > token type detection: workspace vs project [0.15ms]
+(pass) railway credentials > redaction exposes prefix family + length only, never the value [0.02ms]
+(pass) railway credentials > rotation: valid new token becomes active, old demoted to previous [0.09ms]
+(pass) railway credentials > rotation rejects malformed tokens [0.03ms]
+(pass) railway credentials > unconfigured status is explicit and never healthy-looking [0.04ms]
+
+tests/unit/railway-client.test.ts:
+(pass) railway client — error classification (mocked transport) > success returns data and captures rate headers [1.60ms]
+(pass) railway client — error classification (mocked transport) > HTTP 200 + 'Not Authorized' is an AUTH error (200 is not success) [0.21ms]
+(pass) railway client — error classification (mocked transport) > HTTP 401 is an AUTH error without retry [0.12ms]
+(pass) railway client — error classification (mocked transport) > HTTP 400 'Cannot query field' is a CONTRACT error (schema drift signal) [0.12ms]
+(pass) railway client — error classification (mocked transport) > HTTP 200 + non-auth GraphQL error is a GRAPHQL error [0.11ms]
+(pass) railway client — error classification (mocked transport) > HTTP 200 without data or errors is an unexpected-structure error [0.08ms]
+(pass) railway client — resilience (mocked) > 429 retries honouring Retry-After, then succeeds [0.15ms]
+(pass) railway client — resilience (mocked) > network failure on a QUERY is retried with backoff, then succeeds [0.41ms]
+(pass) railway client — resilience (mocked) > TIMEOUT on a MUTATION is NOT retried (may have executed server-side) [0.12ms]
+(pass) railway client — resilience (mocked) > NETWORK failure on a MUTATION is retried (no connection was established) [0.17ms]
+(pass) railway client — resilience (mocked) > circuit breaker opens after consecutive failures and blocks calls [0.27ms]
+(pass) railway client — resilience (mocked) > rate budget guard refuses non-critical calls below the floor [0.29ms]
+(pass) railway client — resilience (mocked) > query cache serves repeats within TTL (one fetch) [0.16ms]
+(pass) railway client — resilience (mocked) > mutations are never cached [0.12ms]
+(pass) railway client — credential hygiene (mocked) > the raw token never appears in errors, events or stats [0.17ms]
+(pass) railway client — credential hygiene (mocked) > workspace token uses Bearer; project token uses Project-Access-Token header [0.20ms]
+(pass) railway client — credential hygiene (mocked) > missing token fails closed with UNCONFIGURED (never faked) [0.08ms]
+
+tests/unit/memory-orchestrator.test.ts:
+(pass) memory subsystem (directive §5.4) > create + ranked retrieval by relevance [1.86ms]
+(pass) memory subsystem (directive §5.4) > knowledge kinds are distinguished (fact vs assumption vs preference) [1.44ms]
+(pass) memory subsystem (directive §5.4) > consolidation promotes repeated episodic themes to semantic summaries [2.10ms]
+(pass) memory subsystem (directive §5.4) > consolidation detects contradictions [1.35ms]
+(pass) memory subsystem (directive §5.4) > supersession tombstones old memories [1.60ms]
+(pass) memory subsystem (directive §5.4) > scopes are isolated [1.60ms]
+(pass) JARVIS orchestrator (directive §5.2) > objective reaches COMPLETED with persisted state transitions [3.27ms]
+(pass) JARVIS orchestrator (directive §5.2) > failed tool step skips dependents and triggers bounded recovery [2.25ms]
+(pass) JARVIS orchestrator (directive §5.2) > cyclic plans are rejected by validation [1.31ms]
+(pass) JARVIS orchestrator (directive §5.2) > interrupted tasks are recoverable after restart [2.37ms]
+
+tests/unit/railway-webhook.test.ts:
+(pass) railway webhook receiver (mocked, no network) > unconfigured receiver fails CLOSED (503 semantics) — nothing accepted without a secret [2.21ms]
+(pass) railway webhook receiver (mocked, no network) > missing or wrong secret is rejected (401 semantics) and audited [1.75ms]
+(pass) railway webhook receiver (mocked, no network) > valid secret + valid payload is accepted once; replayed payload is a duplicate [5.68ms]
+(pass) railway webhook receiver (mocked, no network) > timestamp outside the replay tolerance window is rejected [1.47ms]
+(pass) railway webhook receiver (mocked, no network) > malformed payload fails schema validation [2.35ms]
+(pass) railway webhook receiver (mocked, no network) > out-of-order delivery is safe: events order by source timestamp, not arrival [2.24ms]
+(pass) railway webhook receiver (mocked, no network) > full-stack: accepted webhook is reconciled against the mocked authoritative API [2.93ms]
+
+tests/unit/model-fabric.test.ts:
+(pass) model fabric — echo provider > echo adapter completes deterministically [0.13ms]
+(pass) model fabric — echo provider > fabric routes to available provider with fallback [0.12ms]
+(pass) model fabric — echo provider > fabric fails cleanly when no provider matches [0.07ms]
+(pass) model fabric — echo provider > fabric records health and usage [0.28ms]
+(pass) extractJson > parses direct json [0.02ms]
+(pass) extractJson > parses fenced json [0.03ms]
+(pass) extractJson > parses embedded json with prose prefix [0.01ms]
+(pass) extractJson > returns undefined for no json [0.01ms]
+(skip) model fabric — cloudflare LIVE (skipped without credentials) > live cloudflare completion round-trip
+(skip) model fabric — cloudflare LIVE (skipped without credentials) > live fabric routing uses cloudflare when available
+
+tests/unit/railway-diagnostics.test.ts:
+(pass) railway diagnostics (mocked transport) > Scenario A shape: failed deployment + error logs -> CONFIRMED cause with log evidence and L3 recommendations [6.84ms]
+(pass) railway diagnostics (mocked transport) > Scenario B shape: successful deployment + unhealthy app -> PROBABLE runtime failure (dimensions stay independent) [2.20ms]
+(pass) railway diagnostics (mocked transport) > credential_failure trigger -> CONFIRMED credential diagnosis with owner-only rotation guidance [2.17ms]
+(pass) railway diagnostics (mocked transport) > no failure evidence -> UNKNOWN with honest 'no classification' framing [2.10ms]
+(pass) railway diagnostics (mocked transport) > investigations are recorded in memory scope via the remember hook (JARVIS integration) [2.39ms]
+
+tests/unit/world-conservation.test.ts:
+(pass) economy conservation (directive §7.8) > transfer rejects one-sided requests (minting and burning are not permitted) [1.56ms]
+(pass) economy conservation (directive §7.8) > buyProperty conserves money (buyer -> treasury) and records the possession [2.04ms]
+(pass) economy conservation (directive §7.8) > buyVehicle conserves money (buyer -> treasury) and records the possession [2.02ms]
+(pass) economy conservation (directive §7.8) > paySalary is idempotent per pay period and the marker is atomic with the payment [1.93ms]
+(pass) economy conservation (directive §7.8) > a pre-existing dedup marker (without the event) still blocks re-payment [1.38ms]
+(pass) economy conservation (directive §7.8) > paySalary without an employee account errors instead of destroying money [1.36ms]
+
+tests/unit/mcp-gateway.test.ts:
+(pass) MCP gateway persistence and resilience > registrations survive a restart (loadPersisted) [2.55ms]
+(pass) MCP gateway persistence and resilience > invocation timeout returns TIMEOUT, does not poison server state, and leaves no leaked timer [2471.77ms]
+(pass) MCP gateway persistence and resilience > approval_required servers reject unapproved invocations and honor approvedBy [132.68ms]
+
+tests/unit/railway-contract.test.ts:
+(pass) railway API contract (versioned, offline) > every field our queries depend on exists in the committed live-schema baseline [1.25ms]
+(pass) railway API contract (versioned, offline) > baseline provenance: captured from the live endpoint with introspection evidence [0.07ms]
+(pass) railway API contract (versioned, offline) > SECURITY: no query document fetches variable VALUES (secrets) [0.14ms]
+(pass) railway API contract (versioned, offline) > drift detection: removed field is BREAKING, deprecation is WARNING, addition is INFO [1.87ms]
+(pass) railway API contract (versioned, offline) > drift detection: identical live schema is compatible (no drift) [0.78ms]
+(pass) railway API contract (versioned, offline) > drift detection: a whole type disappearing is BREAKING [1.64ms]
+
+tests/unit/railway-reconciliation.test.ts:
+(pass) railway reconciliation (mocked transport) > first run with no internal snapshot reports missing_in_internal for the baseline [3.18ms]
+(pass) railway reconciliation (mocked transport) > external deletion, addition and status change are all detected and classified [3.28ms]
+(pass) railway reconciliation (mocked transport) > matching states produce zero discrepancies and a clean summary [2.72ms]
+(pass) railway reconciliation (mocked transport) > stale internal records are flagged [2.84ms]
+(pass) railway reconciliation (mocked transport) > whatChanged() diffs the two most recent snapshots [3.86ms]
+(pass) railway reconciliation (mocked transport) > reconciliation writes an auditable, append-only record [2.86ms]
+
+tests/unit/memory-supersede.test.ts:
+(pass) memory supersession (directive §5.4) > supersede without replacement tombstones the record (no-op bug regression) [2.56ms]
+(pass) memory supersession (directive §5.4) > supersede with a nonexistent replacement is rejected [1.58ms]
+
+tests/adversarial/verifier.test.ts:
+(pass) V1 fabrication detection > no mock transports wired into production code paths [0.45ms]
+(pass) V1 fabrication detection > no hardcoded 'healthy' shortcuts in health components [0.37ms]
+(pass) V1 fabrication detection > model fabric: echo is not a selectable provider without explicit opt-in [9.18ms]
+(pass) V1 fabrication detection > rate-limit headers are real (Retry-After present on 429) [8.18ms]
+(pass) V2 security boundary attacks > auth bypass: owner key in query string is refused [1.85ms]
+(pass) V2 security boundary attacks > auth bypass: case-mangled authorization schemes are refused [0.56ms]
+(pass) V2 security boundary attacks > auth bypass: whitespace-padded token is refused (constant-time compare not fooled) [0.27ms]
+(pass) V2 security boundary attacks > oversized payloads are rejected or safely bounded, never crash [45.52ms]
+(pass) V2 security boundary attacks > malformed JSON bodies produce 4xx, never 500 and never silent side effects [3.04ms]
+(pass) V2 security boundary attacks > path traversal in resident id is rejected safely [0.66ms]
+(pass) V2 security boundary attacks > webhook without secret is refused (401/503), never accepted [0.40ms]
+(pass) V3 API contract validation > every public GET route answers 200 with a JSON envelope [5.44ms]
+(pass) V3 API contract validation > service identity declares the contract version [0.28ms]
+(pass) V3 API contract validation > unknown routes 404 without stack traces [0.29ms]
+(pass) V3 API contract validation > protected routes consistently 401 without credentials [0.43ms]
+(pass) V4 evidence provenance > stage 2 evidence directory exists with non-empty artifacts [0.34ms]
+(pass) V4 evidence provenance > stage 2 reports exist (each phase documented) [0.07ms]
+(pass) V4 evidence provenance > recovery point artifacts exist matching the manifest [0.11ms]
+(pass) V5 regression landmines > metric cardinality stays bounded under path fuzzing (2026-11-14 defect) [1.63ms]
+
+tests/scenarios/directive-scenarios.test.ts:
+(pass) SCENARIO D — PERSISTENT WORLD (directive §19 D) > modify world → stop processes → restart → authoritative state and history consistent [10.60ms]
+(pass) SCENARIO E — AUTONOMOUS RESIDENTS (directive §19 E) > resident attends work, meets another resident, participates in an event, returns home — experiences, relationships and memories retained [11.56ms]
+(pass) SCENARIO F — CAUSAL WORLD EVENT (directive §19 F) > vehicle collision during rain: damage, witnesses, emergency response, road consequences, resident memories [2.57ms]
+(pass) SCENARIO G — WORLD ECONOMY (directive §19 G) > resident buys item from business: payment, balances, inventory, revenue, stock, transaction history all consistent [2.03ms]
+(pass) SCENARIO H — WORLD CREATION (directive §19 H, backend portion) > request a new neighbourhood: world-state records, infrastructure, population created and persistent [5.93ms]
+
+tests/scenarios/railway-exercises.test.ts:
+(pass) Scenario A — deployment failure investigation (MOCK) > detect -> evidence -> logs -> cause -> recommendation, end to end [3.65ms]
+(pass) Scenario B — application outage despite successful deployment (MOCK) > deployment=healthy and application=unhealthy are reported INDEPENDENTLY [2.23ms]
+(pass) Scenario C — credential failure detection without secret exposure (MOCK) > auth error is classified and never leaks the token; unconfigured fails closed [1.80ms]
+(pass) Scenario D — infrastructure discrepancy detection (MOCK) > state divergence between Railway and internal records is detected and reported [2.63ms]
+(pass) Scenario E — abnormal resource consumption (MOCK) > usage anomalies fire: threshold breach + volume pressure; measured vs estimated stay distinct [2.40ms]
+(pass) Scenario F — lost event recovery via controlled polling (MOCK) > poller tick ingests missed events; duplicates never double-record; checkpoint persisted [2.21ms]
+(pass) Scenario G — monitoring survives primary-application unavailability (MOCK) > the intelligence module monitors the DOWN app from outside the app process [2.87ms]
+(pass) Scenario H — authorized recovery in an ISOLATED environment (MOCK mutations) > full authorized loop: diagnose -> plan -> owner grant -> execute -> independent verification [4.49ms]
+(pass) Scenario H — authorized recovery in an ISOLATED environment (MOCK mutations) > read-only mode refuses execution even with a forged valid-looking grant (production protection) [2.50ms]
+(pass) Scenario I — backup restoration in an isolated environment (REAL local store) > logical backup -> isolated in-memory restore -> row-exact verification [5.97ms]
+(pass) Scenario I — backup restoration in an isolated environment (REAL local store) > Railway volume backups are reported as existing but UNVERIFIED for recovery (honest limitation) [1.94ms]
+(pass) Webhook event intelligence — notifications are prompts, not truth (MOCK) > an accepted webhook is reconciled against the authoritative API before being trusted [3.25ms]
+
+tests/integration/security.test.ts:
+(pass) security and contract regressions > metric labels are bounded: raw paths cannot mint metric rows [24.61ms]
+(pass) security and contract regressions > API contract errors: 404s and unknown-server 502 [5.41ms]
+(pass) security and contract regressions > restart recovery never self-approves approval_required MCP tools (landmine regression) [3.05ms]
+(pass) security and contract regressions > health fails visible: unhealthy aggregate returns 503, not 200 [1.53ms]
+
+tests/integration/backup-restore.test.ts:
+(pass) G-02 content-level integrity verification > verifyLogicalBackup re-checks content hashes (rowid-ordered) — clean doc passes [4.49ms]
+(pass) G-02 content-level integrity verification > CORRUPTION DETECTION: mutated row content with matching counts MUST fail [4.63ms]
+(pass) G-02 content-level integrity verification > legacy doc without sha256Rowid degrades honestly to count-only [3.66ms]
+(pass) G-01 productized restore — function level > restoreLogicalBackup: fresh target, single transaction, content verified, FK clean [5.54ms]
+(pass) G-01 productized restore — function level > restoreLogicalBackup: unknown table name fails BEFORE any write (schema validation) [2.07ms]
+(pass) G-01 productized restore — function level > restoreLogicalBackup: corrupted content fails post-restore verification [5.27ms]
+(pass) G-01 productized restore — route level (non-destructive by construction) > export a backup through the real route (prerequisite) [6.30ms]
+(pass) G-01 productized restore — route level (non-destructive by construction) > POST /railway/backup/restore restores into an ISOLATED db and never touches the live store [7.13ms]
+(pass) G-01 productized restore — route level (non-destructive by construction) > restore route: unauthenticated 401; bad filename 400; missing file 404 [0.61ms]
+(pass) G-03 minimal off-site export > download route streams the artifact with integrity headers [1.12ms]
+(pass) G-03 minimal off-site export > download route: path traversal refused (400), unauthenticated 401 [0.40ms]
+(pass) G-03 minimal off-site export > NEXUS_BACKUP_OFFSITE_DIR: export copies the newest backup off-volume (Stage 2.4B: encrypted only) [10.97ms]
+(pass) G-01 productized restore — CLI guard (destructive operations require explicit authorization) > CLI REFUSES a non-empty target without --confirm-destructive (exit 2, no writes) [108.04ms]
+(pass) G-01 productized restore — CLI guard (destructive operations require explicit authorization) > CLI with --confirm-destructive overwrites the target in one transaction [89.18ms]
+(pass) G-01 productized restore — CLI guard (destructive operations require explicit authorization) > CLI happy path on a fresh target: full verification report [85.51ms]
+
+tests/integration/api.test.ts:
+(pass) API foundation > root contract [2.42ms]
+(pass) API foundation > health reports all components [0.84ms]
+(pass) API foundation > unauthenticated consequential routes are rejected (all of them) [2.34ms]
+(pass) API foundation > wrong owner key is rejected; the key never authenticates via query string [0.57ms]
+(pass) MCP gateway — integration acceptance (directive §4.4) > server starts, connects, tools discovered [119.29ms]
+(pass) MCP gateway — integration acceptance (directive §4.4) > real operation succeeds end-to-end (echo tool, owner-authenticated) [4.97ms]
+(pass) MCP gateway — integration acceptance (directive §4.4) > schema validation rejects missing required args [0.74ms]
+(pass) MCP gateway — integration acceptance (directive §4.4) > audit trail records invocations (owner-visible) [0.84ms]
+(pass) NEXUS WORLD via API > world state is live with bootstrap civilisation [0.94ms]
+(pass) NEXUS WORLD via API > simulation advance ticks and generates history (owner auth) [7.90ms]
+(pass) NEXUS WORLD via API > advance honors simDurationMs as well as ticks [1.72ms]
+(pass) NEXUS WORLD via API > residents expose knowledge derived from experience [0.85ms]
+(pass) NEXUS WORLD via API > construction produces a new district (owner auth) [1.78ms]
+(pass) memory subsystem via API > create (validated), list, consolidate — owner authenticated [2.07ms]
+(pass) JARVIS orchestrator via API > degraded mode is honest: objective completes through deterministic fallbacks when no live provider is configured [1.63ms]
+(pass) JARVIS orchestrator via API > task repository persists tasks [0.76ms]
+(skip) JARVIS orchestrator via API > live objective flows through the state machine to completion
+(skip) NAEI via API (Scenario B shape) > engineering task: analysis, implementation, independent verification
+
+tests/integration/phase3-security.test.ts:
+(pass) CORS allowlist (Phase 3) > allowed origin receives exact-match ACAO header [2.70ms]
+(pass) CORS allowlist (Phase 3) > non-allowed origin receives NO ACAO header [0.49ms]
+(pass) CORS allowlist (Phase 3) > preflight from allowed origin is handled; from others gets no allow-methods [0.39ms]
+(pass) rate limiting (Phase 3) > global fixed window: burst over limit yields 429 + Retry-After [3.92ms]
+(pass) rate limiting (Phase 3) > separate IPs have separate budgets [0.96ms]
+(pass) rate limiting (Phase 3) > failed-auth lockout: budget exhausted -> protected routes 429 (even valid token), public routes unaffected [1.46ms]
+(pass) rate limiting (Phase 3) > valid owner token is NOT consumed by the auth-failure budget [0.71ms]
+(pass) models health honest semantics (Phase 3) > /models/health returns providers[] with configured/verified distinction [0.45ms]
+(pass) models health honest semantics (Phase 3) > POST /models/verify requires owner (401 without) [0.24ms]
+(pass) models health honest semantics (Phase 3) > POST /models/verify with owner returns honest per-provider results [0.81ms]
+(pass) models health honest semantics (Phase 3) > health component reports configured (not 'available') and degraded without verified real providers [0.63ms]
+(pass) fabricFromEnv defensive configuration (Phase 3) > whitespace-only and placeholder credentials are unconfigured [0.08ms]
+(pass) fabricFromEnv defensive configuration (Phase 3) > real-shaped credentials are configured [0.09ms]
+
+tests/integration/railway-routes.test.ts:
+(pass) railway routes — authorization matrix (owner bearer) > every new consequential route rejects without the owner key (401) [2.40ms]
+(pass) railway routes — authorization matrix (owner bearer) > every new consequential route rejects a wrong key (constant-time compare, 401) [0.36ms]
+(pass) railway routes — authorization matrix (owner bearer) > owner key grants access (discovery returns mocked infrastructure) [1.22ms]
+(pass) railway routes — authorization matrix (owner bearer) > GET /railway/status is public and non-blocking (cached snapshot) [0.31ms]
+(pass) railway routes — monitoring, intelligence, health integration > POST /railway/monitor (owner) runs all five dimensions on the mocked transport [0.98ms]
+(pass) railway routes — monitoring, intelligence, health integration > health probe includes the railway component (fail-visible, never healthy without data) [0.53ms]
+(pass) railway routes — monitoring, intelligence, health integration > POST /railway/intelligence answers a live question from mocked live data [1.09ms]
+(pass) railway routes — monitoring, intelligence, health integration > JARVIS tool executor exposes railway capabilities with correct approval classes [0.08ms]
+(pass) railway routes — monitoring, intelligence, health integration > credential isolation: no MCP registration or NAEI workspace carries Railway credential material [0.08ms]
+(pass) railway routes — monitoring, intelligence, health integration > railway.status tool returns the cached monitoring snapshot [0.16ms]
+(pass) railway routes — webhook endpoint (secret-header verified) > correct secret + valid payload -> 202 accepted [0.74ms]
+(pass) railway routes — webhook endpoint (secret-header verified) > replayed payload -> 200 duplicate [0.67ms]
+(pass) railway routes — webhook endpoint (secret-header verified) > wrong secret -> 401; malformed payload -> 400 [0.61ms]
+(pass) railway routes — webhook endpoint (secret-header verified) > unconfigured secret fails closed (503) — separate app instance [6.17ms]
+(pass) railway routes — backup export with isolated restore verification > logical backup exports every table and PROVES recoverability by restoring into isolation [5.74ms]
+(pass) railway routes — backup export with isolated restore verification > backup report honestly marks Railway volume backups UNVERIFIED [0.81ms]
+(pass) railway routes — recovery control plane (read-only default) > operation registry is listed with the read-only flag [0.34ms]
+(pass) railway routes — recovery control plane (read-only default) > authorization is REFUSED while read-only (403) — production stays untouched [1.23ms]
+(pass) railway routes — recovery control plane (read-only default) > diagnose -> plan flow works end-to-end on the mocked transport [3.07ms]
+
+tests/integration/phase4-backups.test.ts:
+(pass) logical backup export + verification (Phase 4) > export requires owner (401) [3.46ms]
+(pass) logical backup export + verification (Phase 4) > export returns file, tables, rows and a PASSED isolated restore verification [11.60ms]
+(pass) logical backup export + verification (Phase 4) > repeated exports produce distinct files and respect retention (prune oldest) [31.19ms]
+(pass) backup status view (Phase 4) > logical layer reports schedule, lastRun, RPO/RTO and bounded history [1.45ms]
+
+tests/integration/railway-live.test.ts:
+(skip) railway LIVE read-only verification > credentials authenticate against the real API
+(skip) railway LIVE read-only verification > full infrastructure discovery returns real resources with honest classifications
+(skip) railway LIVE read-only verification > monitoring reports all five dimensions independently against real infrastructure
+(skip) railway LIVE read-only verification > usage/cost intelligence separates measured from estimated values
+(skip) railway LIVE read-only verification > live schema matches the committed contract baseline (no BREAKING drift)
+(skip) railway LIVE read-only verification > previous token status is probed without exposing it (rotation evidence)
+(skip) railway LIVE read-only verification > read-only mode refuses ALL mutations even with owner principal (production protection)
+(skip) railway LIVE read-only verification > rate-limit headers are captured from live responses
+
+tests/integration/auth-lockout.test.ts:
+(pass) lockout activation (fail-closed while the window is live) > budget exhaustion locks the identity: 401s then 429 with a truthful Retry-After [1.55ms]
+(pass) lockout activation (fail-closed while the window is live) > public routes are never collateral damage of an identity lockout [0.79ms]
+(pass) boundary timestamps > mid-window: locked with the exact remaining seconds in Retry-After [0.24ms]
+(pass) boundary timestamps > at 59,999 ms: still locked, Retry-After === 1 [0.18ms]
+(pass) boundary timestamps > at exactly 60,000 ms: UNLOCKED — the fix (pre-fix this stayed 429 forever) [0.24ms]
+(pass) valid credentials after expiry — the F-2.4A-01 scenario (70 s real-equivalent) > valid credential works again after the window — WITHOUT any restart [0.76ms]
+(pass) valid credentials after expiry — the F-2.4A-01 scenario (70 s real-equivalent) > invalid credentials after expiry: honest 401, fresh window, then re-lock at the limit [0.51ms]
+(pass) multiple client identities + global backstop (identity rotation is bounded) > a locked identity does not lock others; exhausting the GLOBAL budget locks everyone (protected only) [1.47ms]
+(pass) concurrent requests cannot corrupt lockout state > 20 parallel requests during a live lockout: all 429, none leak through [1.59ms]
+(pass) concurrent requests cannot corrupt lockout state > 30 parallel failures from one identity: exactly the limit passes as 401, the rest 429 (no over-counting, no lost updates) [2.52ms]
+(pass) restart behaviour > a fresh instance (process-restart stand-in) starts unlocked; the SAME instance recovers by expiry — no restart needed [3.01ms]
+(pass) memory cleanup (unbounded in-memory bucket growth is prevented) > a 12,000-identity flood is reclaimed once stale; maps return to a tiny size [4368.48ms]
+
+tests/integration/backup-hardening.test.ts:
+(pass) encryption codec (BackupService) > encrypt/decrypt round-trip preserves full verifiability [7.29ms]
+(pass) encryption codec (BackupService) > encrypted artifact contains NO plaintext (canary never leaks) [4.10ms]
+(pass) encryption codec (BackupService) > tamper (ciphertext modified) -> fail closed with a clear cause [2.83ms]
+(pass) encryption codec (BackupService) > tamper (GCM tag modified, ciphertext hash still valid) -> fail closed at decryption [3.04ms]
+(pass) encryption codec (BackupService) > wrong key -> fail closed (never a garbage plaintext) [2.60ms]
+(pass) encryption codec (BackupService) > peekBackupFormat distinguishes the three shapes [4.92ms]
+(pass) encryption codec (BackupService) > parseBackupEncryptionKey: unset / invalid / valid [0.11ms]
+(pass) scheduler with a key: verified encrypted on-volume + off-volume artifacts > export: 201, encrypted on-volume, verified encrypted off-volume, no tmp residue [8.04ms]
+(pass) scheduler with a key: verified encrypted on-volume + off-volume artifacts > listing: encrypted history, honest off-volume RPO state, no alerts [0.13ms]
+(pass) scheduler with a key: verified encrypted on-volume + off-volume artifacts > download route: ciphertext bytes + x-backup-encrypted: true + integrity headers [1.14ms]
+(pass) scheduler with a key: verified encrypted on-volume + off-volume artifacts > restore route: decrypts, verifies in isolation, never touches the live store [9.13ms]
+(pass) scheduler with a key: verified encrypted on-volume + off-volume artifacts > CLI restores the off-volume ENCRYPTED artifact; without the key it fails closed (exit 2) [197.17ms]
+(pass) scheduler with a key: verified encrypted on-volume + off-volume artifacts > tampered ON-VOLUME artifact is rejected by the restore route (400, before any write) [6.64ms]
+(pass) scheduler with a key: verified encrypted on-volume + off-volume artifacts > stale *.json.tmp junk (crashed-run remnants) is swept on the next run [5.61ms]
+(pass) scheduler with a key: verified encrypted on-volume + off-volume artifacts > two-sided retention: both dirs converge to the retention count [51.57ms]
+{"ts":"2026-11-15T20:36:36.140Z","level":"error","component":"backup","message":"backup alert: OFFSITE_SKIPPED_NO_KEY","data":{"detail":"NEXUS_BACKUP_OFFSITE_DIR is configured but no valid NEXUS_BACKUP_ENCRYPTION_KEY is set; off-volume copy SKIPPED — a plaintext artifact must never leave the volume"}}
+(pass) no valid key: off-volume refused, on-volume continues, alert + webhook delivered > export succeeds on-volume (plaintext v1) but off-volume is REFUSED — never plaintext off-volume [6.67ms]
+(pass) no valid key: off-volume refused, on-volume continues, alert + webhook delivered > alert recorded in the listing; RPO honestly says off-volume disabled [0.12ms]
+(pass) no valid key: off-volume refused, on-volume continues, alert + webhook delivered > webhook delivered with a sanitized payload (no key material, no URL echoed) [25.48ms]
+{"ts":"2026-11-15T20:36:36.171Z","level":"error","component":"backup","message":"backup alert: OFFSITE_KEY_INVALID","data":{"detail":"NEXUS_BACKUP_ENCRYPTION_KEY must be exactly 64 hex characters (32 bytes); off-volume copies are disabled until it is fixed (on-volume backups continue as plaintext v1 with this alert visible)"}}
+(pass) no valid key: off-volume refused, on-volume continues, alert + webhook delivered > invalid key shape (set but malformed) is fail-visible at boot [4.94ms]
+(pass) snapshot transaction (F-2.4A-06 concurrent-write protection) > export reads run inside ONE read transaction (SAVEPOINT/RELEASE wrap) [1.60ms]
+(pass) snapshot transaction (F-2.4A-06 concurrent-write protection) > uncommitted rows from a second connection are never exported (WAL isolation) [7.93ms]
+
+12 tests skipped:
+(skip) model fabric — cloudflare LIVE (skipped without credentials) > live cloudflare completion round-trip
+(skip) model fabric — cloudflare LIVE (skipped without credentials) > live fabric routing uses cloudflare when available
+(skip) JARVIS orchestrator via API > live objective flows through the state machine to completion
+(skip) NAEI via API (Scenario B shape) > engineering task: analysis, implementation, independent verification
+(skip) railway LIVE read-only verification > credentials authenticate against the real API
+(skip) railway LIVE read-only verification > full infrastructure discovery returns real resources with honest classifications
+(skip) railway LIVE read-only verification > monitoring reports all five dimensions independently against real infrastructure
+(skip) railway LIVE read-only verification > usage/cost intelligence separates measured from estimated values
+(skip) railway LIVE read-only verification > live schema matches the committed contract baseline (no BREAKING drift)
+(skip) railway LIVE read-only verification > previous token status is probed without exposing it (rotation evidence)
+(skip) railway LIVE read-only verification > read-only mode refuses ALL mutations even with owner principal (production protection)
+(skip) railway LIVE read-only verification > rate-limit headers are captured from live responses
+
+ 239 pass
+ 12 skip
+ 0 fail
+ 1194 expect() calls
+Ran 251 tests across 29 files. [8.58s]

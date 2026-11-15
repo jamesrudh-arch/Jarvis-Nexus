@@ -1,0 +1,396 @@
+{
+  "startedAt": "2026-11-15T20:38:06.767Z",
+  "finishedAt": "2026-11-15T20:38:07.031Z",
+  "base": "http://localhost:41849",
+  "branch": "stage2.4b-remediation (post-fix)",
+  "summary": {
+    "pass": 35,
+    "fail": 0,
+    "total": 35
+  },
+  "results": [
+    {
+      "id": "APP-01",
+      "category": "application",
+      "expected": "ready + /health 200",
+      "actual": {
+        "status": 200,
+        "overall": "degraded"
+      },
+      "pass": true
+    },
+    {
+      "id": "APP-02",
+      "category": "application",
+      "expected": "200 service JSON incl railway subsystem",
+      "actual": {
+        "status": 200,
+        "service": "NEXUS API",
+        "subsystems": [
+          "0",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7"
+        ]
+      },
+      "pass": true
+    },
+    {
+      "id": "APP-03",
+      "category": "application",
+      "expected": "200, 6 components",
+      "actual": {
+        "status": 200,
+        "components": 6
+      },
+      "pass": true
+    },
+    {
+      "id": "APP-04",
+      "category": "application",
+      "expected": "200 + counters",
+      "actual": {
+        "status": 200,
+        "counters": true
+      },
+      "pass": true
+    },
+    {
+      "id": "APP-05",
+      "category": "application",
+      "expected": "all public routes 2xx",
+      "actual": {
+        "/": 200,
+        "/health": 200,
+        "/health/detailed": 200,
+        "/jarvis/tasks": 200,
+        "/mcp/servers": 200,
+        "/metrics": 200,
+        "/models/catalog": 200,
+        "/models/providers": 200,
+        "/models/health": 200,
+        "/naei/agents": 200,
+        "/naei/tasks": 200,
+        "/world/events": 200,
+        "/world/residents": 200,
+        "/world/state": 200,
+        "/world/layout": 200
+      },
+      "pass": true
+    },
+    {
+      "id": "APP-06",
+      "category": "application",
+      "expected": "404",
+      "actual": {
+        "status": 404,
+        "bodyLen": 13
+      },
+      "pass": true
+    },
+    {
+      "id": "APP-07",
+      "category": "application",
+      "expected": "malformed JSON 400",
+      "actual": {
+        "status": 400
+      },
+      "pass": true
+    },
+    {
+      "id": "AUTH-01",
+      "category": "authentication",
+      "expected": "anon consequential 401",
+      "actual": {
+        "status": 401
+      },
+      "pass": true
+    },
+    {
+      "id": "AUTH-02",
+      "category": "authentication",
+      "expected": "valid key 201",
+      "actual": {
+        "status": 201
+      },
+      "pass": true
+    },
+    {
+      "id": "AUTH-03",
+      "category": "authentication",
+      "expected": "invalid key 401",
+      "actual": {
+        "status": 401
+      },
+      "pass": true
+    },
+    {
+      "id": "AUTH-04",
+      "category": "authentication",
+      "expected": "case-mangled scheme 401",
+      "actual": {
+        "status": 401
+      },
+      "pass": true
+    },
+    {
+      "id": "AUTH-05",
+      "category": "authentication",
+      "expected": "key in query string NOT accepted",
+      "actual": {
+        "status": 401
+      },
+      "pass": true
+    },
+    {
+      "id": "AUTH-06",
+      "category": "authentication",
+      "expected": "all /railway/* owner-gated 401 anon",
+      "actual": {
+        "/railway/discovery": 401,
+        "/railway/usage": 401,
+        "/railway/credentials/status": 401,
+        "/railway/events": 401,
+        "/railway/audit": 401,
+        "/railway/backups": 401,
+        "/railway/reconciliation": 401,
+        "/railway/operations": 401
+      },
+      "pass": true
+    },
+    {
+      "id": "SEC-01",
+      "category": "security",
+      "expected": "allowed origin echoed",
+      "actual": {
+        "acao": "https://allowed.example"
+      },
+      "pass": true
+    },
+    {
+      "id": "SEC-02",
+      "category": "security",
+      "expected": "disallowed origin no ACAO",
+      "actual": {
+        "acao": null
+      },
+      "pass": true
+    },
+    {
+      "id": "SEC-03",
+      "category": "security",
+      "expected": "preflight 200/204 + echo",
+      "actual": {
+        "status": 204,
+        "acao": "https://allowed.example"
+      },
+      "pass": true
+    },
+    {
+      "id": "SEC-03b",
+      "category": "security",
+      "expected": "preflight bad origin no ACAO",
+      "actual": {
+        "acao": null
+      },
+      "pass": true
+    },
+    {
+      "id": "SEC-04",
+      "category": "security",
+      "expected": "webhook bad secret 401",
+      "actual": {
+        "status": 401
+      },
+      "pass": true
+    },
+    {
+      "id": "SEC-05",
+      "category": "security",
+      "expected": "webhook invalid payload 400",
+      "actual": {
+        "status": 400
+      },
+      "pass": true
+    },
+    {
+      "id": "SEC-06",
+      "category": "security",
+      "expected": "stale timestamp (replay) 401",
+      "actual": {
+        "status": 401
+      },
+      "pass": true
+    },
+    {
+      "id": "SEC-07",
+      "category": "security",
+      "expected": "traversal filename 400",
+      "actual": {
+        "status": 400
+      },
+      "pass": true
+    },
+    {
+      "id": "SEC-08",
+      "category": "security",
+      "expected": "restore bad filename 400",
+      "actual": {
+        "status": 400
+      },
+      "pass": true
+    },
+    {
+      "id": "DB-01",
+      "category": "database",
+      "expected": "migrations 3 applied",
+      "actual": {
+        "detail": "migrations applied: 3"
+      },
+      "pass": true
+    },
+    {
+      "id": "DB-02",
+      "category": "database",
+      "expected": "world state served",
+      "actual": {
+        "status": 200,
+        "world": "NEXUS Prime"
+      },
+      "pass": true
+    },
+    {
+      "id": "DB-03",
+      "category": "database",
+      "expected": "write + read-back",
+      "actual": {
+        "before": 0,
+        "after": 1800000,
+        "increased": true
+      },
+      "pass": true
+    },
+    {
+      "id": "DB-04",
+      "category": "database",
+      "expected": "backup export verified",
+      "actual": {
+        "status": 201,
+        "rowsMatched": true,
+        "encrypted": true
+      },
+      "pass": true
+    },
+    {
+      "id": "DR-01",
+      "category": "disaster-recovery",
+      "expected": "encrypted on-volume artifact",
+      "actual": {
+        "encryptedMarker": true,
+        "listingEncrypted": true,
+        "canaryLeak": false
+      },
+      "pass": true
+    },
+    {
+      "id": "DR-02",
+      "category": "disaster-recovery",
+      "expected": "verified encrypted off-volume copy",
+      "actual": {
+        "offVolumeFile": "/tmp/stage24b_matrix_1794775086752/offsite/2026-11-15T20-38-06-827Z.json",
+        "byteIdentical": true,
+        "offsiteCopied": true
+      },
+      "pass": true
+    },
+    {
+      "id": "DR-03",
+      "category": "disaster-recovery",
+      "expected": "encrypted restore round-trip through the real route",
+      "actual": {
+        "status": 200,
+        "encrypted": true,
+        "restored": true,
+        "contentAllMatch": true
+      },
+      "pass": true
+    },
+    {
+      "id": "DR-04",
+      "category": "disaster-recovery",
+      "expected": "no-key fail-visible skip (off-volume refused + alert)",
+      "actual": {
+        "status": 201,
+        "onVolumeOk": true,
+        "onVolumeEncrypted": false,
+        "offsiteCopied": false,
+        "offsiteError": "no valid encryption key configured",
+        "offsiteDirEmpty": true,
+        "alertVisible": true,
+        "rpoHonest": true
+      },
+      "pass": true
+    },
+    {
+      "id": "SEC-09",
+      "category": "security",
+      "expected": "429 + Retry-After at 241st request",
+      "actual": {
+        "first429": 241,
+        "retryAfter": "60",
+        "counts": {
+          "200": 240,
+          "429": 1
+        }
+      },
+      "pass": true
+    },
+    {
+      "id": "SEC-10",
+      "category": "security",
+      "expected": "61st fail 429; valid key locked; other IP unaffected",
+      "actual": {
+        "s61": 429,
+        "lockedValid": 429,
+        "otherIp": 200
+      },
+      "pass": true
+    },
+    {
+      "id": "SEC-11",
+      "category": "security",
+      "expected": "health readable while locked",
+      "actual": {
+        "pub": 200
+      },
+      "pass": true
+    },
+    {
+      "id": "SEC-12",
+      "category": "security",
+      "expected": "valid credential works after expiry WITHOUT restart (F-2.4A-01 fix)",
+      "actual": {
+        "recovered": 200,
+        "honest401": 401
+      },
+      "pass": true
+    },
+    {
+      "id": "SEC-13",
+      "category": "security",
+      "expected": "global backstop: identity rotation cannot exceed the shared budget",
+      "actual": {
+        "freshIdentityValidStatus": 429,
+        "scope": "global",
+        "retryAfter": "60",
+        "afterWindow": 200,
+        "pubStill": 200
+      },
+      "pass": true
+    }
+  ]
+}

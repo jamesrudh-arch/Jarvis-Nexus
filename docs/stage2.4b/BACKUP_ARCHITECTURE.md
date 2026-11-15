@@ -70,3 +70,16 @@ d. **Two-sided retention**: both directories are pruned to `NEXUS_BACKUP_RETENTI
 | `listLogicalBackups()` | adds `encryption`, `alerting`, `alerts`, `history[].encrypted`, `rpo.offVolume` — additive; all previous fields preserved |
 | `GET /railway/backups` | unchanged shape plus the additive listing fields |
 | Existing on-volume plaintext v1 artifacts | still restorable (decoder handles both formats forever) |
+
+---
+
+## 7. Re-verification note (session 2, 2026-11-15T20:38Z)
+
+The entire architecture above was re-verified on a fresh checkout in a second
+independent session: the 239-test suite (including the 21-test hardening suite and
+the updated G-03) passed again 239/12/0/1194; the off-volume restore drill passed
+again with zero content mismatches (RTO this pass 100 ms — CLI 88 ms + boot 2 ms);
+boot smoke on the remediation tree: `/health` 200, `migrations applied: 3`. Full
+command record with exit codes: `evidence/reverify/SESSION_RECORD.md`. The
+first-pass version of this document is preserved verbatim at
+`appendix/first-pass/BACKUP_ARCHITECTURE.md`.

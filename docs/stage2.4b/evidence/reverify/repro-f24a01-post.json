@@ -1,0 +1,21 @@
+{
+  "probe": "F-2.4A-01 reproduction",
+  "label": "post-fix",
+  "startedAt": "2026-11-15T20:36:45.126Z",
+  "identity": "10.24.42.10",
+  "authFailLimit": 60,
+  "windowMs": 60000,
+  "waitMs": 70000,
+  "first60All401": true,
+  "attempt61WrongKey": 429,
+  "validKeyWhileLocked": 429,
+  "publicHealthWhileLocked": 200,
+  "retryAfterWhileLocked": 60,
+  "waitedMs": 70006,
+  "after70sValidKey": 200,
+  "after70sWrongKey": 401,
+  "after70sPublicHealth": 200,
+  "freshInstanceValidKey": 200,
+  "finishedAt": "2026-11-15T20:37:55.170Z",
+  "verdict": "DEFECT NOT REPRODUCED: valid credential accepted after window expiry"
+}
