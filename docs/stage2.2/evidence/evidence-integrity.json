@@ -1,0 +1,266 @@
+{
+  "format": "stage2.2-evidence-integrity",
+  "generatedAt": "2026-11-15T12:07:32.067Z",
+  "generatedAtHead": "632324151feeddf0d7c5003410c8aa9d80846333",
+  "mode": "verify",
+  "checksTotal": 50,
+  "checksFailed": 0,
+  "verdict": "PASS",
+  "checks": [
+    {
+      "check": "report exists: PHASE0_BASELINE.md",
+      "pass": true,
+      "detail": 2611
+    },
+    {
+      "check": "report exists: SECURITY_REMEDIATION.md",
+      "pass": true,
+      "detail": 2570
+    },
+    {
+      "check": "report exists: RECOVERY_MANIFEST.md",
+      "pass": true,
+      "detail": 2947
+    },
+    {
+      "check": "report exists: GIT_RECONCILIATION.md",
+      "pass": true,
+      "detail": 2619
+    },
+    {
+      "check": "report exists: DEPLOYMENT_READINESS.md",
+      "pass": true,
+      "detail": 2445
+    },
+    {
+      "check": "report exists: BACKUP_VERIFICATION.md",
+      "pass": true,
+      "detail": 2710
+    },
+    {
+      "check": "report exists: VISUAL_APP_RESTORATION.md",
+      "pass": true,
+      "detail": 2344
+    },
+    {
+      "check": "recovery manifest exists and parses",
+      "pass": true
+    },
+    {
+      "check": "evidence directory holds >= 6 non-empty artifacts",
+      "pass": true,
+      "detail": [
+        "auth-matrix.json",
+        "backup-export-verify.json",
+        "registry-validation.txt",
+        "auth-matrix-gen.log",
+        "route-parity.txt",
+        "backup-export-verify-gen.log",
+        "git-state.json",
+        "typecheck.txt"
+      ]
+    },
+    {
+      "check": "JSON parses: auth-matrix.json",
+      "pass": true
+    },
+    {
+      "check": "schema auth-matrix.json: generatedAt + generatedAtHead present",
+      "pass": true,
+      "detail": {
+        "generatedAt": "2026-11-15T12:06:38.994Z",
+        "generatedAtHead": "63232415"
+      }
+    },
+    {
+      "check": "timestamp auth-matrix.json: parseable and not future-dated",
+      "pass": true,
+      "detail": "2026-11-15T12:06:38.994Z"
+    },
+    {
+      "check": "git ref auth-matrix.json: generatedAtHead exists",
+      "pass": true
+    },
+    {
+      "check": "verdict auth-matrix.json: PASS recorded",
+      "pass": true,
+      "detail": "PASS — 35/35 owner-gated routes returned 401 unauthenticated and with a wrong key; webhook refused without a valid secret; 7/7 public routes answered 200 (matrix not over-broad)"
+    },
+    {
+      "check": "JSON parses: backup-export-verify.json",
+      "pass": true
+    },
+    {
+      "check": "schema backup-export-verify.json: generatedAt + generatedAtHead present",
+      "pass": true,
+      "detail": {
+        "generatedAt": "2026-11-15T12:06:39.176Z",
+        "generatedAtHead": "63232415"
+      }
+    },
+    {
+      "check": "timestamp backup-export-verify.json: parseable and not future-dated",
+      "pass": true,
+      "detail": "2026-11-15T12:06:39.176Z"
+    },
+    {
+      "check": "git ref backup-export-verify.json: generatedAtHead exists",
+      "pass": true
+    },
+    {
+      "check": "verdict backup-export-verify.json: PASS recorded",
+      "pass": true,
+      "detail": "PASS — export through the real production path; app's own isolated restore-verify matched all 24 tables (48 rows)"
+    },
+    {
+      "check": "JSON parses: git-state.json",
+      "pass": true
+    },
+    {
+      "check": "schema git-state.json: generatedAt + generatedAtHead present",
+      "pass": true,
+      "detail": {
+        "generatedAt": "2026-11-15T12:06:38Z",
+        "generatedAtHead": "63232415"
+      }
+    },
+    {
+      "check": "timestamp git-state.json: parseable and not future-dated",
+      "pass": true,
+      "detail": "2026-11-15T12:06:38Z"
+    },
+    {
+      "check": "git ref git-state.json: generatedAtHead exists",
+      "pass": true
+    },
+    {
+      "check": "manifest artifact resolves with exact byte count: RP-2.2-001-T",
+      "pass": true,
+      "detail": {
+        "path": "docs/stage2.2/recovery/jarvis-nexus-unpushed-delta-20261115-115932.bundle",
+        "expected": 14669434,
+        "actual": 14669434
+      }
+    },
+    {
+      "check": "manifest artifact sha256 matches: RP-2.2-001-T",
+      "pass": true,
+      "detail": "docs/stage2.2/recovery/jarvis-nexus-unpushed-delta-20261115-115932.bundle"
+    },
+    {
+      "check": "manifest carries explicit lostPoints classification",
+      "pass": true,
+      "detail": [
+        "RP-STAGE2-001",
+        "RP-FC-001",
+        "RP-2.1-001",
+        "RP-2.1-002"
+      ]
+    },
+    {
+      "check": "RP-2.2-001 durable artifact complete: RP-2.2-001-T",
+      "pass": true,
+      "detail": "docs/stage2.2/recovery/jarvis-nexus-unpushed-delta-20261115-115932.bundle"
+    },
+    {
+      "check": "report carries REGENERATED banner: PHASE0_BASELINE.md",
+      "pass": true
+    },
+    {
+      "check": "report carries REGENERATED banner: SECURITY_REMEDIATION.md",
+      "pass": true
+    },
+    {
+      "check": "report carries REGENERATED banner: RECOVERY_MANIFEST.md",
+      "pass": true
+    },
+    {
+      "check": "report carries REGENERATED banner: GIT_RECONCILIATION.md",
+      "pass": true
+    },
+    {
+      "check": "report carries REGENERATED banner: DEPLOYMENT_READINESS.md",
+      "pass": true
+    },
+    {
+      "check": "report carries REGENERATED banner: BACKUP_VERIFICATION.md",
+      "pass": true
+    },
+    {
+      "check": "report carries REGENERATED banner: VISUAL_APP_RESTORATION.md",
+      "pass": true
+    },
+    {
+      "check": "no silent substitution: auth-matrix.json",
+      "pass": true
+    },
+    {
+      "check": "no silent substitution: backup-export-verify.json",
+      "pass": true
+    },
+    {
+      "check": "no silent substitution: registry-validation.txt",
+      "pass": true
+    },
+    {
+      "check": "no silent substitution: auth-matrix-gen.log",
+      "pass": true
+    },
+    {
+      "check": "no silent substitution: route-parity.txt",
+      "pass": true
+    },
+    {
+      "check": "no silent substitution: backup-export-verify-gen.log",
+      "pass": true
+    },
+    {
+      "check": "no silent substitution: git-state.json",
+      "pass": true
+    },
+    {
+      "check": "no silent substitution: typecheck.txt",
+      "pass": true
+    },
+    {
+      "check": "registered file still present: route-parity.txt",
+      "pass": true,
+      "detail": "registered but missing"
+    },
+    {
+      "check": "registered file still present: registry-validation.txt",
+      "pass": true,
+      "detail": "registered but missing"
+    },
+    {
+      "check": "registered file still present: backup-export-verify.json",
+      "pass": true,
+      "detail": "registered but missing"
+    },
+    {
+      "check": "registered file still present: typecheck.txt",
+      "pass": true,
+      "detail": "registered but missing"
+    },
+    {
+      "check": "registered file still present: git-state.json",
+      "pass": true,
+      "detail": "registered but missing"
+    },
+    {
+      "check": "registered file still present: auth-matrix-gen.log",
+      "pass": true,
+      "detail": "registered but missing"
+    },
+    {
+      "check": "registered file still present: auth-matrix.json",
+      "pass": true,
+      "detail": "registered but missing"
+    },
+    {
+      "check": "registered file still present: backup-export-verify-gen.log",
+      "pass": true,
+      "detail": "registered but missing"
+    }
+  ]
+}

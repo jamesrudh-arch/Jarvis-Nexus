@@ -1,0 +1,33 @@
+HEAD (6323241, local main): 56 routes (32 GET + 24 POST)
+origin/main (41092a3, production): 33 routes (20 GET + 13 POST)
+
+delta on deploy: +23 / -0
+  + GET  /railway/audit
+  + GET  /railway/backups
+  + GET  /railway/credentials/status
+  + GET  /railway/discovery
+  + GET  /railway/events
+  + GET  /railway/investigations/:id
+  + GET  /railway/operations
+  + GET  /railway/reconciliation
+  + GET  /railway/recovery/plans/:id
+  + GET  /railway/status
+  + GET  /railway/usage
+  + GET  /world/layout
+  + POST /models/verify
+  + POST /railway/backup/export
+  + POST /railway/contract/check
+  + POST /railway/diagnose
+  + POST /railway/intelligence
+  + POST /railway/monitor
+  + POST /railway/reconcile
+  + POST /railway/recovery/authorize
+  + POST /railway/recovery/execute
+  + POST /railway/recovery/plan
+  + POST /railway/webhook
+
+OK: 56 routes at HEAD, additive-only vs production, no duplicates
+
+generatedAt: 2026-11-15T12:06:36Z
+generatedAtHead: 632324151feeddf0d7c5003410c8aa9d80846333
+generator: scripts/stage21_route_parity.py (committed Stage 2.1 successor of the phase-0 parity script)

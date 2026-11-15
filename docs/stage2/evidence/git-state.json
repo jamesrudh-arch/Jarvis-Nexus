@@ -1,0 +1,22 @@
+{
+  "format": "stage2-git-state",
+  "generatedAt": "2026-11-15T12:06:38Z",
+  "generatedAtHead": "632324151feeddf0d7c5003410c8aa9d80846333",
+  "generator": "inline in scripts/stage22_evidence_generate.sh (git is the primary source)",
+  "head": "632324151feeddf0d7c5003410c8aa9d80846333",
+  "branches": {
+    "main": "632324151feeddf0d7c5003410c8aa9d80846333",
+    "railway-intelligence": "60d4fddd294b7a73b5ec245c67443de7cb890664",
+    "stage2-pre-restructure": "f4c5a41cc5d39553964ad6a4372684a79bb0a6be"
+  },
+  "originMain": "41092a33fa13abf5acee64e8f1f3167fe46dadcd",
+  "unpushedCount": "24",
+  "workingTreeClean": false,
+  "stashCount": 0,
+  "mergesInRange": "",
+  "linearHistory": true,
+  "authors": [
+    "JARVIS NEXUS Engineering <engineering@jarvis-nexus.local>",
+    "Z User <z@container>"
+  ]
+}

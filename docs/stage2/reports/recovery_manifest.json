@@ -1,0 +1,48 @@
+{
+  "format": "nexus-recovery-manifest",
+  "version": 2,
+  "regeneratedAt": "2026-11-15T12:10:00Z",
+  "regeneratedBy": "Stage 2.2 Workstream B (V4 evidence reconstruction)",
+  "supersedesNote": "The original Stage 2 recovery manifest (RP-STAGE2-001) was lost with the wiped gitignored download/ tree (Stage 2.1 finding BLK-07a). This manifest is a NEW state of record, not a reproduction. From Stage 2.2 onward it lives in a git-tracked location.",
+  "artifacts": [
+    {
+      "id": "RP-2.2-001-T",
+      "kind": "git bundle (thin: main ^origin/main; prerequisite 41092a3 which GitHub already holds)",
+      "path": "docs/stage2.2/recovery/jarvis-nexus-unpushed-delta-20261115-115932.bundle",
+      "bytes": 14669434,
+      "sha256": "767cb59921ca1a52f2ec517b4cd73112d230b08366bb02ff0d1e7c58f679f699",
+      "head": "c6d4b5199326e69f26d4c30f638c6f3155f768f1",
+      "covers": "all 22 unpushed commits as of RP-2.2-001 creation (before the Stage 2.2 remediation commits)",
+      "restoreProof": "fetched into an origin/main-only base clone -> restored-main == main (c6d4b51), 514 files, tree identical",
+      "durability": "git-tracked (committed) — survives environment wipes"
+    }
+  ],
+  "volatileArtifacts": [
+    {
+      "id": "RP-2.2-001-F",
+      "kind": "git bundle (full state, all refs, 99859489 bytes)",
+      "path": "download/stage2.2/recovery/jarvis-nexus-full-20261115-115932.bundle",
+      "sha256": "e7983957c7f8bedb027f91d81a9ef75badae9f80ec605189b790d0094e823332",
+      "durability": "NON-DURABLE mirror (gitignored download/) — never counted as protection"
+    },
+    {
+      "id": "LEGACY-A",
+      "kind": "lineA_production.bundle — 1 unreachable smart-failover commit",
+      "path": "download/stage2.2/recovery/legacy/lineA_production.bundle",
+      "durability": "NON-DURABLE mirror; original in /tmp; disposition = owner decision D-2.1-04"
+    },
+    {
+      "id": "LEGACY-B",
+      "kind": "lineB_NEXUS_WORLD_V2.bundle — 18 unreachable commits",
+      "path": "download/stage2.2/recovery/legacy/lineB_NEXUS_WORLD_V2.bundle",
+      "durability": "NON-DURABLE mirror; original in /tmp; disposition = owner decision D-2.1-04"
+    }
+  ],
+  "lostPoints": {
+    "RP-STAGE2-001": "artifacts lost with wiped download/ (Stage 2.1 finding; definition survives in committed scripts/stage2_recovery_manifest.py)",
+    "RP-FC-001": "untraceable — no reference anywhere in repo or history (Stage 2.1 finding)",
+    "RP-2.1-001": "created by Stage 2.1 audit; artifacts lost AGAIN with the second download/ wipe (Stage 2.2 finding N-2.2-01)",
+    "RP-2.1-002": "same as RP-2.1-001 (N-2.2-01)"
+  },
+  "rule": "Only git-tracked files survive environment wipes (proven twice). Artifacts in this manifest's artifacts array must be existing, committed, checksummed files; oversized mirrors are recorded under volatileArtifacts and never counted as protection."
+}

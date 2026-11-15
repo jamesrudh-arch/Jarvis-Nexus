@@ -1,0 +1,50 @@
+{
+  "requirements": {
+    "total": 112,
+    "byStatus": {
+      "VERIFIED": 79,
+      "BLOCKED": 10,
+      "TESTING": 6,
+      "DISCOVERED": 11,
+      "SPECIFIED": 5,
+      "DEPLOYED": 1
+    }
+  },
+  "technologies": {
+    "total": 14,
+    "byDecision": {
+      "ADAPTED": 3,
+      "EXTRACTED": 1,
+      "ADOPTED": 6,
+      "REJECTED": 3,
+      "CANDIDATE": 1
+    }
+  },
+  "ledgerTasks": 17
+}
+WARNINGS:
+requirement ARCH-6 not referenced by any ledger task
+requirement MCP-4 not referenced by any ledger task
+requirement INFRA-2 not referenced by any ledger task
+requirement SEC-4 not referenced by any ledger task
+requirement SEC-5 not referenced by any ledger task
+requirement SEC-6 not referenced by any ledger task
+requirement VIS-1 not referenced by any ledger task
+requirement VIS-2 not referenced by any ledger task
+requirement VIS-3 not referenced by any ledger task
+requirement VIS-4 not referenced by any ledger task
+requirement VOI-1 not referenced by any ledger task
+requirement VOI-2 not referenced by any ledger task
+requirement BKP-1 not referenced by any ledger task
+requirement VER-1 not referenced by any ledger task
+requirement ARC-RT-1 not referenced by any ledger task
+TECH-3: BLOCKED but carries evidence (documentation-only is fine)
+TECH-4: BLOCKED but carries evidence (documentation-only is fine)
+MCP-4: BLOCKED but carries evidence (documentation-only is fine)
+INFRA-23: BLOCKED but carries evidence (documentation-only is fine)
+INFRA-24: BLOCKED but carries evidence (documentation-only is fine)
+VIS-4: BLOCKED but carries evidence (documentation-only is fine)
+registries consistent ✔
+exitCode=0
+generatedAt: 2026-11-15T12:06:36Z
+generatedAtHead: 632324151feeddf0d7c5003410c8aa9d80846333

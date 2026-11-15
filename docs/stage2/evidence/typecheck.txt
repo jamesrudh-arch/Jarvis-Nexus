@@ -1,0 +1,4 @@
+$ tsc --noEmit
+exitCode=0
+generatedAt: 2026-11-15T12:06:37Z
+generatedAtHead: 632324151feeddf0d7c5003410c8aa9d80846333

@@ -6,7 +6,7 @@ extracts every route registration of the form `app.get('/path'` /
 `app.post('/path'` (allowing whitespace) from apps/nexus-api/src/index.ts,
 plus multi-line registrations, and reports the total + GET/POST breakdown.
 
-Expected at HEAD cd46b69: 56 routes (32 GET + 24 POST).
+Expected at HEAD (current): 56 routes (32 GET + 24 POST).
 Expected on production (origin/main @ 41092a3): 33 routes.
 """
 import re
@@ -46,7 +46,9 @@ def main():
         print(f"{name}: {len(routes)} routes ({len(gets)} GET + {len(posts)} POST)")
         return set(routes)
 
-    head_set = summarize("HEAD (cd46b69, local main)", head_routes)
+    import subprocess as _sp
+    _head_short = _sp.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip()
+    head_set = summarize(f"HEAD ({_head_short}, local main)", head_routes)
     origin_set = summarize("origin/main (41092a3, production)", origin_routes)
 
     added = sorted(head_set - origin_set)

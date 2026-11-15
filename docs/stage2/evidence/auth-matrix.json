@@ -1,0 +1,307 @@
+{
+  "format": "stage2-auth-matrix",
+  "generatedAt": "2026-11-15T12:06:38.994Z",
+  "generatedAtHead": "632324151feeddf0d7c5003410c8aa9d80846333",
+  "generator": "scripts/stage22_auth_matrix.ts (route list derived from source regex, probed on an isolated app instance)",
+  "sourceFile": "apps/nexus-api/src/index.ts",
+  "ownerGatedRouteCount": 35,
+  "requireOwnerRawCount": 37,
+  "matrix": [
+    {
+      "method": "POST",
+      "path": "/jarvis/objectives",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "POST",
+      "path": "/jarvis/tasks/:id/approve",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "POST",
+      "path": "/naei/tasks",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "POST",
+      "path": "/naei/execute",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "POST",
+      "path": "/naei/tasks/:id/approve",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "POST",
+      "path": "/naei/tasks/:id/commit",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "POST",
+      "path": "/world/advance",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "POST",
+      "path": "/world/snapshot",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "POST",
+      "path": "/world/construct",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "POST",
+      "path": "/mcp/register",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "POST",
+      "path": "/mcp/invoke",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/mcp/audit",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/memory/:scope",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "POST",
+      "path": "/memory",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "POST",
+      "path": "/memory/:scope/consolidate",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "POST",
+      "path": "/models/verify",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "POST",
+      "path": "/railway/monitor",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/railway/discovery",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/railway/usage",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/railway/credentials/status",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "POST",
+      "path": "/railway/contract/check",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/railway/events",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/railway/audit",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/railway/backups",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "POST",
+      "path": "/railway/backup/export",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "POST",
+      "path": "/railway/reconcile",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/railway/reconciliation",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "POST",
+      "path": "/railway/diagnose",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/railway/investigations/:id",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "POST",
+      "path": "/railway/intelligence",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/railway/operations",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "POST",
+      "path": "/railway/recovery/plan",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "POST",
+      "path": "/railway/recovery/authorize",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "POST",
+      "path": "/railway/recovery/execute",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/railway/recovery/plans/:id",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    }
+  ],
+  "webhook": {
+    "note": "POST /railway/webhook is secret-authenticated (not owner-gated); probed separately",
+    "anonymousStatus": 503,
+    "wrongSecretStatus": 503,
+    "pass": true
+  },
+  "publicRoutesNegativeControl": [
+    {
+      "path": "/",
+      "expect": 200,
+      "got": 200,
+      "ok": true
+    },
+    {
+      "path": "/health",
+      "expect": 200,
+      "got": 200,
+      "ok": true
+    },
+    {
+      "path": "/health/detailed",
+      "expect": 200,
+      "got": 200,
+      "ok": true
+    },
+    {
+      "path": "/metrics",
+      "expect": 200,
+      "got": 200,
+      "ok": true
+    },
+    {
+      "path": "/world/state",
+      "expect": 200,
+      "got": 200,
+      "ok": true
+    },
+    {
+      "path": "/world/layout",
+      "expect": 200,
+      "got": 200,
+      "ok": true
+    },
+    {
+      "path": "/railway/status",
+      "expect": 200,
+      "got": 200,
+      "ok": true
+    }
+  ],
+  "verdict": "PASS — 35/35 owner-gated routes returned 401 unauthenticated and with a wrong key; webhook refused without a valid secret; 7/7 public routes answered 200 (matrix not over-broad)"
+}

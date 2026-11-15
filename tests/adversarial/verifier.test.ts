@@ -218,8 +218,13 @@ describe("V3 API contract validation", () => {
 // V4 — EVIDENCE PROVENANCE
 // ---------------------------------------------------------------------------
 describe("V4 evidence provenance", () => {
+  // Stage 2.2 Workstream B: the evidence tree moved from gitignored download/
+  // (wiped twice — Stage 2.1 finding F-COM-07, Stage 2.2 finding N-2.2-01) to
+  // the GIT-TRACKED docs/stage2/ tree. Assertion strength is unchanged; only
+  // the durable location changed. Evidence is honestly regenerated (dated,
+  // never backdated); unrecoverable history is classified in the reports.
   test("stage 2 evidence directory exists with non-empty artifacts", () => {
-    const dir = "download/stage2/evidence";
+    const dir = "docs/stage2/evidence";
     expect(existsSync(dir)).toBe(true);
     const files = readdirSync(dir).filter((f) => !f.startsWith("."));
     expect(files.length).toBeGreaterThanOrEqual(6);
@@ -230,13 +235,13 @@ describe("V4 evidence provenance", () => {
 
   test("stage 2 reports exist (each phase documented)", () => {
     const reports = [
-      "download/stage2/reports/PHASE0_BASELINE.md",
-      "download/stage2/reports/SECURITY_REMEDIATION.md",
-      "download/stage2/reports/RECOVERY_MANIFEST.md",
-      "download/stage2/reports/GIT_RECONCILIATION.md",
-      "download/stage2/reports/DEPLOYMENT_READINESS.md",
-      "download/stage2/reports/BACKUP_VERIFICATION.md",
-      "download/stage2/reports/VISUAL_APP_RESTORATION.md",
+      "docs/stage2/reports/PHASE0_BASELINE.md",
+      "docs/stage2/reports/SECURITY_REMEDIATION.md",
+      "docs/stage2/reports/RECOVERY_MANIFEST.md",
+      "docs/stage2/reports/GIT_RECONCILIATION.md",
+      "docs/stage2/reports/DEPLOYMENT_READINESS.md",
+      "docs/stage2/reports/BACKUP_VERIFICATION.md",
+      "docs/stage2/reports/VISUAL_APP_RESTORATION.md",
     ];
     for (const r of reports) {
       expect(existsSync(r)).toBe(true);
@@ -245,7 +250,7 @@ describe("V4 evidence provenance", () => {
   });
 
   test("recovery point artifacts exist matching the manifest", () => {
-    const manifest = JSON.parse(readFileSync("download/stage2/reports/recovery_manifest.json", "utf8"));
+    const manifest = JSON.parse(readFileSync("docs/stage2/reports/recovery_manifest.json", "utf8"));
     for (const a of manifest.artifacts) {
       expect(existsSync(a.path)).toBe(true);
       expect(statSync(a.path).size).toBeGreaterThan(1000);
