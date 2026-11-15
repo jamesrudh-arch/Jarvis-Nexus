@@ -1,13 +1,13 @@
 {
   "format": "stage2-backup-export-verify",
-  "generatedAt": "2026-11-15T12:17:20.815Z",
-  "generatedAtHead": "abd7af5544ca75154380a4c0c1d3d8d43fd915f8",
+  "generatedAt": "2026-11-15T12:21:50.794Z",
+  "generatedAtHead": "4011aead16adf8e3b5c9c6cb6930fdc631adaafe",
   "generator": "scripts/stage22_backup_verify.ts (real app path: POST /railway/backup/export on an isolated instance)",
   "export": {
     "status": 201,
-    "file": "/tmp/stage22_backup_verify_1794745040785/ws/backups/2026-11-15T12-17-20-809Z.json",
+    "file": "/tmp/stage22_backup_verify_1794745310763/ws/backups/2026-11-15T12-21-50-788Z.json",
     "bytes": 53631,
-    "sha256": "19293b9342c81d8423df96ab79d5d613e4182004f324a8b7dfbdeb6dbd0a0af7",
+    "sha256": "1e6b0c67b006f4769ed07f732c2581ca41cd156f2f2cf4db572d1f64e87ac1a7",
     "tables": 24,
     "rows": 48,
     "appOwnVerify": {

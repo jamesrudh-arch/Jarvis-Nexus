@@ -6,7 +6,7 @@ extracts every route registration of the form `app.get('/path'` /
 `app.post('/path'` (allowing whitespace) from apps/nexus-api/src/index.ts,
 plus multi-line registrations, and reports the total + GET/POST breakdown.
 
-Expected at HEAD (current): 56 routes (32 GET + 24 POST).
+Invariant (Stage 2.2): additive-only vs production, zero removals, zero duplicates (the total may grow; it may never shrink or duplicate).
 Expected on production (origin/main @ 41092a3): 33 routes.
 """
 import re
@@ -63,13 +63,16 @@ def main():
     if dupes:
         print(f"\nWARNING duplicate registrations: {sorted(set(dupes))}")
         sys.exit(1)
-    if len(head_set) != 56:
-        print(f"\nFAIL: expected 56 routes at HEAD, found {len(head_set)}")
-        sys.exit(1)
+    # Stage 2.2: the invariant is STRUCTURAL, not a frozen total. A hard-coded
+    # count (56) broke when the Stage 2.2 restore/download routes landed (58) —
+    # growth is legitimate; removals and duplicates are not.
     if removed:
         print("\nFAIL: deployment would remove routes")
         sys.exit(1)
-    print("\nOK: 56 routes at HEAD, additive-only vs production, no duplicates")
+    if len(origin_set) != 33:
+        print(f"\nFAIL: production contract drifted: expected 33 routes, found {len(origin_set)}")
+        sys.exit(1)
+    print(f"\nOK: {len(head_set)} routes at HEAD, additive-only vs production, no duplicates")
 
 
 if __name__ == "__main__":

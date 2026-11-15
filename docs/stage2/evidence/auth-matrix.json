@@ -1,7 +1,7 @@
 {
   "format": "stage2-auth-matrix",
-  "generatedAt": "2026-11-15T12:17:20.640Z",
-  "generatedAtHead": "abd7af5544ca75154380a4c0c1d3d8d43fd915f8",
+  "generatedAt": "2026-11-15T12:21:50.613Z",
+  "generatedAtHead": "4011aead16adf8e3b5c9c6cb6930fdc631adaafe",
   "generator": "scripts/stage22_auth_matrix.ts (route list derived from source regex, probed on an isolated app instance)",
   "sourceFile": "apps/nexus-api/src/index.ts",
   "ownerGatedRouteCount": 37,
