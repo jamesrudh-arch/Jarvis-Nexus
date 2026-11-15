@@ -60,7 +60,7 @@ export type { ReconciliationReport, Discrepancy, DiscrepancyKind } from "./recon
 export { RailwayAuditLog, RAILWAY_AUDIT_CATEGORIES } from "./audit";
 export type { AuditEntryInput, StoredAuditRecord, RailwayAuditCategory } from "./audit";
 export { BackupService, NEXUS_TABLES } from "./backup";
-export type { BackupReport, LogicalBackupDoc, RestoreVerification, RestoreReport } from "./backup";
+export type { BackupReport, LogicalBackupDoc, EncryptedBackupDoc, EncryptionKeyInfo, RestoreVerification, RestoreReport } from "./backup";
 export { RailwayIntelligence } from "./intelligence";
 export type { IntelligenceAnswer, CanonicalQuestion } from "./intelligence";
 export { RAILWAY_THREAT_MODEL, threatModelSummary } from "./threat-model";

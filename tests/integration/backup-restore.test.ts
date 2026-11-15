@@ -13,7 +13,7 @@
 import { describe, expect, test, beforeAll, afterAll } from "bun:test";
 import { mkdirSync, rmSync, existsSync, readFileSync, writeFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { createApp } from "@nexus/api";
 import { NexusDb } from "@nexus/db";
 import { BackupService, type LogicalBackupDoc } from "@nexus/railway";
@@ -184,21 +184,30 @@ describe("G-03 minimal off-site export", () => {
     expect((await req(`/railway/backup/export/whatever.json/download`)).status).toBe(401);
   });
 
-  test("NEXUS_BACKUP_OFFSITE_DIR: export copies the newest backup off-volume", async () => {
+  test("NEXUS_BACKUP_OFFSITE_DIR: export copies the newest backup off-volume (Stage 2.4B: encrypted only)", async () => {
     const offsite = `${TMP}/offsite-dir`;
+    // Stage 2.4B (F-2.4A-06): off-volume copies require a valid encryption key —
+    // a plaintext artifact must never leave the volume. TEST-ONLY key generated
+    // at runtime for this run; never a committed secret.
+    const keyHex = randomBytes(32).toString("hex");
     const app2 = createApp({
       dbPath: `${TMP}/offsite-live/nexus.db`,
       workspaceRoot: `${TMP}/offsite-live/ws`,
-      env: { ...env, NEXUS_BACKUP_OFFSITE_DIR: offsite },
+      env: { ...env, NEXUS_BACKUP_OFFSITE_DIR: offsite, NEXUS_BACKUP_ENCRYPTION_KEY: keyHex },
     });
     const r2 = await app2.app.request(new Request("http://br.test/railway/backup/export", { method: "POST", headers: { Authorization: `Bearer ${OWNER_KEY}` } }));
     expect(r2.status).toBe(201);
     const body2 = ((await r2.json()) as any).data;
     expect(body2.offsite.copied).toBe(true);
+    expect(body2.offsite.encrypted).toBe(true);
+    expect(body2.encrypted).toBe(true);
     const srcName = body2.file.split("/").pop()!;
     const dest = join(offsite, srcName);
     expect(existsSync(dest)).toBe(true);
+    // the off-volume copy is byte-identical to the on-volume artifact
     expect(sha(readFileSync(dest))).toBe(sha(readFileSync(body2.file)));
+    // and it is an ENCRYPTED envelope, not a plaintext doc
+    expect(readFileSync(dest).subarray(0, 320).toString("utf8")).toContain("nexus-logical-backup-encrypted");
     // /railway/backups is fail-closed without Railway credentials by design
     // (live discovery required): assert the honest 502 rather than pretending.
     const status = await app2.app.request(new Request("http://br.test/railway/backups", { headers: { Authorization: `Bearer ${OWNER_KEY}` } }));

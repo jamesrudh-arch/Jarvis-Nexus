@@ -1,7 +1,13 @@
 /**
  * STAGE 2.2 / WORKSTREAM C2 — PRODUCTIZED RESTORE CLI (G-01 repair).
+ * Hardened Stage 2.4B (F-2.4A-06): understands BOTH artifact formats — the
+ * plaintext `nexus-logical-backup` v1 and the AES-256-GCM encrypted
+ * `nexus-logical-backup-encrypted` v1. The decryption key comes from the
+ * NEXUS_BACKUP_ENCRYPTION_KEY environment variable ONLY — never a CLI
+ * argument (arguments leak into process listings and shell history).
  *
  * Usage:
+ *   NEXUS_BACKUP_ENCRYPTION_KEY=<64-hex> \
  *   bun run restore --file <backup.json> --db <target.sqlite> [--confirm-destructive]
  *
  * Safety design (directive §C2: "Never allow an ordinary verification
@@ -16,6 +22,8 @@
  *   4. Post-restore verification is built in: per-table content SHA-256
  *      (rowid-ordered) + PRAGMA foreign_key_check; the CLI fails (exit 1)
  *      if verification fails.
+ *   5. Tampered or wrongly-keyed ENCRYPTED backups fail closed (exit 2) at
+ *      decode time — integrity is checked before any write.
  */
 import { parseArgs } from "node:util";
 import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
@@ -43,16 +51,22 @@ const dbPath = values.db as string;
 const confirmDestructive = values["confirm-destructive"] === true;
 
 if (!existsSync(file)) fail(2, `restore: backup file not found: ${file}`);
-const doc: LogicalBackupDoc = (() => {
+
+// decode (transparently handles encrypted artifacts; fail-closed on tampering)
+const encKeyInfo = BackupService.parseBackupEncryptionKey(process.env.NEXUS_BACKUP_ENCRYPTION_KEY);
+const decoded = (() => {
   try {
-    return JSON.parse(readFileSync(file, "utf8")) as LogicalBackupDoc;
+    const parsed: unknown = JSON.parse(readFileSync(file, "utf8"));
+    return { ok: true as const, value: BackupService.decodeBackupDoc(parsed, encKeyInfo.configured && encKeyInfo.key ? encKeyInfo.key : null) };
   } catch (e) {
-    return fail(2, `restore: backup file is not valid JSON: ${String(e)}`);
+    return { ok: false as const, error: e };
   }
 })();
-if (doc.format !== "nexus-logical-backup" || doc.version !== 1) {
-  fail(2, `restore: unsupported backup format ${String(doc.format)} v${String(doc.version)}`);
-}
+const doc: LogicalBackupDoc = decoded.ok
+  ? decoded.value.doc
+  : fail(2, `restore: backup could not be decoded (encrypted backups need a valid NEXUS_BACKUP_ENCRYPTION_KEY; tampered artifacts fail closed): ${decoded.error instanceof Error ? decoded.error.message : String(decoded.error)}`);
+const encrypted: boolean = decoded.ok ? decoded.value.encrypted : false;
+if (encrypted) console.log("restore: encrypted artifact decoded (AES-256-GCM, integrity verified)");
 
 const targetExists = existsSync(dbPath);
 const targetNonEmpty = targetExists && statSync(dbPath).size > 0;
@@ -82,6 +96,7 @@ try {
   const log = {
     cli: "bun run restore",
     argv: { file, db: dbPath, confirmDestructive },
+    encrypted,
     startedAt,
     finishedAt: new Date().toISOString(),
     wallClockMs: Date.now() - t0,
