@@ -1,0 +1,43 @@
+{
+  "format": "stage2.3-bundle-restore-proof",
+  "generatedAt": "2026-11-15T15:17:58Z",
+  "generatedAtHead": "61a7c5bafa13a8e0920252aae4d46fd37b3d9bf5",
+  "generator": "scripts/stage23_evidence_record.py (records the session's strict restoration test)",
+  "method": "git init fresh repo; fetch ONLY 41092a3 (origin/main) from the working repo (object store then holds exactly what GitHub holds); fetch each committed thin bundle into it; compare heads and tree ids",
+  "reproduction": "see RECOVERY_AND_ROLLBACK_REPORT.md section 2 for the exact command sequence",
+  "base": {
+    "simulatedGithubState": "41092a33fa13abf5acee64e8f1f3167fe46dadcd",
+    "note": "this is exactly the commit GitHub holds as origin/main (verified via unauthenticated API this session)"
+  },
+  "restorations": [
+    {
+      "recoveryPoint": "RP-2.2-001",
+      "bundle": "docs/stage2.2/recovery/jarvis-nexus-unpushed-delta-20261115-115932.bundle",
+      "bundleSha256Verified": "767cb59921ca1a52f2ec517b4cd73112d230b08366bb02ff0d1e7c58f679f699",
+      "gitBundleVerify": "PASS (requires 41092a3, provides refs/heads/main)",
+      "restoredHead": "c6d4b5199326e69f26d4c30f638c6f3155f768f1",
+      "expectedHead": "c6d4b5199326e69f26d4c30f638c6f3155f768f1",
+      "restoredTreeId": "30899cb779320806c828926a8bec82920f4f57b1",
+      "repoTreeId": "30899cb779320806c828926a8bec82920f4f57b1",
+      "treesIdentical": true,
+      "verdict": "PASS"
+    },
+    {
+      "recoveryPoint": "RP-2.2-002",
+      "bundle": "docs/stage2.2/recovery/jarvis-nexus-unpushed-delta-20261115-122627.bundle",
+      "bundleSha256Verified": "12fe669c89a54948f9c201e82cbf2c5c1fab4c4789ec7c6342eba3c3b77394ee",
+      "gitBundleVerify": "PASS (requires 41092a3, provides refs/heads/main)",
+      "restoredHead": "396ccaf454a17444ae6fb048aafce9ecad569522",
+      "expectedHead": "396ccaf454a17444ae6fb048aafce9ecad569522",
+      "restoredTreeId": "8c46bd901d8b7debe4a4c0061062bdaf7f80406e",
+      "repoTreeId": "8c46bd901d8b7debe4a4c0061062bdaf7f80406e",
+      "commitsRestoredOnTopOfOriginMain": 29,
+      "treesIdentical": true,
+      "verdict": "PASS"
+    }
+  ],
+  "coverageGap": {
+    "description": "RP-2.2-002 covers through 396ccaf. The Stage 2.2 tail commits fad4c69 + b93a879, the Stage 2.3 remediation commit 61a7c5b and all Stage 2.3 documentation commits are NOT inside any committed bundle (a bundle cannot contain the commit that commits it).",
+    "closure": "RP-2.3-001 is created at the end of Stage 2.3 covering the final tip; the only remaining tail is the RP-2.3-001 artifact commit itself (deterministically reproducible by re-running scripts/stage22_rp_create.sh RP-2.3-001)."
+  }
+}

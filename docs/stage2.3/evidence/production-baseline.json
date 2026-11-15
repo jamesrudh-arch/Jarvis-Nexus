@@ -1,0 +1,102 @@
+{
+  "format": "stage2.3-production-baseline",
+  "generatedAt": "2026-11-15T15:17:58Z",
+  "generatedAtHead": "61a7c5bafa13a8e0920252aae4d46fd37b3d9bf5",
+  "generator": "scripts/stage23_evidence_record.py (records this session's read-only probes)",
+  "mode": "READ-ONLY (GET requests + unauthenticated API queries only; no production mutation)",
+  "publicUrl": "https://jarvis-nexus-production.up.railway.app",
+  "probes": [
+    {
+      "id": "PB-01",
+      "objective": "production health",
+      "method": "GET /health (anonymous)",
+      "timestamp": "2026-11-15T15:11:42Z",
+      "httpStatus": 200,
+      "result": {
+        "overall": "healthy",
+        "database": "healthy (migrations applied: 2)",
+        "model_fabric": "healthy (cloudflare:available, openai:available, echo:available)",
+        "mcp_gateway": "healthy (io.nexus.test-tools registered, 3 tools)",
+        "world_simulation": "healthy (1 world, 8 residents)",
+        "naei": "healthy (10 agents)"
+      },
+      "interpretation": "production runs the OLD code: migrations 2/2 (candidate adds migration 3); route surface 33 (candidate: 58)",
+      "verdict": "PASS (healthy, pre-candidate state confirmed)"
+    },
+    {
+      "id": "PB-02",
+      "objective": "auth boundary on deployed code",
+      "method": "POST /jarvis/objectives (anonymous)",
+      "timestamp": "2026-11-15T15:12Z",
+      "httpStatus": 401,
+      "result": "unauthorized",
+      "verdict": "PASS (fail-closed auth is live in production)"
+    },
+    {
+      "id": "PB-03",
+      "objective": "candidate-only routes absent in production",
+      "method": "GET /memory, POST /models/verify, GET /railway/backups",
+      "timestamp": "2026-11-15T15:11-15:12Z",
+      "httpStatus": 404,
+      "result": "404 on all three (routes do not exist in the deployed code)",
+      "verdict": "PASS (consistent with the 33-route production inventory)"
+    },
+    {
+      "id": "PB-04",
+      "objective": "CORS posture of deployed code",
+      "method": "response headers of GET /health",
+      "timestamp": "2026-11-15T15:12:39Z",
+      "result": "access-control-allow-origin: * (old permissive posture); server: railway-hikari; edge: hkg1",
+      "verdict": "RECORDED (candidate changes this to least-privilege allowlist; owner must set CORS_ALLOWED_ORIGINS for cross-origin browser clients - decision B-02)"
+    },
+    {
+      "id": "PB-05",
+      "objective": "deployment mechanism",
+      "method": "committed Railway inspect reports (NEXUS_WORLD/reports/) + unauthenticated GitHub API",
+      "result": "Railway service is repo-connected to jamesrudh-arch/Jarvis-Nexus branch main (deployments auto-triggered from pushes; latest recorded SUCCESS deployment 8128960e at 2026-11-13T17:57Z, commit 'Living residents (directive s4)'); origin/main advanced to 41092a3 at 2026-11-14T12:58Z",
+      "verdict": "RECORDED (CRITICAL: if auto-deploy remains enabled, an authorized push IS the deployment - the two-step protocol requires the owner to disable auto-deploy first or explicitly accept push=deploy)"
+    },
+    {
+      "id": "PB-06",
+      "objective": "rollback target",
+      "method": "GitHub API runs list",
+      "result": "41092a33 completed success at 2026-11-14T12:58:05Z (run 43597371050, all 8 steps green, NO adversarial gate step - it enters CI with the candidate)",
+      "verdict": "RECORDED (known-good commit = 41092a3, green CI, currently pushed)"
+    }
+  ],
+  "githubActionsHistory": [
+    {
+      "run": 43597371050,
+      "sha": "41092a33",
+      "conclusion": "success",
+      "createdAt": "2026-11-14T12:58:05Z",
+      "note": "current origin/main tip"
+    },
+    {
+      "run": 43597251609,
+      "sha": "269d422d",
+      "conclusion": "success",
+      "createdAt": "2026-11-14T12:56:31Z"
+    },
+    {
+      "run": 43582769931,
+      "sha": "8e58a259",
+      "conclusion": "failure",
+      "createdAt": "2026-11-14T09:54:54Z"
+    },
+    {
+      "run": 43582618722,
+      "sha": "af8bf00f",
+      "conclusion": "failure",
+      "createdAt": "2026-11-14T09:52:52Z"
+    },
+    {
+      "run": 43581647079,
+      "sha": "945a78dd",
+      "conclusion": "failure",
+      "createdAt": "2026-11-14T09:40:17Z",
+      "note": "the commit Stage 2.1 audited; the run EXECUTED (further confirming the refuted BLK-01 branch-filter claim); failures were real test failures, fixed by 269d422d/41092a3"
+    }
+  ],
+  "repoVisibility": "public (unauthenticated API observation works; Actions observable post-push at 60 req/hr)"
+}

@@ -1,0 +1,8 @@
+# STAGE 2.3 evidence checksums (authoritative tree: docs/stage2.3/)
+# Standard sha256sum format: verify from repo root with
+#   sha256sum -c docs/stage2.3/SHA256SUMS
+# initial record 2026-11-15T15:17:58Z at head 61a7c5bafa13a8e0920252aae4d46fd37b3d9bf5 (final record taken after all stage documents exist)
+605898aa08b91164b6248dfe3c8f790f79f82e4b14d814bef4def939659142b4  docs/stage2.3/evidence/bundle-restore-proof.json
+85ea47f6f966654aa48389fb01fa84af634c1cec67767cbe9c9b7a894e5b13a1  docs/stage2.3/evidence/git-state-stage23.json
+6b753a43ab82657d6f8e5c3ada776d9f9d4b5730dcb98dd9296100b31f3a172b  docs/stage2.3/evidence/production-baseline.json
+bb66ebce420ed797315d88cf02b9338c6fd273bd8deac7b186300b1865ecee81  docs/stage2.3/evidence/revalidation-summary.json

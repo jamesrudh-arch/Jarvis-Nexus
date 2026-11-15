@@ -11,7 +11,12 @@
 set -euo pipefail
 cd /home/z/my-project
 
-RP_ID=${1:?usage: bash scripts/stage22_rp_create.sh <RP-ID e.g. RP-2.2-00N>}
+RP_ID=${1:?usage: bash scripts/stage22_rp_create.sh <RP-ID e.g. RP-2.2-00N> [purpose]}
+# Stage 2.3 fix: purpose (arg 2, default below) and unpushedCommits are now
+# DYNAMIC — the Stage 2.2 version hardcoded "22 unpushed commits" and a
+# Stage-2.2-specific purpose into every manifest it wrote.
+PURPOSE=${2:-"Durable protection for the unpushed series at ${RP_ID} creation (Stage 2.1 lesson: only git-tracked files survive environment wipes)"}
+UNPUSHED=$(git rev-list --count origin/main..main)
 TS=$(date -u +%Y%m%d-%H%M%S)
 DL=download/stage2.2/recovery
 DOCS=docs/stage2.2/recovery
@@ -30,17 +35,39 @@ echo "[2/7] full-state bundle (mirror only — non-durable)"
 git bundle create "$FULL" --all
 git bundle verify "$FULL"
 
-echo "[3/7] legacy /tmp bundles -> download mirror (non-durable; originals remain in /tmp)"
-cp -n /tmp/my-project/download/backups/lineA_production.bundle download/stage2.2/recovery/legacy/ || true
-cp -n /tmp/my-project/download/backups/lineB_NEXUS_WORLD_V2.bundle download/stage2.2/recovery/legacy/ || true
+echo "[3/7] legacy /tmp bundles -> download mirror (non-durable; skipped when originals are gone)"
+cp -n /tmp/my-project/download/backups/lineA_production.bundle download/stage2.2/recovery/legacy/ 2>/dev/null || true
+cp -n /tmp/my-project/download/backups/lineB_NEXUS_WORLD_V2.bundle download/stage2.2/recovery/legacy/ 2>/dev/null || true
+# Stage 2.3 fix: legacy entries enter the manifest ONLY when the mirror file
+# actually exists (the /tmp originals were wiped by the environment recycle —
+# recording sha256 "" for missing files would be fabricated metadata).
+# LEGACY_ENTRIES is a comma-prefixed JSON fragment with REAL newlines; the
+# heredoc expands it directly (no printf/sed gymnastics).
+LEGACY_ENTRIES=""
+if [ -f download/stage2.2/recovery/legacy/lineA_production.bundle ]; then
+  LEGACY_A_SHA=$(sha256sum download/stage2.2/recovery/legacy/lineA_production.bundle | awk '{print $1}')
+  LEGACY_ENTRIES="$LEGACY_ENTRIES,
+    {
+      \"id\": \"LEGACY-A\", \"kind\": \"legacy bundle lineA_production (1 unreachable smart-failover commit)\",
+      \"path\": \"download/stage2.2/recovery/legacy/lineA_production.bundle\", \"sha256\": \"$LEGACY_A_SHA\",
+      \"durability\": \"NON-DURABLE mirror; durable preservation = owner decision D-2.1-04\"
+    }"
+fi
+if [ -f download/stage2.2/recovery/legacy/lineB_NEXUS_WORLD_V2.bundle ]; then
+  LEGACY_B_SHA=$(sha256sum download/stage2.2/recovery/legacy/lineB_NEXUS_WORLD_V2.bundle | awk '{print $1}')
+  LEGACY_ENTRIES="$LEGACY_ENTRIES,
+    {
+      \"id\": \"LEGACY-B\", \"kind\": \"legacy bundle lineB_NEXUS_WORLD_V2 (18 unreachable commits)\",
+      \"path\": \"download/stage2.2/recovery/legacy/lineB_NEXUS_WORLD_V2.bundle\", \"sha256\": \"$LEGACY_B_SHA\",
+      \"durability\": \"NON-DURABLE mirror; durable preservation = owner decision D-2.1-04\"
+    }"
+fi
 
 echo "[4/7] checksums"
 THIN_SHA=$(sha256sum "$THIN" | awk '{print $1}')
 THIN_BYTES=$(stat -c%s "$THIN")
 FULL_SHA=$(sha256sum "$FULL" | awk '{print $1}')
 FULL_BYTES=$(stat -c%s "$FULL")
-LEGACY_A_SHA=$(sha256sum download/stage2.2/recovery/legacy/lineA_production.bundle | awk '{print $1}')
-LEGACY_B_SHA=$(sha256sum download/stage2.2/recovery/legacy/lineB_NEXUS_WORLD_V2.bundle | awk '{print $1}')
 
 echo "[5/7] independent restore-proof of the thin bundle (base = origin/main objects ONLY)"
 PROOF=/tmp/rp22_clone_proof_$$
@@ -73,7 +100,7 @@ cat > "$MANIFEST" <<EOF
 {
   "recoveryPointId": "${RP_ID}",
   "created": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-  "purpose": "Durable protection for the 22 unpushed commits BEFORE Stage 2.2 remediation begins (Stage 2.1 lesson: only git-tracked files survive environment wipes; RP-2.1-001/002 artifacts in gitignored download/ were wiped again)",
+  "purpose": "$PURPOSE",
   "durableArtifacts": [
     {
       "id": "${RP_ID}-T",
@@ -92,29 +119,15 @@ cat > "$MANIFEST" <<EOF
       "path": "download/stage2.2/recovery/$(basename "$FULL")",
       "bytes": $FULL_BYTES,
       "sha256": "$FULL_SHA",
-      "durability": "NON-DURABLE (gitignored download/; wiped by environment twice — see Stage 2.1 + Stage 2.2 reconstruction)"
-    },
-    {
-      "id": "LEGACY-A",
-      "kind": "legacy bundle lineA_production (1 unreachable smart-failover commit)",
-      "path": "download/stage2.2/recovery/legacy/lineA_production.bundle",
-      "sha256": "$LEGACY_A_SHA",
-      "durability": "NON-DURABLE mirror; original in /tmp/my-project/download/backups/; durable preservation = owner decision D-2.1-04"
-    },
-    {
-      "id": "LEGACY-B",
-      "kind": "legacy bundle lineB_NEXUS_WORLD_V2 (18 unreachable commits)",
-      "path": "download/stage2.2/recovery/legacy/lineB_NEXUS_WORLD_V2.bundle",
-      "sha256": "$LEGACY_B_SHA",
-      "durability": "NON-DURABLE mirror; original in /tmp; durable preservation = owner decision D-2.1-04"
-    }
+      "durability": "NON-DURABLE (gitignored download/; wiped by environment repeatedly — see Stage 2.1/2.2/2.3 records)"
+    }${LEGACY_ENTRIES}
   ],
-  "coveredState": { "main": "$HEAD_SHA", "originMain": "$ORIGIN_SHA", "unpushedCommits": 22 },
+  "coveredState": { "main": "$HEAD_SHA", "originMain": "$ORIGIN_SHA", "unpushedCommits": $UNPUSHED },
   "priorPoints": {
-    "RP-2.1-001": "artifacts LOST AGAIN (download/ wiped after Stage 2.1 session) — recorded as Stage 2.2 finding N-2.2-01",
-    "RP-2.1-002": "artifacts LOST AGAIN (same wipe) — N-2.2-01",
-    "RP-FC-001": "untraceable (Stage 2.1 finding, stands)",
-    "RP-STAGE2-001": "artifacts lost (Stage 2.1 finding, stands)"
+    "RP-2.2-001": "valid for the pre-remediation state (c6d4b51); manifest in this directory",
+    "RP-2.2-002": "valid for the Stage 2.2 documentation-package state (396ccaf); manifest in this directory",
+    "RP-2.1-001 / RP-2.1-002": "artifacts lost to download/ wipes (finding N-2.2-01)",
+    "RP-FC-001 / RP-STAGE2-001": "untraceable / lost (Stage 2.1 findings, stand)"
   }
 }
 EOF
