@@ -6,7 +6,7 @@ set -u
 cd /home/z/my-project
 DIR=/tmp/nexus-adv
 rm -rf "$DIR"; mkdir -p "$DIR"
-OUT=/home/z/my-project/download/stage2/final-closure/evidence/adversarial-probe.txt
+OUT=/home/z/my-project/docs/stage2.2/evidence/final-closure-probe.txt   # Stage 2.2: durable git-tracked location
 BASE=http://127.0.0.1:4502
 KEY=adv-test-key-12345
 WHSEC=adv-webhook-secret-abcdef
@@ -24,10 +24,44 @@ echo "=== ADVERSARIAL PROBE MATRIX — $(date -u +%Y-%m-%dT%H:%M:%SZ) ==="
 echo "Posture: OWNER_KEY set, RAILWAY_WEBHOOK_SECRET set, CORS allowlist=[https://allowed.example], no cloud creds, backups off"
 echo
 
-echo "--- [A1] Unauthorized access: 19 owner-gated routes WITHOUT key (expect all 401, JSON error) ---"
-ROUTES="POST /jarvis/objectives POST /jarvis/tasks/x/approve POST /naei/tasks POST /naei/execute POST /naei/tasks/x/approve POST /naei/tasks/x/commit POST /world/advance POST /world/snapshot POST /world/construct POST /mcp/register POST /mcp/invoke GET /mcp/audit GET /memory/global POST /memory POST /memory/global/consolidate POST /models/verify GET /railway/credentials/status POST /railway/monitor GET /railway/events GET /railway/audit GET /railway/backups POST /railway/backup/export POST /railway/reconcile GET /railway/reconciliation POST /railway/diagnose GET /railway/operations POST /railway/recovery/plan POST /railway/webhook"
+# BLK-08 repair (Stage 2.2): array of "METHOD PATH" pairs. The pre-repair
+# `for spec in $ROUTES` iterated WORDS, so method tokens became URLs and the
+# probe's own recorded output said "19 correct / 36 unexpected" — invalid
+# evidence cited as a passing auth matrix in cd46b69's message.
+ROUTES=(
+  "POST /jarvis/objectives"
+  "POST /jarvis/tasks/x/approve"
+  "POST /naei/tasks"
+  "POST /naei/execute"
+  "POST /naei/tasks/x/approve"
+  "POST /naei/tasks/x/commit"
+  "POST /world/advance"
+  "POST /world/snapshot"
+  "POST /world/construct"
+  "POST /mcp/register"
+  "POST /mcp/invoke"
+  "GET /mcp/audit"
+  "GET /memory/global"
+  "POST /memory"
+  "POST /memory/global/consolidate"
+  "POST /models/verify"
+  "GET /railway/credentials/status"
+  "POST /railway/monitor"
+  "GET /railway/events"
+  "GET /railway/audit"
+  "GET /railway/backups"
+  "POST /railway/backup/export"
+  "POST /railway/reconcile"
+  "GET /railway/reconciliation"
+  "POST /railway/diagnose"
+  "GET /railway/operations"
+  "POST /railway/recovery/plan"
+  "POST /railway/backup/restore"
+  "GET /railway/backup/export/x/download"
+  "POST /railway/webhook"
+)
 PASS=0; FAIL=0
-for spec in $ROUTES; do
+for spec in "${ROUTES[@]}"; do
   M=${spec%% *}; P=${spec##* }
   if [ "$M" = "GET" ]; then CODE=$(curl -s -o /dev/null -w "%{http_code}" "$BASE$P"); else CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" -d '{}' "$BASE$P"); fi
   # webhook is secret-authenticated not owner-gated; treat separately below
@@ -61,6 +95,7 @@ echo "A3 result: $LEAK leaks detected (expect 0)"
 echo
 echo "--- [A4] Malformed request handling (expect 400, never 500) ---"
 echo -n "  invalid JSON to /jarvis/objectives:  "; curl -s -o /dev/null -w "%{http_code}\n" -X POST -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d '{invalid json' "$BASE/jarvis/objectives"
+echo "--- [A1] Unauthorized access: ${#ROUTES[@]} owner-gated routes WITHOUT key (expect all 401; BLK-08 repaired Stage 2.2) ---"
 echo -n "  wrong types to /world/advance:       "; curl -s -o /dev/null -w "%{http_code}\n" -X POST -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d '{"ticks":"not-a-number"}' "$BASE/world/advance"
 echo -n "  missing body fields:                 "; curl -s -o /dev/null -w "%{http_code}\n" -X POST -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d '{}' "$BASE/world/construct"
 echo -n "  100KB junk payload:                  "; python3 -c "print('{\"objective\":\"' + 'A'*100000 + '\"}')" > /tmp/nexus-adv/big.json; curl -s -o /dev/null -w "%{http_code}\n" -X POST -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d @/tmp/nexus-adv/big.json "$BASE/jarvis/objectives"

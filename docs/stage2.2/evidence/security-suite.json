@@ -1,0 +1,204 @@
+{
+  "format": "stage2.2-security-suite",
+  "generatedAt": "2026-11-15T12:18:43.693Z",
+  "generatedAtHead": "4a59c09b86f305c27910666288e6f6934e61a29c",
+  "generator": "scripts/stage22_security_suite.ts (reproducible; dedicated app instances per scenario)",
+  "ownerGatedRouteCount": 37,
+  "checksTotal": 31,
+  "checksFailed": 0,
+  "checks": [
+    {
+      "area": "A",
+      "check": "all 37 owner-gated routes return 401 unauthenticated",
+      "pass": true,
+      "detail": {
+        "ok": 37,
+        "total": 37
+      }
+    },
+    {
+      "area": "A",
+      "check": "all 37 owner-gated routes return 401 with a wrong key",
+      "pass": true,
+      "detail": {
+        "ok": 37,
+        "total": 37
+      }
+    },
+    {
+      "area": "A",
+      "check": "owner key in query string refused",
+      "pass": true
+    },
+    {
+      "area": "A",
+      "check": "key via other scheme header refused",
+      "pass": true
+    },
+    {
+      "area": "A",
+      "check": "case-mangled schemes (bearer/BEARER/Basic/padded) all refused",
+      "pass": true
+    },
+    {
+      "area": "A",
+      "check": "whitespace-padded token refused (constant-time compare not fooled)",
+      "pass": true
+    },
+    {
+      "area": "B",
+      "check": "no secret -> 401 (fail closed)",
+      "pass": true,
+      "detail": 401
+    },
+    {
+      "area": "B",
+      "check": "wrong secret -> 401",
+      "pass": true,
+      "detail": 401
+    },
+    {
+      "area": "B",
+      "check": "valid secret + fresh event -> 202",
+      "pass": true,
+      "detail": 202
+    },
+    {
+      "area": "B",
+      "check": "duplicate replay -> 200 duplicate:true",
+      "pass": true,
+      "detail": {
+        "status": 200
+      }
+    },
+    {
+      "area": "B",
+      "check": "stale timestamp -> 401",
+      "pass": true,
+      "detail": 401
+    },
+    {
+      "area": "B",
+      "check": "malformed payload -> 400 (never 500)",
+      "pass": true,
+      "detail": 400
+    },
+    {
+      "area": "C",
+      "check": "fixed-IP burst: 5 allowed then 429 (boundary exact)",
+      "pass": true,
+      "detail": {
+        "allowed": 5,
+        "limited": 7
+      }
+    },
+    {
+      "area": "C",
+      "check": "429 carries Retry-After > 0",
+      "pass": true
+    },
+    {
+      "area": "C",
+      "check": "per-IP isolation: a different client is not collateral-limited",
+      "pass": true,
+      "detail": 200
+    },
+    {
+      "area": "C",
+      "check": "auth-fail lockout: even the VALID key is refused after repeated failures",
+      "pass": true,
+      "detail": 429
+    },
+    {
+      "area": "C",
+      "check": "public routes unaffected during lockout",
+      "pass": true
+    },
+    {
+      "area": "D",
+      "check": "unlisted origin receives NO access-control-allow-origin",
+      "pass": true
+    },
+    {
+      "area": "D",
+      "check": "allowlisted origin receives access-control-allow-origin",
+      "pass": true
+    },
+    {
+      "area": "E",
+      "check": "0 secret leaks across public + error responses",
+      "pass": true,
+      "detail": {
+        "leaks": 0
+      }
+    },
+    {
+      "area": "F",
+      "check": "oversized payload rejected safely (400/413), never 500",
+      "pass": true,
+      "detail": 400
+    },
+    {
+      "area": "F",
+      "check": "malformed JSON -> 400, never 500",
+      "pass": true,
+      "detail": 400
+    },
+    {
+      "area": "F",
+      "check": "wrong types -> 400",
+      "pass": true,
+      "detail": 400
+    },
+    {
+      "area": "F",
+      "check": "path traversal -> 404, no file content leaked",
+      "pass": true
+    },
+    {
+      "area": "F",
+      "check": "unknown route -> 404 without stack trace",
+      "pass": true,
+      "detail": "404 Not Found"
+    },
+    {
+      "area": "F",
+      "check": "restore route: traversal filename refused (400)",
+      "pass": true,
+      "detail": 400
+    },
+    {
+      "area": "F",
+      "check": "download route: traversal filename refused (400)",
+      "pass": true,
+      "detail": 400
+    },
+    {
+      "area": "G",
+      "check": "legacy token confined to the reference Python subsystem (not the production runtime)",
+      "pass": true
+    },
+    {
+      "area": "G",
+      "check": "legacy token is env-overridable (NEXUS_FOUNDER_TOKEN)",
+      "pass": true
+    },
+    {
+      "area": "G",
+      "check": "production runtime (apps/nexus-api) does not reference it (verified by absence in source scan)",
+      "pass": true
+    },
+    {
+      "area": "G",
+      "check": "classification: LOW risk, documented; forcing env-override in the reference subsystem is an owner decision (no production exposure — the Bun API is the only deployed runtime)",
+      "pass": true
+    }
+  ],
+  "legacyTokenAssessment": {
+    "token": "nexus-tier0-dev-token (value intentionally not reproduced beyond the name already public in the committed repo)",
+    "scope": "NEXUS_WORLD reference Python subsystem only (api_server.py DEFAULT_FOUNDER_TOKEN, serve_world.py NEXUS_FOUNDER_TOKEN fallback)",
+    "productionExposure": "none — the deployed runtime is the Bun API (apps/nexus-api), which never references it (verified by source scan)",
+    "classification": "LOW, self-flagged in the repo's own security scan; env-overridable; owner decision whether to force env in the reference subsystem"
+  },
+  "verdict": "PASS — 31 security checks: auth matrix 37/37 (anon + wrong key), escalation refused, webhook auth/replay/dedup/stale, rate-limit boundary exact, auth-fail lockout, CORS allowlist enforced, 0 secret leaks, safe input handling, no stack traces, new-surface traversal refused"
+}

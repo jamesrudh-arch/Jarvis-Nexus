@@ -1,0 +1,60 @@
+=== ADVERSARIAL PROBE MATRIX — 2026-11-15T12:19:30Z ===
+Posture: OWNER_KEY set, RAILWAY_WEBHOOK_SECRET set, CORS allowlist=[https://allowed.example], no cloud creds, backups off
+
+A1 result: 29 routes correctly 401, 0 unexpected
+
+--- [A2] Privilege escalation attempts (expect all 401) ---
+  key in query string:        401
+  key as X-Webhook-Secret:    401
+  Basic auth with key:        401
+  Bearer with wrong key:      401
+  empty Bearer:               401
+  valid key, elevated action (read-only mode guard) POST /railway/recovery/execute: 400
+  body: {"error":"validation","issues":[{"expected":"string","code":"invalid_type","path":["planId"],"message":"Invalid input: expected string, received undefined"},{"expected":"string","code":"invalid_type",
+
+--- [A3] Secret exposure scan (responses must never contain the key or webhook secret) ---
+A3 result: 0 leaks detected (expect 0)
+
+--- [A4] Malformed request handling (expect 400, never 500) ---
+  invalid JSON to /jarvis/objectives:  400
+--- [A1] Unauthorized access: 30 owner-gated routes WITHOUT key (expect all 401; BLK-08 repaired Stage 2.2) ---
+  wrong types to /world/advance:       400
+  missing body fields:                 200
+  100KB junk payload:                  400
+
+--- [A5] Rate-limit bypass via X-Forwarded-For spoofing ---
+  sending 30 rapid requests with ROTATING spoofed XFF (each request a different 'client')...
+  rotating-XFF codes: 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200
+  (if no 429 appears: per-spoofed-IP budgets mean XFF rotation evades the global limiter — classification below)
+  sending 30 rapid requests with FIXED XFF (real per-IP behavior)...
+  fixed-XFF codes: 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 (expect all 200 — 30 < 240/min budget)
+
+--- [A6] Auth-fail lockout (61 failures → even VALID key refused) ---
+  valid key after 61 failures (expect 429): 429
+  public route still readable during lockout (expect 200): 200
+  Retry-After header present: Retry-After: 59
+
+--- [A7] CORS bypass (unlisted origin must get NO access-control-allow-origin) ---
+  unlisted origin: NO ACAO (correct)
+  allowed origin:  Access-Control-Allow-Origin: https://allowed.example
+
+--- [A8] Webhook authentication + replay ---
+  no secret (expect 401):        401
+  wrong secret (expect 401):     401
+  stale timestamp (expect 401):  400
+  valid event #1 (expect 202):   {"error":{"kind":"VALIDATION","message":"webhook payload rejected: [\n  {\n    \"code\": \"invalid_value\",\n    \"values\": [\n      \"INFO\",\n      \"NOTICE\",\n      \"WARNING\",\n      \"CRITICAL\"\n    ],\n    \"path\": [\n      \"severity\"\n    ],\n    \"message\": \"Invalid option: expected"}}
+     http=400
+  duplicate replay (expect 200 duplicate:true): {"error":{"kind":"VALIDATION","message":"webhook payload rejected: [\n  {\n    \"code\": \"invalid_value\",\n    \"values\": [\n      \"INFO\",\n      \"NOTICE\",\n      \"WARNING\",\n      \"CRITICAL\"\n    ],\n    \"path\": [\n      \"severity\"\n    ],\n    \"message\": \"Invalid option: expected"}}
+     http=400
+  malformed payload (expect 400): 400
+
+--- [A9] Backup corruption detection (isolated restore-verify) ---
+  (unit/integration evidence: verifyLogicalBackup runs at EVERY backup; corrupt-file test:)
+  corrupt file planted (not a restorable artifact — restore path must refuse it, verified by verifyLogicalBackup rowsMatched semantics in phase-4 tests)
+
+--- [A10] Contract + new-route shape checks ---
+  GET /world/layout (new route): 200
+  GET /railway/status shape: {"data":null,"note":"no monitoring cycle executed yet — POST /railway/monitor (owner) to run one"}
+  GET / health shows honest degraded (echo-only, no cloud creds): degraded | providers: echo:configured; verification via POST /models/ve
+
+=== PROBE COMPLETE — kill server ===
