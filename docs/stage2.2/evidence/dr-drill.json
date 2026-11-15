@@ -1,36 +1,36 @@
 {
   "format": "stage2.2-dr-drill",
-  "drillId": "DR-20261115T12151",
-  "generatedAt": "2026-11-15T12:15:13.142Z",
-  "generatedAtHead": "abd7af5544ca75154380a4c0c1d3d8d43fd915f8",
+  "drillId": "DR-20261115T15083",
+  "generatedAt": "2026-11-15T15:08:35.968Z",
+  "generatedAtHead": "b93a87905b6fa83c8795e3a57714c12496d029fe",
   "generator": "scripts/stage22_disaster_recovery_drill.ts",
   "scenario": "source VOLUME loss (db + workspaceRoot + on-volume backup chain destroyed); recovery from the OFF-VOLUME export via the product CLI",
   "steps": {
     "1": "representative data via real owner routes (2 objectives, 12 ticks, memory, NAEI task)",
-    "2": "backup via POST /railway/backup/export + off-volume copy (/tmp/stage22_dr_drill_1794744912999/offsite)",
+    "2": "backup via POST /railway/backup/export + off-volume copy (/tmp/stage22_dr_drill_1794755315825/offsite)",
     "3": "content-level validation of the off-site artifact",
-    "4": "source volume destroyed at 2026-11-15T12:15:13.046Z",
-    "5": "bun run restore into /tmp/stage22_dr_drill_1794744912999/restored/nexus.db (product CLI, single transaction)",
+    "4": "source volume destroyed at 2026-11-15T15:08:35.874Z",
+    "5": "bun run restore into /tmp/stage22_dr_drill_1794755315825/restored/nexus.db (product CLI, single transaction)",
     "6": "24 tables verified",
     "7": "content SHA-256 verified (product + independent recheck)",
     "8": "PRAGMA foreign_key_check + 11 explicit orphan checks",
-    "9": "functional resurrection verified at 2026-11-15T12:15:13.142Z",
+    "9": "functional resurrection verified at 2026-11-15T15:08:35.968Z",
     "10": "this signed-off report"
   },
   "timing": {
-    "destroyedAt": "2026-11-15T12:15:13.046Z",
-    "restoredAt": "2026-11-15T12:15:13.134Z",
-    "functionalOkAt": "2026-11-15T12:15:13.142Z",
-    "rtoWallClockMs": 96,
+    "destroyedAt": "2026-11-15T15:08:35.874Z",
+    "restoredAt": "2026-11-15T15:08:35.961Z",
+    "functionalOkAt": "2026-11-15T15:08:35.968Z",
+    "rtoWallClockMs": 94,
     "rtoBreakdown": {
       "cliRestoreMs": 5,
-      "bootPlusFunctionalMs": 8
+      "bootPlusFunctionalMs": 7
     },
     "rpoMeasuredMs": 11,
     "rpoProductionMeaning": "in production the data-loss window is one backup interval (NEXUS_BACKUP_INTERVAL_HOURS, default 24h) plus unexported writes; this drill's measured RPO is minutes because the export was taken moments before destruction"
   },
   "state": {
-    "worldId": "nexus_world_91fb788a-808f-4c81-90f8-c9cb04adb27b",
+    "worldId": "nexus_world_ab85ab61-b453-4134-8191-ffff324db5fa",
     "residents": 8,
     "properties": 8,
     "businesses": 1,
@@ -95,16 +95,16 @@
     }
   ],
   "backupArtifact": {
-    "offsiteFile": "/tmp/stage22_dr_drill_1794744912999/offsite/2026-11-15T12-15-13-036Z.json",
+    "offsiteFile": "/tmp/stage22_dr_drill_1794755315825/offsite/2026-11-15T15-08-35-863Z.json",
     "bytes": 60338,
-    "sha256": "bbecd73c77d0e3d40e2d981087b8eb43801ecc268ba83d5e4dcba692444be220"
+    "sha256": "4b5f1c58926389b5a9bdb238d5878eba51119f7a1e06f17c58a3fca543f41f84"
   },
   "checksTotal": 44,
   "checksFailed": 0,
-  "verdict": "PASS — DR-20261115T12151: volume loss simulated; recovery from the off-volume export via the product CLI; 24 tables, content hashes, referential integrity and functional resurrection all verified; measured RTO 96ms wall-clock",
+  "verdict": "PASS — DR-20261115T15083: volume loss simulated; recovery from the off-volume export via the product CLI; 24 tables, content hashes, referential integrity and functional resurrection all verified; measured RTO 94ms wall-clock",
   "signature": {
     "signedOffBy": "Stage 2.2 autonomous engineering (this script's verdict is the sign-off; the owner may counter-sign in the DEPLOYMENT_AUTHORIZATION_PACKAGE)",
-    "at": "2026-11-15T12:15:13.146Z",
-    "head": "abd7af5544ca75154380a4c0c1d3d8d43fd915f8"
+    "at": "2026-11-15T15:08:35.972Z",
+    "head": "b93a87905b6fa83c8795e3a57714c12496d029fe"
   }
 }

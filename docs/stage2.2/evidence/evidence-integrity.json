@@ -1,7 +1,7 @@
 {
   "format": "stage2.2-evidence-integrity",
-  "generatedAt": "2026-11-15T12:28:22.500Z",
-  "generatedAtHead": "fad4c69774e55b8bf8495f5cff6cd3f57695e277",
+  "generatedAt": "2026-11-15T15:15:42.494Z",
+  "generatedAtHead": "b93a87905b6fa83c8795e3a57714c12496d029fe",
   "mode": "verify",
   "checksTotal": 53,
   "checksFailed": 0,
@@ -50,15 +50,36 @@
       "check": "evidence directory holds >= 6 non-empty artifacts",
       "pass": true,
       "detail": [
+        "git-state.json",
+        "typecheck.txt",
+        "backup-export-verify-gen.log",
         "auth-matrix.json",
         "backup-export-verify.json",
-        "registry-validation.txt",
         "auth-matrix-gen.log",
         "route-parity.txt",
-        "backup-export-verify-gen.log",
-        "git-state.json",
-        "typecheck.txt"
+        "registry-validation.txt"
       ]
+    },
+    {
+      "check": "JSON parses: git-state.json",
+      "pass": true
+    },
+    {
+      "check": "schema git-state.json: generatedAt + generatedAtHead present",
+      "pass": true,
+      "detail": {
+        "generatedAt": "2026-11-15T15:15:33Z",
+        "generatedAtHead": "b93a8790"
+      }
+    },
+    {
+      "check": "timestamp git-state.json: parseable and not future-dated",
+      "pass": true,
+      "detail": "2026-11-15T15:15:33Z"
+    },
+    {
+      "check": "git ref git-state.json: generatedAtHead exists",
+      "pass": true
     },
     {
       "check": "JSON parses: auth-matrix.json",
@@ -68,14 +89,14 @@
       "check": "schema auth-matrix.json: generatedAt + generatedAtHead present",
       "pass": true,
       "detail": {
-        "generatedAt": "2026-11-15T12:21:50.613Z",
-        "generatedAtHead": "4011aead"
+        "generatedAt": "2026-11-15T15:15:33.756Z",
+        "generatedAtHead": "b93a8790"
       }
     },
     {
       "check": "timestamp auth-matrix.json: parseable and not future-dated",
       "pass": true,
-      "detail": "2026-11-15T12:21:50.613Z"
+      "detail": "2026-11-15T15:15:33.756Z"
     },
     {
       "check": "git ref auth-matrix.json: generatedAtHead exists",
@@ -94,14 +115,14 @@
       "check": "schema backup-export-verify.json: generatedAt + generatedAtHead present",
       "pass": true,
       "detail": {
-        "generatedAt": "2026-11-15T12:21:50.794Z",
-        "generatedAtHead": "4011aead"
+        "generatedAt": "2026-11-15T15:15:33.940Z",
+        "generatedAtHead": "b93a8790"
       }
     },
     {
       "check": "timestamp backup-export-verify.json: parseable and not future-dated",
       "pass": true,
-      "detail": "2026-11-15T12:21:50.794Z"
+      "detail": "2026-11-15T15:15:33.940Z"
     },
     {
       "check": "git ref backup-export-verify.json: generatedAtHead exists",
@@ -111,27 +132,6 @@
       "check": "verdict backup-export-verify.json: PASS recorded",
       "pass": true,
       "detail": "PASS — export through the real production path; app's own isolated restore-verify matched all 24 tables (48 rows)"
-    },
-    {
-      "check": "JSON parses: git-state.json",
-      "pass": true
-    },
-    {
-      "check": "schema git-state.json: generatedAt + generatedAtHead present",
-      "pass": true,
-      "detail": {
-        "generatedAt": "2026-11-15T12:21:50Z",
-        "generatedAtHead": "4011aead"
-      }
-    },
-    {
-      "check": "timestamp git-state.json: parseable and not future-dated",
-      "pass": true,
-      "detail": "2026-11-15T12:21:50Z"
-    },
-    {
-      "check": "git ref git-state.json: generatedAtHead exists",
-      "pass": true
     },
     {
       "check": "manifest artifact resolves with exact byte count: RP-2.2-001-T",
@@ -210,15 +210,23 @@
       "pass": true
     },
     {
+      "check": "no silent substitution: git-state.json",
+      "pass": true
+    },
+    {
+      "check": "no silent substitution: typecheck.txt",
+      "pass": true
+    },
+    {
+      "check": "no silent substitution: backup-export-verify-gen.log",
+      "pass": true
+    },
+    {
       "check": "no silent substitution: auth-matrix.json",
       "pass": true
     },
     {
       "check": "no silent substitution: backup-export-verify.json",
-      "pass": true
-    },
-    {
-      "check": "no silent substitution: registry-validation.txt",
       "pass": true
     },
     {
@@ -230,44 +238,11 @@
       "pass": true
     },
     {
-      "check": "no silent substitution: backup-export-verify-gen.log",
-      "pass": true
-    },
-    {
-      "check": "no silent substitution: git-state.json",
-      "pass": true
-    },
-    {
-      "check": "no silent substitution: typecheck.txt",
+      "check": "no silent substitution: registry-validation.txt",
       "pass": true
     },
     {
       "check": "registered file still present: backup-export-verify.json",
-      "pass": true,
-      "detail": "registered but missing"
-    },
-    {
-      "check": "registered file still present: auth-matrix.json",
-      "pass": true,
-      "detail": "registered but missing"
-    },
-    {
-      "check": "registered file still present: route-parity.txt",
-      "pass": true,
-      "detail": "registered but missing"
-    },
-    {
-      "check": "registered file still present: registry-validation.txt",
-      "pass": true,
-      "detail": "registered but missing"
-    },
-    {
-      "check": "registered file still present: git-state.json",
-      "pass": true,
-      "detail": "registered but missing"
-    },
-    {
-      "check": "registered file still present: auth-matrix-gen.log",
       "pass": true,
       "detail": "registered but missing"
     },
@@ -277,7 +252,32 @@
       "detail": "registered but missing"
     },
     {
+      "check": "registered file still present: registry-validation.txt",
+      "pass": true,
+      "detail": "registered but missing"
+    },
+    {
+      "check": "registered file still present: auth-matrix.json",
+      "pass": true,
+      "detail": "registered but missing"
+    },
+    {
+      "check": "registered file still present: auth-matrix-gen.log",
+      "pass": true,
+      "detail": "registered but missing"
+    },
+    {
+      "check": "registered file still present: git-state.json",
+      "pass": true,
+      "detail": "registered but missing"
+    },
+    {
       "check": "registered file still present: backup-export-verify-gen.log",
+      "pass": true,
+      "detail": "registered but missing"
+    },
+    {
+      "check": "registered file still present: route-parity.txt",
       "pass": true,
       "detail": "registered but missing"
     }

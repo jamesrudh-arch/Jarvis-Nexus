@@ -35,6 +35,12 @@ download/
 tool-results/
 agent-ctx/
 *.log
+# Stage 2.3 (F-2.3-02) durability exception: the two evidence generation logs
+# are REGISTERED artifacts (docs/stage2/evidence/SHA256SUMS) — the *.log rule
+# silently made them non-durable, which broke evidence integrity after an
+# environment recycle (validator honestly failed 51/53). Negated here so the
+# registered evidence is committable. Scope is exactly the evidence directory.
+!docs/stage2/evidence/*.log
 
 # OS / editor
 .DS_Store

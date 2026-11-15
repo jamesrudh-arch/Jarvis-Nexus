@@ -1,7 +1,7 @@
 {
   "format": "stage2.2-security-suite",
-  "generatedAt": "2026-11-15T12:18:43.693Z",
-  "generatedAtHead": "4a59c09b86f305c27910666288e6f6934e61a29c",
+  "generatedAt": "2026-11-15T15:15:42.222Z",
+  "generatedAtHead": "b93a87905b6fa83c8795e3a57714c12496d029fe",
   "generator": "scripts/stage22_security_suite.ts (reproducible; dedicated app instances per scenario)",
   "ownerGatedRouteCount": 37,
   "checksTotal": 31,

@@ -1,0 +1,3 @@
+PASS — 37/37 owner-gated routes returned 401 unauthenticated and with a wrong key; webhook refused without a valid secret; 7/7 public routes answered 200 (matrix not over-broad)
+webhook: anon=503 wrong-secret=503
+public negative control: /:200 /health:200 /health/detailed:200 /metrics:200 /world/state:200 /world/layout:200 /railway/status:200

@@ -1,0 +1,1 @@
+PASS — export through the real production path; app's own isolated restore-verify matched all 24 tables (48 rows)

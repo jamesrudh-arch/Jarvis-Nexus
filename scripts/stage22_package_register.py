@@ -32,13 +32,25 @@ now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 H = head()
 
 # ---------- #14 SHA256SUMS (package level) ----------------------------------
+# Stage 2.3 (F-2.3-01) repair: STANDARD two-column format
+# "<sha256>  <path>" so `sha256sum -c SHA256SUMS` (GNU/coreutils) verifies
+# directly from the repo root. The previous three-column variant
+# ("<hash>  <path> <bytes>") broke sha256sum -c with 'No such file or
+# directory' on every line. Byte sizes remain available via `wc -c` and in
+# the machine-readable register; they do not belong in a checksum register.
+# ORDERING RULE (the other half of F-2.3-01): this script MUST run AFTER the
+# final evidence refresh. Stage 2.2 recorded SHA256SUMS at 12:28:18 and then
+# regenerated evidence-integrity.json at 12:28:22 — the recorded hash went
+# stale before the commit. Run the validators FIRST, this script LAST.
 entries = []
 for p in sorted(PKG.rglob("*")):
     if p.is_file() and p.name not in ("SHA256SUMS",):
         rel = str(p.relative_to(REPO))
-        entries.append(f"{sha256(p)}  {rel} {p.stat().st_size}")
+        entries.append(f"{sha256(p)}  {rel}")
 sums = (
     "# STAGE 2.2 package checksums (authoritative tree: docs/stage2.2/)\n"
+    "# Standard sha256sum format: verify from repo root with\n"
+    "#   sha256sum -c docs/stage2.2/SHA256SUMS\n"
     f"# recorded {now} at head {H}\n"
     + "\n".join(entries) + "\n"
 )
@@ -152,13 +164,16 @@ if missing:
 (PKG / "MACHINE_READABLE_EVIDENCE_REGISTER.json").write_text(json.dumps(register, indent=2) + "\n")
 
 # refresh SHA256SUMS to include the two files just written
+# (standard two-column format — F-2.3-01)
 entries = []
 for p in sorted(PKG.rglob("*")):
     if p.is_file() and p.name not in ("SHA256SUMS",):
         rel = str(p.relative_to(REPO))
-        entries.append(f"{sha256(p)}  {rel} {p.stat().st_size}")
+        entries.append(f"{sha256(p)}  {rel}")
 sums = (
     "# STAGE 2.2 package checksums (authoritative tree: docs/stage2.2/)\n"
+    "# Standard sha256sum format: verify from repo root with\n"
+    "#   sha256sum -c docs/stage2.2/SHA256SUMS\n"
     f"# recorded {now} at head {H}\n"
     + "\n".join(entries) + "\n"
 )

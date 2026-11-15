@@ -1,15 +1,15 @@
 {
   "format": "stage2.2-machine-readable-evidence-register",
   "version": 1,
-  "generatedAt": "2026-11-15T12:28:18Z",
-  "generatedAtHead": "fad4c69774e55b8bf8495f5cff6cd3f57695e277",
+  "generatedAt": "2026-11-15T15:15:47Z",
+  "generatedAtHead": "b93a87905b6fa83c8795e3a57714c12496d029fe",
   "git": {
-    "main": "fad4c69774e55b8bf8495f5cff6cd3f57695e277",
+    "main": "b93a87905b6fa83c8795e3a57714c12496d029fe",
     "originMain": "41092a33fa13abf5acee64e8f1f3167fe46dadcd",
-    "unpushedCount": "30",
+    "unpushedCount": "31",
     "workingTreeClean": false,
     "branches": {
-      "main": "fad4c69774e55b8bf8495f5cff6cd3f57695e277",
+      "main": "b93a87905b6fa83c8795e3a57714c12496d029fe",
       "railway-intelligence": "60d4fddd294b7a73b5ec245c67443de7cb890664",
       "stage2-pre-restructure": "f4c5a41cc5d39553964ad6a4372684a79bb0a6be"
     },
@@ -54,21 +54,21 @@
     {
       "path": "docs/stage2.2/evidence/ci-validation.json",
       "bytes": 2346,
-      "sha256": "a20d108e74d6308b85efe6be6b4f3fdf074359e31ae6c7bc5fad20a2ac0709f3",
+      "sha256": "6203a165761b3be6cd2ad66f406c464d25532b4c0439326238c5332a4e1ac6bd",
       "status": "VERIFIED",
       "note": "git-tracked evidence"
     },
     {
       "path": "docs/stage2.2/evidence/dr-drill.json",
       "bytes": 3716,
-      "sha256": "e1735a8b3720a143b00c4b50ac2ee4538a4b1d7bb4b63d7348b53d298fe51536",
+      "sha256": "388f2dec20038e0e0e457ec2795955c8bf764af016a71c4b8be33c45fa87da91",
       "status": "VERIFIED",
       "note": "git-tracked evidence"
     },
     {
       "path": "docs/stage2.2/evidence/evidence-integrity.json",
       "bytes": 7967,
-      "sha256": "f0a72f9c8856c5f16667d67ab52a03084cf1a16fbd4f5e49351b6a5d6f03ca0c",
+      "sha256": "03d39b6fa33044e9c4217041872a8a226257d394c94a1f51e88e00179ffba59f",
       "status": "VERIFIED",
       "note": "git-tracked evidence"
     },
@@ -82,14 +82,14 @@
     {
       "path": "docs/stage2.2/evidence/security-suite.json",
       "bytes": 5568,
-      "sha256": "1deb463b0d1a7b38648f5052fde61159963c4f84c8e9a9734c4f3ccec205df91",
+      "sha256": "986588f0a4334bca05fde82b3b25b092b3eb72763329a91898c1b128dc10ed41",
       "status": "VERIFIED",
       "note": "git-tracked evidence"
     },
     {
       "path": "docs/stage2/evidence/SHA256SUMS",
       "bytes": 775,
-      "sha256": "0bcc07f4912e70154c9f9b41a8b3584bdedd6454096bb76b197cf1382f7d4a3c",
+      "sha256": "ce02f7f8873b655576f6c7d536b1e1921e9d94b1a20751512dd8388065d90dce",
       "status": "VERIFIED",
       "note": "git-tracked evidence"
     },
@@ -103,7 +103,7 @@
     {
       "path": "docs/stage2/evidence/auth-matrix.json",
       "bytes": 6413,
-      "sha256": "080cee7ed4ebff84ceb5373143ed4f1dc0f1f356d4b9d7de6c45efeed0840a9f",
+      "sha256": "7a55d3b68a56afc9499b192ba29927a80eee1494b24b3ae1bb192d80d4302301",
       "status": "VERIFIED",
       "note": "git-tracked evidence"
     },
@@ -117,35 +117,35 @@
     {
       "path": "docs/stage2/evidence/backup-export-verify.json",
       "bytes": 933,
-      "sha256": "040de76219da371809c5288850a0ae8ce46400b4689455ef7829bab3b28b2522",
+      "sha256": "141cede9825b95ceb2b1dbbe8fbcda32031fb8d29a65670da766aee3afe0b45d",
       "status": "VERIFIED",
       "note": "git-tracked evidence"
     },
     {
       "path": "docs/stage2/evidence/git-state.json",
       "bytes": 803,
-      "sha256": "a607c0e3a1b2d06ad5a5de07b91c7a79f27db1d89a89865e3381350989efeac5",
+      "sha256": "e1d784aa0a12276e0dd8147033ea2eb6e1a3ed5562102a63c25c599b8d3549b4",
       "status": "VERIFIED",
       "note": "git-tracked evidence"
     },
     {
       "path": "docs/stage2/evidence/registry-validation.txt",
       "bytes": 1715,
-      "sha256": "72abe2a6a20a96d007bdd4a89d6e69e2ff4429369502a0283aee92b70017fe49",
+      "sha256": "4ae1584e9e838cc88d43c1b4765e132d911b4d63925febc4937d283ec74b6070",
       "status": "VERIFIED",
       "note": "git-tracked evidence"
     },
     {
       "path": "docs/stage2/evidence/route-parity.txt",
       "bytes": 1171,
-      "sha256": "5fb4b6ca934ee94887d2b1a041c3a73392fcf71e96d6d1b49cbc254804a0c9ec",
+      "sha256": "ffae00aa925c54b8e3c069af057cb895990af912f47fb446b72eb2020037b566",
       "status": "VERIFIED",
       "note": "git-tracked evidence"
     },
     {
       "path": "docs/stage2/evidence/typecheck.txt",
       "bytes": 118,
-      "sha256": "d8ebcb358d25067535ee1a2e3a29af004f143907473172d7f3533332f86d8fdb",
+      "sha256": "408d9f5f2369b012e9b92065ba142c25bcc1f990308ae1cf8ea6827fdd9cd4eb",
       "status": "VERIFIED",
       "note": "git-tracked evidence"
     }

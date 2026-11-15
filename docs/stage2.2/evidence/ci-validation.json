@@ -1,7 +1,7 @@
 {
   "stage": "2.2",
   "workstream": "A \u2014 independent CI validation",
-  "generatedAt": "2026-11-15T12:28:18Z",
+  "generatedAt": "2026-11-15T15:15:38Z",
   "workflowFile": ".github/workflows/ci.yml",
   "historicalFindingDisposition": {
     "BLK-01 / D-2.1-01 / F-COM-03": "REFUTED \u2014 false finding. ci.yml at pushed 945a78d and at HEAD contains `branches: [main]` (od -c byte proof); pickaxe across all refs finds no commit ever containing 'branches: ain]'. The Stage 2.1 'byte-exact cat -A proof' was itself the display artifact it claimed to disprove. Standing rule from Stage 2.2: gate-critical files are verified with od -c / structured parsers, never free-text cat output."
@@ -15,8 +15,8 @@
       "tail": [
         "bun install v1.3.14 (0d9b296a)",
         "",
-        "Checked 476 installs across 573 packages (no changes) [12.00ms]",
-        "[0.02ms] \".env\""
+        "Checked 476 installs across 573 packages (no changes) [13.00ms]",
+        "[0.03ms] \".env\""
       ]
     },
     "Typecheck (tsc --noEmit)": {
@@ -40,7 +40,7 @@
         " 2 skip",
         " 0 fail",
         " 349 expect() calls",
-        "Ran 100 tests across 16 files. [2.67s]"
+        "Ran 100 tests across 16 files. [2.66s]"
       ]
     },
     "Integration + scenario tests (offline providers only)": {
@@ -49,7 +49,7 @@
         " 10 skip",
         " 0 fail",
         " 429 expect() calls",
-        "Ran 99 tests across 10 files. [959.00ms]"
+        "Ran 99 tests across 10 files. [970.00ms]"
       ]
     },
     "Adversarial verification gate (V1-V5, incl. V4 evidence provenance)": {
@@ -58,7 +58,7 @@
         " 19 pass",
         " 0 fail",
         " 129 expect() calls",
-        "Ran 19 tests across 1 file. [269.00ms]"
+        "Ran 19 tests across 1 file. [258.00ms]"
       ]
     }
   },

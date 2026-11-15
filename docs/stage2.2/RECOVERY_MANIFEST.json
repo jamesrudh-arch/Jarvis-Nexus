@@ -1,8 +1,8 @@
 {
   "format": "stage2.2-recovery-manifest",
   "version": 1,
-  "generatedAt": "2026-11-15T12:28:18Z",
-  "generatedAtHead": "fad4c69774e55b8bf8495f5cff6cd3f57695e277",
+  "generatedAt": "2026-11-15T15:15:47Z",
+  "generatedAtHead": "b93a87905b6fa83c8795e3a57714c12496d029fe",
   "generator": "scripts/stage22_package_register.py (committed, deterministic)",
   "authoritativeRule": "Only git-tracked files survive environment wipes (proven twice). Artifacts below are durable ONLY in docs/; download/ entries are non-authoritative mirrors.",
   "recoveryPoints": {
