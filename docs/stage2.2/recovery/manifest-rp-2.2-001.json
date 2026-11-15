@@ -1,0 +1,47 @@
+{
+  "recoveryPointId": "RP-2.2-001",
+  "created": "2026-11-15T11:59:37Z",
+  "purpose": "Durable protection for the 22 unpushed commits BEFORE Stage 2.2 remediation begins (Stage 2.1 lesson: only git-tracked files survive environment wipes; RP-2.1-001/002 artifacts in gitignored download/ were wiped again)",
+  "durableArtifacts": [
+    {
+      "id": "RP-2.2-001-T",
+      "kind": "git bundle (thin: main minus origin/main; prerequisite 41092a3 = origin/main, which GitHub already holds)",
+      "path": "docs/stage2.2/recovery/jarvis-nexus-unpushed-delta-20261115-115932.bundle",
+      "bytes": 14669434,
+      "sha256": "767cb59921ca1a52f2ec517b4cd73112d230b08366bb02ff0d1e7c58f679f699",
+      "head": "c6d4b5199326e69f26d4c30f638c6f3155f768f1",
+      "restoreProof": "fetch into base clone -> restored-main == main, 514 files"
+    }
+  ],
+  "mirrorOnlyArtifacts": [
+    {
+      "id": "RP-2.2-001-F",
+      "kind": "git bundle (full state, all refs)",
+      "path": "download/stage2.2/recovery/jarvis-nexus-full-20261115-115932.bundle",
+      "bytes": 99859489,
+      "sha256": "e7983957c7f8bedb027f91d81a9ef75badae9f80ec605189b790d0094e823332",
+      "durability": "NON-DURABLE (gitignored download/; wiped by environment twice — see Stage 2.1 + Stage 2.2 reconstruction)"
+    },
+    {
+      "id": "LEGACY-A",
+      "kind": "legacy bundle lineA_production (1 unreachable smart-failover commit)",
+      "path": "download/stage2.2/recovery/legacy/lineA_production.bundle",
+      "sha256": "ececc4a7709608e1121d5b8f57972b13791db2e576043f1629a21e428acc6497",
+      "durability": "NON-DURABLE mirror; original in /tmp/my-project/download/backups/; durable preservation = owner decision D-2.1-04"
+    },
+    {
+      "id": "LEGACY-B",
+      "kind": "legacy bundle lineB_NEXUS_WORLD_V2 (18 unreachable commits)",
+      "path": "download/stage2.2/recovery/legacy/lineB_NEXUS_WORLD_V2.bundle",
+      "sha256": "633da587af1ff14936d07eefd086a134de73f3c31626f0a7171e93f0b1830f6d",
+      "durability": "NON-DURABLE mirror; original in /tmp; durable preservation = owner decision D-2.1-04"
+    }
+  ],
+  "coveredState": { "main": "c6d4b5199326e69f26d4c30f638c6f3155f768f1", "originMain": "41092a33fa13abf5acee64e8f1f3167fe46dadcd", "unpushedCommits": 22 },
+  "priorPoints": {
+    "RP-2.1-001": "artifacts LOST AGAIN (download/ wiped after Stage 2.1 session) — recorded as Stage 2.2 finding N-2.2-01",
+    "RP-2.1-002": "artifacts LOST AGAIN (same wipe) — N-2.2-01",
+    "RP-FC-001": "untraceable (Stage 2.1 finding, stands)",
+    "RP-STAGE2-001": "artifacts lost (Stage 2.1 finding, stands)"
+  }
+}
