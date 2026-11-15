@@ -1,15 +1,15 @@
 {
   "format": "stage2.2-machine-readable-evidence-register",
   "version": 1,
-  "generatedAt": "2026-11-15T12:28:01Z",
-  "generatedAtHead": "396ccaf454a17444ae6fb048aafce9ecad569522",
+  "generatedAt": "2026-11-15T12:28:18Z",
+  "generatedAtHead": "fad4c69774e55b8bf8495f5cff6cd3f57695e277",
   "git": {
-    "main": "396ccaf454a17444ae6fb048aafce9ecad569522",
+    "main": "fad4c69774e55b8bf8495f5cff6cd3f57695e277",
     "originMain": "41092a33fa13abf5acee64e8f1f3167fe46dadcd",
-    "unpushedCount": "29",
+    "unpushedCount": "30",
     "workingTreeClean": false,
     "branches": {
-      "main": "396ccaf454a17444ae6fb048aafce9ecad569522",
+      "main": "fad4c69774e55b8bf8495f5cff6cd3f57695e277",
       "railway-intelligence": "60d4fddd294b7a73b5ec245c67443de7cb890664",
       "stage2-pre-restructure": "f4c5a41cc5d39553964ad6a4372684a79bb0a6be"
     },
@@ -53,8 +53,8 @@
   "evidence": [
     {
       "path": "docs/stage2.2/evidence/ci-validation.json",
-      "bytes": 956,
-      "sha256": "a36fffc2b33e3863b21834fa92dfa4639c65509531ee980c8923818288d7d72d",
+      "bytes": 2346,
+      "sha256": "a20d108e74d6308b85efe6be6b4f3fdf074359e31ae6c7bc5fad20a2ac0709f3",
       "status": "VERIFIED",
       "note": "git-tracked evidence"
     },

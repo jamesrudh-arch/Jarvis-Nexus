@@ -1,7 +1,7 @@
 {
   "format": "stage2.2-evidence-integrity",
-  "generatedAt": "2026-11-15T12:27:31.401Z",
-  "generatedAtHead": "396ccaf454a17444ae6fb048aafce9ecad569522",
+  "generatedAt": "2026-11-15T12:28:22.500Z",
+  "generatedAtHead": "fad4c69774e55b8bf8495f5cff6cd3f57695e277",
   "mode": "verify",
   "checksTotal": 53,
   "checksFailed": 0,
