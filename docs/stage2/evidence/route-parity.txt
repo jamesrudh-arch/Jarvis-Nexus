@@ -1,4 +1,4 @@
-HEAD (6323241, local main): 56 routes (32 GET + 24 POST)
+HEAD (abd7af5, local main): 56 routes (32 GET + 24 POST)
 origin/main (41092a3, production): 33 routes (20 GET + 13 POST)
 
 delta on deploy: +23 / -0
@@ -28,6 +28,6 @@ delta on deploy: +23 / -0
 
 OK: 56 routes at HEAD, additive-only vs production, no duplicates
 
-generatedAt: 2026-11-15T12:06:36Z
-generatedAtHead: 632324151feeddf0d7c5003410c8aa9d80846333
+generatedAt: 2026-11-15T12:17:18Z
+generatedAtHead: abd7af5544ca75154380a4c0c1d3d8d43fd915f8
 generator: scripts/stage21_route_parity.py (committed Stage 2.1 successor of the phase-0 parity script)

@@ -20,9 +20,9 @@ import { NexusLogger, HealthRegistry, MetricsCollector, newCorrelationId } from 
 import { ok, err, safeJsonStringify, NexusError } from "@nexus/core";
 import { railwayFromEnv, introspectLiveFields, diffContract, contractIsCompatible, BackupService } from "@nexus/railway";
 import { CreateObjectiveRequest, CreateNaeiTaskRequest, AdvanceWorldRequest, CreateMemoryRequest, CONTRACT_VERSION, RailwayDiagnoseRequest, RailwayRecoveryPlanRequest, RailwayExecuteRequest, RailwayAuthorizationRequestSchema } from "@nexus/contracts";
-import { mkdirSync, writeFileSync, readdirSync, statSync, rmSync } from "node:fs";
+import { mkdirSync, writeFileSync, readdirSync, statSync, rmSync, readFileSync, copyFileSync, existsSync } from "node:fs";
 import { createHash, timingSafeEqual } from "node:crypto";
-import { join } from "node:path";
+import { join, basename } from "node:path";
 
 export interface NexusApiConfig {
   dbPath: string;
@@ -699,6 +699,51 @@ export function createApp(cfg: NexusApiConfig) {
     const result = runLogicalBackup();
     return c.json({ data: result }, 201);
   });
+  app.post("/railway/backup/restore", requireOwner, async (c) => {
+    // Stage 2.2 (G-01): productized restore-verification. NON-DESTRUCTIVE by
+    // construction: the backup is restored into an ISOLATED verification
+    // database under <workspaceRoot>/restore-verifications/. The live store
+    // is never touched by this route. Destructive restores are CLI-only and
+    // require --confirm-destructive (apps/nexus-api/src/restore-cli.ts).
+    const body = (await c.req.json().catch(() => ({}))) as { file?: string };
+    const name = String(body.file ?? "");
+    if (!/^[\w-]+\.json$/.test(name)) return c.json({ error: "validation", detail: "file must be a backup filename from the backup directory" }, 400);
+    const src = join(backupDir, name);
+    if (!existsSync(src)) return c.json({ error: "not_found", detail: "no such backup in the backup directory" }, 404);
+    let doc: import("@nexus/railway").LogicalBackupDoc;
+    try { doc = JSON.parse(readFileSync(src, "utf8")); } catch { return c.json({ error: "validation", detail: "backup file is not valid JSON" }, 400); }
+    const id = `restore-${Date.now()}`;
+    const dir = join(cfg.workspaceRoot, "restore-verifications", id);
+    mkdirSync(dir, { recursive: true });
+    const targetPath = join(dir, "nexus.db");
+    const target = NexusDb.open(targetPath);
+    let report;
+    try {
+      report = BackupService.restoreLogicalBackup(target, doc);
+    } finally {
+      const logPath = join(dir, "restore-log.json");
+      writeFileSync(logPath, JSON.stringify({ id, source: src, target: targetPath, generatedAt: new Date().toISOString(), report }, null, 2));
+      target.close();
+    }
+    return c.json({ data: { id, source: src, target: targetPath, log: join(dir, "restore-log.json"), report } }, report.restored ? 200 : 422);
+  });
+  app.get("/railway/backup/export/:file/download", requireOwner, (c) => {
+    // Stage 2.2 (G-03 minimal): owner-gated off-volume export enabler —
+    // streams a backup artifact with integrity headers so the owner can
+    // copy it off-site. No provider assumed; no recurring cost.
+    const name = c.req.param("file");
+    if (!/^[\w-]+\.json$/.test(name)) return c.json({ error: "validation", detail: "invalid backup filename" }, 400);
+    const src = join(backupDir, name);
+    if (!existsSync(src)) return c.json({ error: "not_found" }, 404);
+    const bytes = statSync(src).size;
+    const sha256 = createHash("sha256").update(readFileSync(src)).digest("hex");
+    return c.body(readFileSync(src), 200, {
+      "content-type": "application/json",
+      "content-disposition": `attachment; filename="${name}"`,
+      "x-backup-sha256": sha256,
+      "x-backup-bytes": String(bytes),
+    });
+  });
   app.post("/railway/reconcile", requireOwner, async (c) => {
     const r = await railway.reconciliation.reconcile();
     return r.ok ? c.json({ data: r.value }) : c.json({ error: r.error.toJSON() }, 502);
@@ -755,14 +800,31 @@ export function createApp(cfg: NexusApiConfig) {
   const backupDir = join(cfg.workspaceRoot, "backups");
   const BACKUP_INTERVAL_HOURS = Math.max(0, Number(cfg.env.NEXUS_BACKUP_INTERVAL_HOURS ?? 24));
   const BACKUP_RETENTION = Math.max(1, Number(cfg.env.NEXUS_BACKUP_RETENTION ?? 14));
-  let lastBackupRun: { at: string; file: string | null; tables: number; rows: number; rowsMatched: boolean; pruned: number } | null = null;
+  // Stage 2.2 (G-03 minimal): off-volume copy target for the newest backup.
+  // Zero-cost, provider-independent; effective on Railway when another
+  // volume/mount is attached. S3/object-storage push stays owner-gated (D-2.1-03).
+  const OFFSITE_DIR = (cfg.env.NEXUS_BACKUP_OFFSITE_DIR ?? "").trim();
+  let lastBackupRun: { at: string; file: string | null; tables: number; rows: number; rowsMatched: boolean; pruned: number; offsite?: { dir: string; copied: boolean; file?: string; error?: string } | null } | null = null;
 
-  const runLogicalBackup = (): { file: string; tables: number; rows: number; verification: ReturnType<typeof BackupService.verifyLogicalBackup>; pruned: number } => {
+  const runLogicalBackup = (): { file: string; tables: number; rows: number; verification: ReturnType<typeof BackupService.verifyLogicalBackup>; pruned: number; offsite: { dir: string; copied: boolean; file?: string; error?: string } | null } => {
     const doc = BackupService.exportLogicalBackup(db);
     const verification = BackupService.verifyLogicalBackup(doc);
     mkdirSync(backupDir, { recursive: true });
     const file = join(backupDir, `${doc.exportedAt.replace(/[:.]/g, "-")}.json`);
     writeFileSync(file, JSON.stringify(doc));
+    // Stage 2.2 (G-03 minimal): copy the newest backup off-volume when configured.
+    let offsite: { dir: string; copied: boolean; file?: string; error?: string } | null = null;
+    if (OFFSITE_DIR) {
+      try {
+        mkdirSync(OFFSITE_DIR, { recursive: true });
+        const dest = join(OFFSITE_DIR, basename(file));
+        copyFileSync(file, dest);
+        offsite = { dir: OFFSITE_DIR, copied: true, file: dest };
+      } catch (e) {
+        offsite = { dir: OFFSITE_DIR, copied: false, error: String(e) };
+        logger.error?.("backup", "off-site backup copy failed", { dir: OFFSITE_DIR, error: String(e) });
+      }
+    }
     // retention: keep the newest BACKUP_RETENTION files, prune the rest
     const files = readdirSync(backupDir)
       .filter((f) => f.endsWith(".json"))
@@ -776,13 +838,13 @@ export function createApp(cfg: NexusApiConfig) {
     lastBackupRun = {
       at: doc.exportedAt, file, tables: doc.tables.length,
       rows: doc.tables.reduce((n, t) => n + t.rows, 0),
-      rowsMatched: verification.rowsMatched, pruned,
+      rowsMatched: verification.rowsMatched, pruned, offsite,
     };
     logger.info("backup", "logical backup executed", {
       file, rowsMatched: verification.rowsMatched, pruned,
       rows: doc.tables.reduce((n, t) => n + t.rows, 0),
     });
-    return { file, tables: doc.tables.length, rows: doc.tables.reduce((n, t) => n + t.rows, 0), verification, pruned };
+    return { file, tables: doc.tables.length, rows: doc.tables.reduce((n, t) => n + t.rows, 0), verification, pruned, offsite };
   };
 
   const listLogicalBackups = () => {
@@ -799,6 +861,8 @@ export function createApp(cfg: NexusApiConfig) {
         enabled: BACKUP_INTERVAL_HOURS > 0,
         retentionCount: BACKUP_RETENTION,
         note: "in-process scheduler (single-instance); volume backup schedules are reported in the volumes layer",
+        offsiteDir: OFFSITE_DIR || null,
+        offsiteNote: "off-volume copy target (NEXUS_BACKUP_OFFSITE_DIR); null = off-site export disabled (G-03); full object-storage push is owner-gated (D-2.1-03)",
       },
       lastRun: lastBackupRun,
       historyCount: history.length,

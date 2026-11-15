@@ -18,6 +18,7 @@
     "start": "bun apps/nexus-api/src/main.ts",
     "dev": "bun --watch apps/nexus-api/src/main.ts",
     "migrate": "bun packages/db/src/migrate-cli.ts",
+    "restore": "bun apps/nexus-api/src/restore-cli.ts",
     "registry:validate": "bun tools/registry-validate.ts"
   },
   "engines": {

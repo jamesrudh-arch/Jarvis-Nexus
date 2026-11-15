@@ -1,7 +1,7 @@
 {
   "format": "stage2.2-evidence-integrity",
-  "generatedAt": "2026-11-15T12:07:32.067Z",
-  "generatedAtHead": "632324151feeddf0d7c5003410c8aa9d80846333",
+  "generatedAt": "2026-11-15T12:17:20.954Z",
+  "generatedAtHead": "abd7af5544ca75154380a4c0c1d3d8d43fd915f8",
   "mode": "verify",
   "checksTotal": 50,
   "checksFailed": 0,
@@ -68,14 +68,14 @@
       "check": "schema auth-matrix.json: generatedAt + generatedAtHead present",
       "pass": true,
       "detail": {
-        "generatedAt": "2026-11-15T12:06:38.994Z",
-        "generatedAtHead": "63232415"
+        "generatedAt": "2026-11-15T12:17:20.640Z",
+        "generatedAtHead": "abd7af55"
       }
     },
     {
       "check": "timestamp auth-matrix.json: parseable and not future-dated",
       "pass": true,
-      "detail": "2026-11-15T12:06:38.994Z"
+      "detail": "2026-11-15T12:17:20.640Z"
     },
     {
       "check": "git ref auth-matrix.json: generatedAtHead exists",
@@ -84,7 +84,7 @@
     {
       "check": "verdict auth-matrix.json: PASS recorded",
       "pass": true,
-      "detail": "PASS — 35/35 owner-gated routes returned 401 unauthenticated and with a wrong key; webhook refused without a valid secret; 7/7 public routes answered 200 (matrix not over-broad)"
+      "detail": "PASS — 37/37 owner-gated routes returned 401 unauthenticated and with a wrong key; webhook refused without a valid secret; 7/7 public routes answered 200 (matrix not over-broad)"
     },
     {
       "check": "JSON parses: backup-export-verify.json",
@@ -94,14 +94,14 @@
       "check": "schema backup-export-verify.json: generatedAt + generatedAtHead present",
       "pass": true,
       "detail": {
-        "generatedAt": "2026-11-15T12:06:39.176Z",
-        "generatedAtHead": "63232415"
+        "generatedAt": "2026-11-15T12:17:20.815Z",
+        "generatedAtHead": "abd7af55"
       }
     },
     {
       "check": "timestamp backup-export-verify.json: parseable and not future-dated",
       "pass": true,
-      "detail": "2026-11-15T12:06:39.176Z"
+      "detail": "2026-11-15T12:17:20.815Z"
     },
     {
       "check": "git ref backup-export-verify.json: generatedAtHead exists",
@@ -120,14 +120,14 @@
       "check": "schema git-state.json: generatedAt + generatedAtHead present",
       "pass": true,
       "detail": {
-        "generatedAt": "2026-11-15T12:06:38Z",
-        "generatedAtHead": "63232415"
+        "generatedAt": "2026-11-15T12:17:20Z",
+        "generatedAtHead": "abd7af55"
       }
     },
     {
       "check": "timestamp git-state.json: parseable and not future-dated",
       "pass": true,
-      "detail": "2026-11-15T12:06:38Z"
+      "detail": "2026-11-15T12:17:20Z"
     },
     {
       "check": "git ref git-state.json: generatedAtHead exists",
@@ -223,22 +223,12 @@
       "pass": true
     },
     {
-      "check": "registered file still present: route-parity.txt",
-      "pass": true,
-      "detail": "registered but missing"
-    },
-    {
       "check": "registered file still present: registry-validation.txt",
       "pass": true,
       "detail": "registered but missing"
     },
     {
-      "check": "registered file still present: backup-export-verify.json",
-      "pass": true,
-      "detail": "registered but missing"
-    },
-    {
-      "check": "registered file still present: typecheck.txt",
+      "check": "registered file still present: route-parity.txt",
       "pass": true,
       "detail": "registered but missing"
     },
@@ -248,12 +238,22 @@
       "detail": "registered but missing"
     },
     {
-      "check": "registered file still present: auth-matrix-gen.log",
+      "check": "registered file still present: typecheck.txt",
       "pass": true,
       "detail": "registered but missing"
     },
     {
       "check": "registered file still present: auth-matrix.json",
+      "pass": true,
+      "detail": "registered but missing"
+    },
+    {
+      "check": "registered file still present: auth-matrix-gen.log",
+      "pass": true,
+      "detail": "registered but missing"
+    },
+    {
+      "check": "registered file still present: backup-export-verify.json",
       "pass": true,
       "detail": "registered but missing"
     },

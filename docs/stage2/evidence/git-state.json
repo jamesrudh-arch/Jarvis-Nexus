@@ -1,16 +1,16 @@
 {
   "format": "stage2-git-state",
-  "generatedAt": "2026-11-15T12:06:38Z",
-  "generatedAtHead": "632324151feeddf0d7c5003410c8aa9d80846333",
+  "generatedAt": "2026-11-15T12:17:20Z",
+  "generatedAtHead": "abd7af5544ca75154380a4c0c1d3d8d43fd915f8",
   "generator": "inline in scripts/stage22_evidence_generate.sh (git is the primary source)",
-  "head": "632324151feeddf0d7c5003410c8aa9d80846333",
+  "head": "abd7af5544ca75154380a4c0c1d3d8d43fd915f8",
   "branches": {
-    "main": "632324151feeddf0d7c5003410c8aa9d80846333",
+    "main": "abd7af5544ca75154380a4c0c1d3d8d43fd915f8",
     "railway-intelligence": "60d4fddd294b7a73b5ec245c67443de7cb890664",
     "stage2-pre-restructure": "f4c5a41cc5d39553964ad6a4372684a79bb0a6be"
   },
   "originMain": "41092a33fa13abf5acee64e8f1f3167fe46dadcd",
-  "unpushedCount": "24",
+  "unpushedCount": "25",
   "workingTreeClean": false,
   "stashCount": 0,
   "mergesInRange": "",

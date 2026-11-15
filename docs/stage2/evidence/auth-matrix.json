@@ -1,11 +1,11 @@
 {
   "format": "stage2-auth-matrix",
-  "generatedAt": "2026-11-15T12:06:38.994Z",
-  "generatedAtHead": "632324151feeddf0d7c5003410c8aa9d80846333",
+  "generatedAt": "2026-11-15T12:17:20.640Z",
+  "generatedAtHead": "abd7af5544ca75154380a4c0c1d3d8d43fd915f8",
   "generator": "scripts/stage22_auth_matrix.ts (route list derived from source regex, probed on an isolated app instance)",
   "sourceFile": "apps/nexus-api/src/index.ts",
-  "ownerGatedRouteCount": 35,
-  "requireOwnerRawCount": 37,
+  "ownerGatedRouteCount": 37,
+  "requireOwnerRawCount": 39,
   "matrix": [
     {
       "method": "POST",
@@ -184,6 +184,20 @@
     },
     {
       "method": "POST",
+      "path": "/railway/backup/restore",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/railway/backup/export/:file/download",
+      "anon": 401,
+      "wrongKey": 401,
+      "ok": true
+    },
+    {
+      "method": "POST",
       "path": "/railway/reconcile",
       "anon": 401,
       "wrongKey": 401,
@@ -303,5 +317,5 @@
       "ok": true
     }
   ],
-  "verdict": "PASS — 35/35 owner-gated routes returned 401 unauthenticated and with a wrong key; webhook refused without a valid secret; 7/7 public routes answered 200 (matrix not over-broad)"
+  "verdict": "PASS — 37/37 owner-gated routes returned 401 unauthenticated and with a wrong key; webhook refused without a valid secret; 7/7 public routes answered 200 (matrix not over-broad)"
 }
