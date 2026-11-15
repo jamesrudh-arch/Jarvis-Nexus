@@ -1,0 +1,44 @@
+{
+  "recoveryPointId": "RP-2.2-002",
+  "created": "2026-11-15T12:26:27Z",
+  "purpose": "Durable protection for the COMPLETED Stage 2.2 state (all remediation workstreams + the authorization documentation package). RP-2.2-001 remains valid for the pre-remediation state (c6d4b51).",
+  "durableArtifacts": [
+    {
+      "id": "RP-2.2-002-T",
+      "kind": "git bundle (thin: main minus origin/main; prerequisite 41092a3 = origin/main, which GitHub already holds)",
+      "path": "docs/stage2.2/recovery/jarvis-nexus-unpushed-delta-20261115-122627.bundle",
+      "bytes": 29448852,
+      "sha256": "12fe669c89a54948f9c201e82cbf2c5c1fab4c4789ec7c6342eba3c3b77394ee",
+      "head": "396ccaf454a17444ae6fb048aafce9ecad569522",
+      "covers": "the full unpushed series at creation: Stage 2.1's 20 + 2 Stage 2.1 audit commits + all Stage 2.2 remediation commits through the documentation package commit",
+      "restoreProof": "restore-proven by scripts/stage22_rp_create.sh at creation (base=origin/main-only clone; fetch -> restored-main == main; tree diff empty; script exits non-zero on any mismatch)",
+      "durability": "git-tracked (committed) \u2014 survives environment wipes"
+    }
+  ],
+  "mirrorOnlyArtifacts": [
+    {
+      "id": "RP-2.2-002-F",
+      "kind": "git bundle (full state, all refs)",
+      "path": "download/stage2.2/recovery/jarvis-nexus-full-20261115-122627.bundle",
+      "bytes": 114638877,
+      "sha256": "9f298e58d3c5fea46924c6d0dc3edd6d1dc02f1649b51087a736ef1e470045ea",
+      "durability": "NON-DURABLE mirror (gitignored download/) \u2014 never counted as protection"
+    },
+    {
+      "id": "LEGACY-A / LEGACY-B",
+      "kind": "legacy bundles (1 + 18 unreachable commits)",
+      "path": "download/stage2.2/recovery/legacy/",
+      "durability": "NON-DURABLE mirror; originals in /tmp; disposition = owner decision D-2.1-04"
+    }
+  ],
+  "coveredState": {
+    "main": "396ccaf454a17444ae6fb048aafce9ecad569522",
+    "originMain": "41092a33fa13abf5acee64e8f1f3167fe46dadcd"
+  },
+  "priorPoints": {
+    "RP-2.2-001": "valid for the pre-remediation state (c6d4b51); manifest untouched",
+    "RP-2.1-001 / RP-2.1-002": "artifacts lost again with the second download/ wipe (N-2.2-01)",
+    "RP-STAGE2-001 / RP-FC-001": "lost / untraceable (Stage 2.1 findings, stand)"
+  },
+  "note": "The RP-2.2-001 manifest was temporarily overwritten by a hardcoded script path during RP-2.2-002 creation and restored from git (recorded in the commit history); the creation script now REQUIRES an explicit RP id argument."
+}

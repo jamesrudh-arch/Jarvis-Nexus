@@ -1,0 +1,75 @@
+{
+  "format": "stage2.2-recovery-manifest",
+  "version": 1,
+  "generatedAt": "2026-11-15T12:28:01Z",
+  "generatedAtHead": "396ccaf454a17444ae6fb048aafce9ecad569522",
+  "generator": "scripts/stage22_package_register.py (committed, deterministic)",
+  "authoritativeRule": "Only git-tracked files survive environment wipes (proven twice). Artifacts below are durable ONLY in docs/; download/ entries are non-authoritative mirrors.",
+  "recoveryPoints": {
+    "RP-2.2-001": {
+      "manifest": "docs/stage2.2/recovery/manifest-rp-2.2-001.json",
+      "durable": [
+        {
+          "id": "RP-2.2-001-T",
+          "path": "docs/stage2.2/recovery/jarvis-nexus-unpushed-delta-20261115-115932.bundle",
+          "bytes": 14669434,
+          "sha256": "767cb59921ca1a52f2ec517b4cd73112d230b08366bb02ff0d1e7c58f679f699",
+          "head": "c6d4b5199326e69f26d4c30f638c6f3155f768f1",
+          "durability": "git-tracked"
+        }
+      ],
+      "mirrorOnly": [
+        {
+          "id": "RP-2.2-001-F",
+          "path": "download/stage2.2/recovery/jarvis-nexus-full-20261115-115932.bundle",
+          "durability": "NON-DURABLE (gitignored download/; wiped by environment twice \u2014 see Stage 2.1 + Stage 2.2 reconstruction)"
+        },
+        {
+          "id": "LEGACY-A",
+          "path": "download/stage2.2/recovery/legacy/lineA_production.bundle",
+          "durability": "NON-DURABLE mirror; original in /tmp/my-project/download/backups/; durable preservation = owner decision D-2.1-04"
+        },
+        {
+          "id": "LEGACY-B",
+          "path": "download/stage2.2/recovery/legacy/lineB_NEXUS_WORLD_V2.bundle",
+          "durability": "NON-DURABLE mirror; original in /tmp; durable preservation = owner decision D-2.1-04"
+        }
+      ]
+    },
+    "RP-2.2-002": {
+      "manifest": "docs/stage2.2/recovery/manifest-rp-2.2-002.json",
+      "durable": [
+        {
+          "id": "RP-2.2-002-T",
+          "path": "docs/stage2.2/recovery/jarvis-nexus-unpushed-delta-20261115-122627.bundle",
+          "bytes": 29448852,
+          "sha256": "12fe669c89a54948f9c201e82cbf2c5c1fab4c4789ec7c6342eba3c3b77394ee",
+          "head": "396ccaf454a17444ae6fb048aafce9ecad569522",
+          "durability": "git-tracked"
+        }
+      ],
+      "mirrorOnly": [
+        {
+          "id": "RP-2.2-002-F",
+          "path": "download/stage2.2/recovery/jarvis-nexus-full-20261115-122627.bundle",
+          "durability": "NON-DURABLE mirror (gitignored download/) \u2014 never counted as protection"
+        },
+        {
+          "id": "LEGACY-A / LEGACY-B",
+          "path": "download/stage2.2/recovery/legacy/",
+          "durability": "NON-DURABLE mirror; originals in /tmp; disposition = owner decision D-2.1-04"
+        }
+      ]
+    }
+  },
+  "restorationProcedure": "git clone <any repo holding 41092a3> <dir>; git -C <dir> fetch <bundle> main:restored-main (prerequisite satisfied by origin/main); verified twice this session (tree-identical restore proofs)",
+  "priorLostPoints": {
+    "RP-STAGE2-001": "artifacts lost (gitignored download/ wipe #1)",
+    "RP-FC-001": "untraceable",
+    "RP-2.1-001 / RP-2.1-002": "artifacts lost again (wipe #2, finding N-2.2-01)"
+  },
+  "ownerGated": [
+    "D-2.1-04 legacy bundles (download/stage2.2/recovery/legacy/ mirrors; originals /tmp)",
+    "B-01 authorized push is the durable closure for the unpushed series"
+  ]
+}

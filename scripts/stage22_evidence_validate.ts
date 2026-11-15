@@ -82,10 +82,14 @@ for (const a of manifest.artifacts ?? []) {
 }
 check("manifest carries explicit lostPoints classification", manifest.lostPoints && Object.keys(manifest.lostPoints).length >= 3, manifest.lostPoints ? Object.keys(manifest.lostPoints) : null);
 
-// 7. recovery artifacts complete (RP-2.2-001 manifest cross-check)
-const rp22 = JSON.parse(readFileSync("docs/stage2.2/recovery/manifest-rp-2.2-001.json", "utf8"));
-for (const a of rp22.durableArtifacts ?? []) {
-  check(`RP-2.2-001 durable artifact complete: ${a.id}`, existsSync(a.path) && statSync(a.path).size === a.bytes && sha(a.path) === a.sha256, a.path);
+// 7. recovery artifacts complete (iterate EVERY committed recovery-point manifest)
+import { readdirSync as _readdir } from "node:fs";
+const rpDir = "docs/stage2.2/recovery";
+for (const mf of _readdir(rpDir).filter((f) => /^manifest-rp-.*\.json$/.test(f)).sort()) {
+  const rp = JSON.parse(readFileSync(join(rpDir, mf), "utf8"));
+  for (const a of rp.durableArtifacts ?? []) {
+    check(`recovery artifact complete (${mf}): ${a.id}`, existsSync(a.path) && statSync(a.path).size === a.bytes && sha(a.path) === a.sha256, a.path);
+  }
 }
 
 // honest-classification guard: every regenerated report must say so

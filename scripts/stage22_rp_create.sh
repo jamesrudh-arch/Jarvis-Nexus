@@ -11,9 +11,12 @@
 set -euo pipefail
 cd /home/z/my-project
 
+RP_ID=${1:?usage: bash scripts/stage22_rp_create.sh <RP-ID e.g. RP-2.2-00N>}
 TS=$(date -u +%Y%m%d-%H%M%S)
 DL=download/stage2.2/recovery
 DOCS=docs/stage2.2/recovery
+# RP-2.2-001 keeps its original manifest name; later points write manifest-<id>.json
+MANIFEST="$DOCS/manifest-${RP_ID}.json"
 mkdir -p "$DL" "$DOCS" download/stage2.2/recovery/legacy
 
 THIN="$DOCS/jarvis-nexus-unpushed-delta-${TS}.bundle"
@@ -66,14 +69,14 @@ rm -rf "$PROOF"
 echo "[6/7] manifest"
 HEAD_SHA=$(git rev-parse HEAD)
 ORIGIN_SHA=$(git rev-parse origin/main)
-cat > "$DOCS/manifest-rp-2.2-001.json" <<EOF
+cat > "$MANIFEST" <<EOF
 {
-  "recoveryPointId": "RP-2.2-001",
+  "recoveryPointId": "${RP_ID}",
   "created": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
   "purpose": "Durable protection for the 22 unpushed commits BEFORE Stage 2.2 remediation begins (Stage 2.1 lesson: only git-tracked files survive environment wipes; RP-2.1-001/002 artifacts in gitignored download/ were wiped again)",
   "durableArtifacts": [
     {
-      "id": "RP-2.2-001-T",
+      "id": "${RP_ID}-T",
       "kind": "git bundle (thin: main minus origin/main; prerequisite 41092a3 = origin/main, which GitHub already holds)",
       "path": "docs/stage2.2/recovery/$(basename "$THIN")",
       "bytes": $THIN_BYTES,
@@ -84,7 +87,7 @@ cat > "$DOCS/manifest-rp-2.2-001.json" <<EOF
   ],
   "mirrorOnlyArtifacts": [
     {
-      "id": "RP-2.2-001-F",
+      "id": "${RP_ID}-F",
       "kind": "git bundle (full state, all refs)",
       "path": "download/stage2.2/recovery/$(basename "$FULL")",
       "bytes": $FULL_BYTES,
@@ -115,9 +118,9 @@ cat > "$DOCS/manifest-rp-2.2-001.json" <<EOF
   }
 }
 EOF
-cp "$DOCS/manifest-rp-2.2-001.json" "$DL/manifest-rp-2.2-001.json"
+cp "$MANIFEST" "$DL/manifest-$(basename "$MANIFEST")"
 
 echo "[7/7] summary"
 echo "thin bundle : $THIN_BYTES bytes  sha256=$THIN_SHA"
 echo "full mirror : $FULL_BYTES bytes  sha256=$FULL_SHA (non-durable)"
-echo "manifest    : $DOCS/manifest-rp-2.2-001.json"
+echo "manifest    : $MANIFEST"

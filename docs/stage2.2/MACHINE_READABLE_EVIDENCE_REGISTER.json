@@ -1,0 +1,192 @@
+{
+  "format": "stage2.2-machine-readable-evidence-register",
+  "version": 1,
+  "generatedAt": "2026-11-15T12:28:01Z",
+  "generatedAtHead": "396ccaf454a17444ae6fb048aafce9ecad569522",
+  "git": {
+    "main": "396ccaf454a17444ae6fb048aafce9ecad569522",
+    "originMain": "41092a33fa13abf5acee64e8f1f3167fe46dadcd",
+    "unpushedCount": "29",
+    "workingTreeClean": false,
+    "branches": {
+      "main": "396ccaf454a17444ae6fb048aafce9ecad569522",
+      "railway-intelligence": "60d4fddd294b7a73b5ec245c67443de7cb890664",
+      "stage2-pre-restructure": "f4c5a41cc5d39553964ad6a4372684a79bb0a6be"
+    },
+    "pushed": false,
+    "deployed": false,
+    "productionTouched": false
+  },
+  "verdict": "GREEN \u2014 READY FOR AUTHORIZATION (see DEPLOYMENT_AUTHORIZATION_PACKAGE.md; does not itself authorize deployment)",
+  "verificationResults": {
+    "testSuite": {
+      "pass": 206,
+      "skip": 12,
+      "fail": 0,
+      "assertions": 905,
+      "files": 27,
+      "source": "bun test (recorded in REGRESSION_TEST_REPORT.md)"
+    },
+    "typecheck": "0 errors",
+    "routeParity": {
+      "head": 58,
+      "headGet": 33,
+      "headPost": 25,
+      "production": 33,
+      "delta": "+25 additive / -0 / 0 duplicates"
+    },
+    "authMatrix": "37/37 source-derived owner-gated routes 401 (anon + wrong key)",
+    "securitySuite": "31 checks PASS",
+    "drDrill": {
+      "steps": "10/10 PASS",
+      "rtoWallClockMs": 96,
+      "cliRestoreMs": 5,
+      "rpoMeasuredMs": 11,
+      "fkViolations": 0,
+      "orphanChecks": "11/11 zero orphans"
+    },
+    "ciValidation": "29 checks PASS (trigger proof incl. self-test; GitHub execution pending authorized push)",
+    "evidenceIntegrity": "53 checks PASS (substitution guard tamper-proven)",
+    "migrations": "idempotency proven ([1,2,3] then all skipped)",
+    "build": "next build strict PASS after F-2.2-BUILD-01 repair"
+  },
+  "evidence": [
+    {
+      "path": "docs/stage2.2/evidence/ci-validation.json",
+      "bytes": 956,
+      "sha256": "a36fffc2b33e3863b21834fa92dfa4639c65509531ee980c8923818288d7d72d",
+      "status": "VERIFIED",
+      "note": "git-tracked evidence"
+    },
+    {
+      "path": "docs/stage2.2/evidence/dr-drill.json",
+      "bytes": 3716,
+      "sha256": "e1735a8b3720a143b00c4b50ac2ee4538a4b1d7bb4b63d7348b53d298fe51536",
+      "status": "VERIFIED",
+      "note": "git-tracked evidence"
+    },
+    {
+      "path": "docs/stage2.2/evidence/evidence-integrity.json",
+      "bytes": 7967,
+      "sha256": "f0a72f9c8856c5f16667d67ab52a03084cf1a16fbd4f5e49351b6a5d6f03ca0c",
+      "status": "VERIFIED",
+      "note": "git-tracked evidence"
+    },
+    {
+      "path": "docs/stage2.2/evidence/final-closure-probe.txt",
+      "bytes": 3944,
+      "sha256": "6d7f5fc36b4b34a3779ddb3a48d1218d69ffa35de50ecef44aa682aa8d22328c",
+      "status": "VERIFIED",
+      "note": "git-tracked evidence"
+    },
+    {
+      "path": "docs/stage2.2/evidence/security-suite.json",
+      "bytes": 5568,
+      "sha256": "1deb463b0d1a7b38648f5052fde61159963c4f84c8e9a9734c4f3ccec205df91",
+      "status": "VERIFIED",
+      "note": "git-tracked evidence"
+    },
+    {
+      "path": "docs/stage2/evidence/SHA256SUMS",
+      "bytes": 775,
+      "sha256": "0bcc07f4912e70154c9f9b41a8b3584bdedd6454096bb76b197cf1382f7d4a3c",
+      "status": "VERIFIED",
+      "note": "git-tracked evidence"
+    },
+    {
+      "path": "docs/stage2/evidence/auth-matrix-gen.log",
+      "bytes": 347,
+      "sha256": "c81bdf99b9015ad8b8c9d16ae249460b0f8aeb56682e31b3632d82066f5ecbc0",
+      "status": "VERIFIED",
+      "note": "git-tracked evidence"
+    },
+    {
+      "path": "docs/stage2/evidence/auth-matrix.json",
+      "bytes": 6413,
+      "sha256": "080cee7ed4ebff84ceb5373143ed4f1dc0f1f356d4b9d7de6c45efeed0840a9f",
+      "status": "VERIFIED",
+      "note": "git-tracked evidence"
+    },
+    {
+      "path": "docs/stage2/evidence/backup-export-verify-gen.log",
+      "bytes": 116,
+      "sha256": "fa6029a610a8051f77829ec018252a06d473e46af27921208388427990bfd30c",
+      "status": "VERIFIED",
+      "note": "git-tracked evidence"
+    },
+    {
+      "path": "docs/stage2/evidence/backup-export-verify.json",
+      "bytes": 933,
+      "sha256": "040de76219da371809c5288850a0ae8ce46400b4689455ef7829bab3b28b2522",
+      "status": "VERIFIED",
+      "note": "git-tracked evidence"
+    },
+    {
+      "path": "docs/stage2/evidence/git-state.json",
+      "bytes": 803,
+      "sha256": "a607c0e3a1b2d06ad5a5de07b91c7a79f27db1d89a89865e3381350989efeac5",
+      "status": "VERIFIED",
+      "note": "git-tracked evidence"
+    },
+    {
+      "path": "docs/stage2/evidence/registry-validation.txt",
+      "bytes": 1715,
+      "sha256": "72abe2a6a20a96d007bdd4a89d6e69e2ff4429369502a0283aee92b70017fe49",
+      "status": "VERIFIED",
+      "note": "git-tracked evidence"
+    },
+    {
+      "path": "docs/stage2/evidence/route-parity.txt",
+      "bytes": 1171,
+      "sha256": "5fb4b6ca934ee94887d2b1a041c3a73392fcf71e96d6d1b49cbc254804a0c9ec",
+      "status": "VERIFIED",
+      "note": "git-tracked evidence"
+    },
+    {
+      "path": "docs/stage2/evidence/typecheck.txt",
+      "bytes": 118,
+      "sha256": "d8ebcb358d25067535ee1a2e3a29af004f143907473172d7f3533332f86d8fdb",
+      "status": "VERIFIED",
+      "note": "git-tracked evidence"
+    }
+  ],
+  "evidenceRegisters": {
+    "stage2V4": "docs/stage2/reports/recovery_manifest.json (V4 gate manifest; artifacts RP-2.2-001-T + RP-2.2-002-T)",
+    "stage2Checksums": "docs/stage2/evidence/SHA256SUMS",
+    "stage22PackageChecksums": "docs/stage2.2/SHA256SUMS"
+  },
+  "findingsDisposition": {
+    "stage21Findings": "21/21 dispositioned \u2014 see REMEDIATION_REGISTER.md (1 refuted, 8 repaired/implemented, 12 carried/owner-gated)",
+    "stage22Findings": "5/5 dispositioned \u2014 N-2.2-01 repaired; F-2.2-CI-01 repaired; F-2.2-BUILD-01 repaired; F-2.2-PARITY-01 repaired; D-2.1-04 partially mitigated/owner-gated"
+  },
+  "outstandingOwnerDecisions": [
+    "B-01 (the authorization: push + CI-observed deploy + post-deploy protocol)",
+    "B-02",
+    "B-03",
+    "B-04",
+    "B-05",
+    "B-06",
+    "B-07",
+    "FC-05",
+    "FC-06",
+    "D-2.1-03 (full form)",
+    "D-2.1-04",
+    "D-2.1-05"
+  ],
+  "productionOnlyValidationStillRequired": [
+    "first genuine GitHub Actions run (inside the B-01 push protocol)",
+    "startup + health at new commit (migrations 3/3, 58 routes)",
+    "first production backup + off-site copy verification",
+    "volume-backup state query (needs B-03)",
+    "POST /models/verify (needs B-07)",
+    "XFF behavior probe (FC-05)",
+    "persistence restart test on production"
+  ],
+  "constraintsHonored": {
+    "pushed": false,
+    "deployed": false,
+    "productionModified": false,
+    "historyRewritten": false,
+    "forcePushed": false
+  }
+}

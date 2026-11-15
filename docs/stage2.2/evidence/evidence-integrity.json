@@ -1,9 +1,9 @@
 {
   "format": "stage2.2-evidence-integrity",
-  "generatedAt": "2026-11-15T12:21:50.942Z",
-  "generatedAtHead": "4011aead16adf8e3b5c9c6cb6930fdc631adaafe",
+  "generatedAt": "2026-11-15T12:27:31.401Z",
+  "generatedAtHead": "396ccaf454a17444ae6fb048aafce9ecad569522",
   "mode": "verify",
-  "checksTotal": 50,
+  "checksTotal": 53,
   "checksFailed": 0,
   "verdict": "PASS",
   "checks": [
@@ -148,6 +148,20 @@
       "detail": "docs/stage2.2/recovery/jarvis-nexus-unpushed-delta-20261115-115932.bundle"
     },
     {
+      "check": "manifest artifact resolves with exact byte count: RP-2.2-002-T",
+      "pass": true,
+      "detail": {
+        "path": "docs/stage2.2/recovery/jarvis-nexus-unpushed-delta-20261115-122627.bundle",
+        "expected": 29448852,
+        "actual": 29448852
+      }
+    },
+    {
+      "check": "manifest artifact sha256 matches: RP-2.2-002-T",
+      "pass": true,
+      "detail": "docs/stage2.2/recovery/jarvis-nexus-unpushed-delta-20261115-122627.bundle"
+    },
+    {
       "check": "manifest carries explicit lostPoints classification",
       "pass": true,
       "detail": [
@@ -158,9 +172,14 @@
       ]
     },
     {
-      "check": "RP-2.2-001 durable artifact complete: RP-2.2-001-T",
+      "check": "recovery artifact complete (manifest-rp-2.2-001.json): RP-2.2-001-T",
       "pass": true,
       "detail": "docs/stage2.2/recovery/jarvis-nexus-unpushed-delta-20261115-115932.bundle"
+    },
+    {
+      "check": "recovery artifact complete (manifest-rp-2.2-002.json): RP-2.2-002-T",
+      "pass": true,
+      "detail": "docs/stage2.2/recovery/jarvis-nexus-unpushed-delta-20261115-122627.bundle"
     },
     {
       "check": "report carries REGENERATED banner: PHASE0_BASELINE.md",
