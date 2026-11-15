@@ -38,3 +38,10 @@ jobs:
           # CI has no owner secrets: live-model tests self-skip (skipIf),
           # echo-provider paths and the bundled MCP server still run.
           bun test tests/integration tests/scenarios tests/persistence
+
+      - name: Adversarial verification gate (V1-V5, incl. V4 evidence provenance)
+        run: |
+          # Stage 2.2 F-2.2-CI-01: without this step CI stays green even while
+          # the repository's own independent verifier is red. The adversarial
+          # suite is the release gate; it must run in CI, not only locally.
+          bun test tests/adversarial
