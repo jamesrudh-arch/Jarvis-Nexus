@@ -1,0 +1,33 @@
+{
+  "recoveryPointId": "RP-2.1-002",
+  "generatedAt": "2026-11-15T05:40:33Z",
+  "purpose": "Complete-state recovery point INCLUDING the Stage 2.1 audit evidence commit (RP-2.1-001 covers only the deployment candidate up to 35ae593)",
+  "artifacts": [
+    {
+      "id": "RP-2.1-002",
+      "kind": "git bundle (all refs, complete history)",
+      "path": "download/stage2.1/recovery/jarvis-nexus-audit-20261115-054031.bundle",
+      "bytes": 99858250,
+      "sha256": "90e2f5316c27ee525ab80bf5aa42e71577ce49e06961ef1208f35836efdb9f86",
+      "head": "b862cdb338264ddc69a3a064b3c6377455dc15ee",
+      "verification": "git bundle verify okay + clone restoration verified (see docs/stage2.1/BACKUP-ARCHITECTURE-AND-RESTORE-DEMONSTRATION.md for the method)"
+    },
+    {
+      "id": "RP-2.1-001",
+      "kind": "git bundle (all refs, complete history)",
+      "path": "download/stage2.1/recovery/jarvis-nexus-full-20261115-053253.bundle",
+      "bytes": 99819242,
+      "sha256": "cad3fa846c836c8e5758cc056033825a89ff1f68badb67ddfb20b1fbf69fb490",
+      "head": "35ae5930618d15ae0d983ff6e32071c6db38e4f3",
+      "verification": "git bundle verify okay; clone -> HEAD 35ae593, 504 files, clean, 3 branches, 5/5 spot checks"
+    }
+  ],
+  "restorationProcedures": {
+    "gitHistory": "git clone <bundle> <dir>",
+    "note": "manifest itself is committed to git (docs/stage2.1/) \u2014 the durability failure of RP-STAGE2-001 (manifest-only-in-gitignored-download) is not repeated"
+  },
+  "priorPoints": {
+    "RP-FC-001": "untraceable \u2014 no reference anywhere",
+    "RP-STAGE2-001": "artifacts lost (gitignored download/ wiped)"
+  }
+}
