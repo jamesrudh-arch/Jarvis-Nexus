@@ -18,8 +18,8 @@
 
 | # | Item | Stage 2.2 claim (recorded) | Stage 2.3 independent result | Category | Verdict |
 |---|---|---|---|---|---|
-| 1 | Full test suite | 206 pass / 12 skip / 0 fail / 905 assertions / 27 files | `bun test`: **206 / 12 / 0 / 905 / 27** (4.08 s) | reproduced | **MATCH** |
-| 2 | Test-suite assertion count (commit message) | 907 (b93a879 message) | 905 (register) = 905 (re-run) — message over-counts by 2 | reproduced | **F-2.3-03 documented** |
+| 1 | Full test suite | 206 pass / 12 skip / 0 fail / 905 assertions (register) / 907 (commit message) / 27 files | `bun test`: **206 / 12 / 0 / 27**; assertions **905** in the recycled environment (6 evidence files) and **907** after the F-2.3-02 durable repair (8 evidence files) — see row 2 | reproduced | **MATCH** (pass/fail/skip/files identical; assertion count dynamic, resolved in row 2) |
+| 2 | Test-suite assertion count | 907 (b93a879 message) vs 905 (register's static transcription) | **resolved during this stage**: the V4 gate asserts once per evidence file — 6 files post-wipe → 905; 8 files (both gen.logs present) → 907. Stage 2.2's 907 was correct for its tree; after the F-2.3-02 durable repair the reproducible count at HEAD is **907** | reproduced | **F-2.3-03 RESOLVED (gate stronger, not weaker)** |
 | 3 | TypeScript | 0 errors | `tsc --noEmit` exit 0, silent | reproduced | **MATCH** |
 | 4 | Production build | strict standalone build + assembly PASS | `bunx next build` PASS (3 static pages, 14 routes); standalone assembled (`server.js` + `public/` + `.next/static`) | reproduced | **MATCH** |
 | 5 | CI structural validation | 29 checks PASS | re-run: **29/29 PASS**; additionally re-run with `--execute`: all workflow steps executed locally, verdict PASS | reproduced | **MATCH** |

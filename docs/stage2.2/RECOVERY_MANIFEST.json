@@ -1,8 +1,8 @@
 {
   "format": "stage2.2-recovery-manifest",
   "version": 1,
-  "generatedAt": "2026-11-15T15:15:47Z",
-  "generatedAtHead": "b93a87905b6fa83c8795e3a57714c12496d029fe",
+  "generatedAt": "2026-11-15T15:25:48Z",
+  "generatedAtHead": "1a0fe2ef275e9a5153440a821ad31c838befc344",
   "generator": "scripts/stage22_package_register.py (committed, deterministic)",
   "authoritativeRule": "Only git-tracked files survive environment wipes (proven twice). Artifacts below are durable ONLY in docs/; download/ entries are non-authoritative mirrors.",
   "recoveryPoints": {
@@ -58,6 +58,36 @@
           "id": "LEGACY-A / LEGACY-B",
           "path": "download/stage2.2/recovery/legacy/",
           "durability": "NON-DURABLE mirror; originals in /tmp; disposition = owner decision D-2.1-04"
+        }
+      ]
+    },
+    "RP-2.3-001": {
+      "manifest": "docs/stage2.2/recovery/manifest-rp-2.3-001.json",
+      "durable": [
+        {
+          "id": "RP-2.3-001-T",
+          "path": "docs/stage2.2/recovery/jarvis-nexus-unpushed-delta-20261115-152322.bundle",
+          "bytes": 44300241,
+          "sha256": "f2670c5da1df93649078ae4c90850702d28e2f416901e7574eec12cd35388027",
+          "head": "1a0fe2ef275e9a5153440a821ad31c838befc344",
+          "durability": "git-tracked"
+        }
+      ],
+      "mirrorOnly": [
+        {
+          "id": "RP-2.3-001-F",
+          "path": "download/stage2.2/recovery/jarvis-nexus-full-20261115-152322.bundle",
+          "durability": "NON-DURABLE (gitignored download/; wiped by environment repeatedly \u2014 see Stage 2.1/2.2/2.3 records)"
+        },
+        {
+          "id": "LEGACY-A",
+          "path": "download/stage2.2/recovery/legacy/lineA_production.bundle",
+          "durability": "NON-DURABLE mirror; durable preservation = owner decision D-2.1-04"
+        },
+        {
+          "id": "LEGACY-B",
+          "path": "download/stage2.2/recovery/legacy/lineB_NEXUS_WORLD_V2.bundle",
+          "durability": "NON-DURABLE mirror; durable preservation = owner decision D-2.1-04"
         }
       ]
     }

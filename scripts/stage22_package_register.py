@@ -124,7 +124,11 @@ register = {
     },
     "verdict": "GREEN — READY FOR AUTHORIZATION (see DEPLOYMENT_AUTHORIZATION_PACKAGE.md; does not itself authorize deployment)",
     "verificationResults": {
-        "testSuite": {"pass": 206, "skip": 12, "fail": 0, "assertions": 905, "files": 27, "source": "bun test (recorded in REGRESSION_TEST_REPORT.md)"},
+        # Static transcription of the latest suite run at the time this register
+        # was last regenerated. Stage 2.3 note (F-2.3-03): the assertion count is
+        # DYNAMIC (the V4 gate asserts once per evidence file: 6 files post-wipe
+        # = 905; 8 files with both durable gen.logs = 907, the current state).
+        "testSuite": {"pass": 206, "skip": 12, "fail": 0, "assertions": 907, "files": 27, "source": "bun test (final Stage 2.3 gate run: 206/12/0/907/27, 8 durable evidence files present)"},
         "typecheck": "0 errors",
         "routeParity": {"head": 58, "headGet": 33, "headPost": 25, "production": 33, "delta": "+25 additive / -0 / 0 duplicates"},
         "authMatrix": "37/37 source-derived owner-gated routes 401 (anon + wrong key)",

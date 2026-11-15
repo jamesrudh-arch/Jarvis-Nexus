@@ -1,9 +1,9 @@
 {
   "format": "stage2.2-evidence-integrity",
-  "generatedAt": "2026-11-15T15:15:42.494Z",
-  "generatedAtHead": "b93a87905b6fa83c8795e3a57714c12496d029fe",
+  "generatedAt": "2026-11-15T15:25:48.602Z",
+  "generatedAtHead": "1a0fe2ef275e9a5153440a821ad31c838befc344",
   "mode": "verify",
-  "checksTotal": 53,
+  "checksTotal": 54,
   "checksFailed": 0,
   "verdict": "PASS",
   "checks": [
@@ -180,6 +180,11 @@
       "check": "recovery artifact complete (manifest-rp-2.2-002.json): RP-2.2-002-T",
       "pass": true,
       "detail": "docs/stage2.2/recovery/jarvis-nexus-unpushed-delta-20261115-122627.bundle"
+    },
+    {
+      "check": "recovery artifact complete (manifest-rp-2.3-001.json): RP-2.3-001-T",
+      "pass": true,
+      "detail": "docs/stage2.2/recovery/jarvis-nexus-unpushed-delta-20261115-152322.bundle"
     },
     {
       "check": "report carries REGENERATED banner: PHASE0_BASELINE.md",

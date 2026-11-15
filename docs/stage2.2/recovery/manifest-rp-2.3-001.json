@@ -1,0 +1,43 @@
+{
+  "recoveryPointId": "RP-2.3-001",
+  "created": "2026-11-15T15:23:31Z",
+  "purpose": "Durable protection for the COMPLETE Stage 2.3 authorization-boundary state (33 unpushed commits through the stage2.3 documentation commit, incl. the evidence durability repairs F-2.3-01/F-2.3-02 and the authorization package). Created at the authorization boundary: no push/deploy has occurred; B-01 decision pending with the owner.",
+  "durableArtifacts": [
+    {
+      "id": "RP-2.3-001-T",
+      "kind": "git bundle (thin: main minus origin/main; prerequisite 41092a3 = origin/main, which GitHub already holds)",
+      "path": "docs/stage2.2/recovery/jarvis-nexus-unpushed-delta-20261115-152322.bundle",
+      "bytes": 44300241,
+      "sha256": "f2670c5da1df93649078ae4c90850702d28e2f416901e7574eec12cd35388027",
+      "head": "1a0fe2ef275e9a5153440a821ad31c838befc344",
+      "restoreProof": "fetch into base clone -> restored-main == main, 581 files"
+    }
+  ],
+  "mirrorOnlyArtifacts": [
+    {
+      "id": "RP-2.3-001-F",
+      "kind": "git bundle (full state, all refs)",
+      "path": "download/stage2.2/recovery/jarvis-nexus-full-20261115-152322.bundle",
+      "bytes": 129510621,
+      "sha256": "5a6de984d67af98fc4f246ffd112aae14aeb917be0acab1981540747f87f409b",
+      "durability": "NON-DURABLE (gitignored download/; wiped by environment repeatedly — see Stage 2.1/2.2/2.3 records)"
+    },
+    {
+      "id": "LEGACY-A", "kind": "legacy bundle lineA_production (1 unreachable smart-failover commit)",
+      "path": "download/stage2.2/recovery/legacy/lineA_production.bundle", "sha256": "ececc4a7709608e1121d5b8f57972b13791db2e576043f1629a21e428acc6497",
+      "durability": "NON-DURABLE mirror; durable preservation = owner decision D-2.1-04"
+    },
+    {
+      "id": "LEGACY-B", "kind": "legacy bundle lineB_NEXUS_WORLD_V2 (18 unreachable commits)",
+      "path": "download/stage2.2/recovery/legacy/lineB_NEXUS_WORLD_V2.bundle", "sha256": "633da587af1ff14936d07eefd086a134de73f3c31626f0a7171e93f0b1830f6d",
+      "durability": "NON-DURABLE mirror; durable preservation = owner decision D-2.1-04"
+    }
+  ],
+  "coveredState": { "main": "1a0fe2ef275e9a5153440a821ad31c838befc344", "originMain": "41092a33fa13abf5acee64e8f1f3167fe46dadcd", "unpushedCommits": 33 },
+  "priorPoints": {
+    "RP-2.2-001": "valid for the pre-remediation state (c6d4b51); manifest in this directory",
+    "RP-2.2-002": "valid for the Stage 2.2 documentation-package state (396ccaf); manifest in this directory",
+    "RP-2.1-001 / RP-2.1-002": "artifacts lost to download/ wipes (finding N-2.2-01)",
+    "RP-FC-001 / RP-STAGE2-001": "untraceable / lost (Stage 2.1 findings, stand)"
+  }
+}

@@ -1,16 +1,16 @@
 {
   "format": "stage2.3-revalidation-summary",
-  "generatedAt": "2026-11-15T15:17:58Z",
-  "generatedAtHead": "61a7c5bafa13a8e0920252aae4d46fd37b3d9bf5",
+  "generatedAt": "2026-11-15T15:25:48Z",
+  "generatedAtHead": "1a0fe2ef275e9a5153440a821ad31c838befc344",
   "generator": "scripts/stage23_evidence_record.py (records this session's independent re-runs; full outputs in docs/stage2*/evidence/)",
   "categoryKey": "reproduced = independently re-run locally this session; github-verified = observed via GitHub API; production-verified = observed against the live deployment read-only",
   "results": [
     {
       "item": "full test suite",
-      "stage22Claim": "206 pass / 12 skip / 0 fail / 905 assertions / 27 files (register) but 907 (b93a879 commit message)",
-      "stage23Reproduced": "206 pass / 12 skip / 0 fail / 905 expect() calls / 27 files (bun test, 2026-11-15)",
+      "stage22Claim": "206 pass / 12 skip / 0 fail / 27 files; assertions 905 (register's static transcription) vs 907 (b93a879 commit message)",
+      "stage23Reproduced": "206 pass / 12 skip / 0 fail / 27 files; assertions DYNAMIC via the V4 evidence-directory scan: 905 in the recycled environment (6 evidence files), 907 after the F-2.3-02 durable repair (8 files) \u2014 final suite at stage close: 907",
       "category": "reproduced",
-      "verdict": "MATCH vs register; commit message over-count of 2 assertions documented (no code impact; message immutable without history rewrite)"
+      "verdict": "MATCH on pass/fail/skip/files; assertion-count discrepancy RESOLVED (F-2.3-03): Stage 2.2's 907 was correct for its pre-recycle tree; the register's static 905 was stale; after repair the reproducible count is 907 \u2014 the gate is stronger, not weaker"
     },
     {
       "item": "typecheck",

@@ -1,14 +1,14 @@
 # STAGE 2.2 package checksums (authoritative tree: docs/stage2.2/)
 # Standard sha256sum format: verify from repo root with
 #   sha256sum -c docs/stage2.2/SHA256SUMS
-# recorded 2026-11-15T15:15:47Z at head b93a87905b6fa83c8795e3a57714c12496d029fe
+# recorded 2026-11-15T15:25:48Z at head 1a0fe2ef275e9a5153440a821ad31c838befc344
 0e83a767492b8827b89804c8da1a232ff5be59be49d982121abbdc7d3582e165  docs/stage2.2/BACKUP_ARCHITECTURE.md
 300431c9d59f66a20b6cfbcfefd9bd470a1d3bed6883cf7cf7b96aaddca965b4  docs/stage2.2/CI_REPAIR_AND_VERIFICATION.md
 e0185462e0a13028f5ea0a1a012ef403c0595d9aa16b2d0d91a1877a49eb817c  docs/stage2.2/DEPLOYMENT_AUTHORIZATION_PACKAGE.md
 e652d2fc2f19b37be78f36422f08edc9b8fa300b7f734927390eff3e623bd2b8  docs/stage2.2/DISASTER_RECOVERY_REPORT.md
-1dcb40928823933f321be921e70f9a7b10bf202950404c87751845c1db20f113  docs/stage2.2/MACHINE_READABLE_EVIDENCE_REGISTER.json
+81a8bc5131d3a14b6936e77da1458a11c81d6da222a77013801f2a746723e29b  docs/stage2.2/MACHINE_READABLE_EVIDENCE_REGISTER.json
 985e695cb3abb94b6edeb34485d48c0ecd0e8e0c9dbe34855ddea335853d1d68  docs/stage2.2/OWNER_DECISION_REGISTER.md
-4ea793cf76839109625b863d5961d3af009483258e5aad7420dd78446f19add1  docs/stage2.2/RECOVERY_MANIFEST.json
+bbb907fce22b5204c0dbc1ac942428393c6d460c8939ce3860b17db9a46eb1c2  docs/stage2.2/RECOVERY_MANIFEST.json
 af443096f0066f7a3d6aa2a29f71418eb0b24b42774fe9746f43fe88270b0de7  docs/stage2.2/REGRESSION_TEST_REPORT.md
 4c003929e38276c998477920872fa7e8be8ba028c3e305e4f2396f2c63ce5c73  docs/stage2.2/RELEASE_RISK_ASSESSMENT.md
 439dd8b00414926b01eff1efa9c60861b03db488968d0a99191e5a886a42cee4  docs/stage2.2/REMEDIATION_REGISTER.md
@@ -17,10 +17,12 @@ af443096f0066f7a3d6aa2a29f71418eb0b24b42774fe9746f43fe88270b0de7  docs/stage2.2/
 650ffd751bb6c28091b63259f551d63713f494b8b5384d9ed9487fda2bfdc4b1  docs/stage2.2/V4_EVIDENCE_RECONSTRUCTION.md
 6203a165761b3be6cd2ad66f406c464d25532b4c0439326238c5332a4e1ac6bd  docs/stage2.2/evidence/ci-validation.json
 388f2dec20038e0e0e457ec2795955c8bf764af016a71c4b8be33c45fa87da91  docs/stage2.2/evidence/dr-drill.json
-03d39b6fa33044e9c4217041872a8a226257d394c94a1f51e88e00179ffba59f  docs/stage2.2/evidence/evidence-integrity.json
+9d28155f2374aee5c4a2f5f4d8237374627edeca290283bd595711aa2b1298b4  docs/stage2.2/evidence/evidence-integrity.json
 6d7f5fc36b4b34a3779ddb3a48d1218d69ffa35de50ecef44aa682aa8d22328c  docs/stage2.2/evidence/final-closure-probe.txt
 986588f0a4334bca05fde82b3b25b092b3eb72763329a91898c1b128dc10ed41  docs/stage2.2/evidence/security-suite.json
 767cb59921ca1a52f2ec517b4cd73112d230b08366bb02ff0d1e7c58f679f699  docs/stage2.2/recovery/jarvis-nexus-unpushed-delta-20261115-115932.bundle
 12fe669c89a54948f9c201e82cbf2c5c1fab4c4789ec7c6342eba3c3b77394ee  docs/stage2.2/recovery/jarvis-nexus-unpushed-delta-20261115-122627.bundle
+f2670c5da1df93649078ae4c90850702d28e2f416901e7574eec12cd35388027  docs/stage2.2/recovery/jarvis-nexus-unpushed-delta-20261115-152322.bundle
 598b025122fd56846235a2e65068ef8416bc1c91a4344190bad0c93f3dc10f70  docs/stage2.2/recovery/manifest-rp-2.2-001.json
 3ec0f57930960acae9a2d42b44c46ac29b00463b2093aacc94b935562488b3db  docs/stage2.2/recovery/manifest-rp-2.2-002.json
+141281172bfd707ee2d07363cd7de4cc988251b02e25f7b3ebdbf84b0f75eb0b  docs/stage2.2/recovery/manifest-rp-2.3-001.json

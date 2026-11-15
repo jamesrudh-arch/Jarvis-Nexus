@@ -1,8 +1,16 @@
-# STAGE 2.3 evidence checksums (authoritative tree: docs/stage2.3/)
+# STAGE 2.3 package checksums (authoritative tree: docs/stage2.3/)
 # Standard sha256sum format: verify from repo root with
 #   sha256sum -c docs/stage2.3/SHA256SUMS
-# initial record 2026-11-15T15:17:58Z at head 61a7c5bafa13a8e0920252aae4d46fd37b3d9bf5 (final record taken after all stage documents exist)
-605898aa08b91164b6248dfe3c8f790f79f82e4b14d814bef4def939659142b4  docs/stage2.3/evidence/bundle-restore-proof.json
-85ea47f6f966654aa48389fb01fa84af634c1cec67767cbe9c9b7a894e5b13a1  docs/stage2.3/evidence/git-state-stage23.json
-6b753a43ab82657d6f8e5c3ada776d9f9d4b5730dcb98dd9296100b31f3a172b  docs/stage2.3/evidence/production-baseline.json
-bb66ebce420ed797315d88cf02b9338c6fd273bd8deac7b186300b1865ecee81  docs/stage2.3/evidence/revalidation-summary.json
+# finalized at stage close (all documents + evidence present)
+bb2cc268a71124a7855c4dfb53585464b1069e01acafd04b1441f0ee98d0900a  docs/stage2.3/DEPLOYMENT_AUTHORIZATION_PACKAGE.md
+c0f7020ad56af7a4ea00d46f6aa74f4f7901020c29a4c81cf07580c316d9b64c  docs/stage2.3/EVIDENCE_MANIFEST.md
+222cd050fc9c38783445846212ad31a904e29235456c0fb62d26eb069d9cb0e6  docs/stage2.3/INCIDENT_AND_BLOCKER_REGISTER.md
+d468e5605e3af25132bc94de0c4dfe7aa85a25fd241fd18a2e47bef236b05c02  docs/stage2.3/PRODUCTION_CONFIGURATION_AUDIT.md
+0a39f27049d918c01dab8f2375e1b833bcfaa0a6bb31bcc1857a0eeb0df6ef74  docs/stage2.3/RECOVERY_AND_ROLLBACK_REPORT.md
+75a4cb6f6191f645b514c4475bf6bc131e9b80c08ad77dcc028c9c1d7c634118  docs/stage2.3/REPOSITORY_BASELINE.md
+c2b138935ca2acf4e295e3b4d5c421587294f1e10a675cc2610f7913e446367e  docs/stage2.3/SECURITY_AUDIT.md
+34b63089fa1ea4df8c76e0327e5228284be4f79803f0a232641f91b7d04b8ddb  docs/stage2.3/STAGE2.2_EVIDENCE_REVALIDATION.md
+92cb2a00bcf9a0f9e4992e82cbe26a05aa7d0cc35e590e24b9e583bfed406abe  docs/stage2.3/evidence/bundle-restore-proof.json
+89dd32f0c9d5ebd652c7290aa8dbdbc11dbcf46f96ca2d5e7db9901db61c5e94  docs/stage2.3/evidence/git-state-stage23.json
+b18684232b3790fa69b8e326d7c080bc99aa0e3cb17df8949a6dcea0ef1ff365  docs/stage2.3/evidence/production-baseline.json
+69971614d2d1cf07a5f066d308b97eb706cb11d544b6266ffd822ee08a023cfc  docs/stage2.3/evidence/revalidation-summary.json

@@ -1,7 +1,7 @@
 {
   "format": "stage2.3-production-baseline",
-  "generatedAt": "2026-11-15T15:17:58Z",
-  "generatedAtHead": "61a7c5bafa13a8e0920252aae4d46fd37b3d9bf5",
+  "generatedAt": "2026-11-15T15:25:48Z",
+  "generatedAtHead": "1a0fe2ef275e9a5153440a821ad31c838befc344",
   "generator": "scripts/stage23_evidence_record.py (records this session's read-only probes)",
   "mode": "READ-ONLY (GET requests + unauthenticated API queries only; no production mutation)",
   "publicUrl": "https://jarvis-nexus-production.up.railway.app",

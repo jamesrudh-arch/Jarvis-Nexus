@@ -1,15 +1,15 @@
 {
   "format": "stage2.2-machine-readable-evidence-register",
   "version": 1,
-  "generatedAt": "2026-11-15T15:15:47Z",
-  "generatedAtHead": "b93a87905b6fa83c8795e3a57714c12496d029fe",
+  "generatedAt": "2026-11-15T15:25:48Z",
+  "generatedAtHead": "1a0fe2ef275e9a5153440a821ad31c838befc344",
   "git": {
-    "main": "b93a87905b6fa83c8795e3a57714c12496d029fe",
+    "main": "1a0fe2ef275e9a5153440a821ad31c838befc344",
     "originMain": "41092a33fa13abf5acee64e8f1f3167fe46dadcd",
-    "unpushedCount": "31",
+    "unpushedCount": "33",
     "workingTreeClean": false,
     "branches": {
-      "main": "b93a87905b6fa83c8795e3a57714c12496d029fe",
+      "main": "1a0fe2ef275e9a5153440a821ad31c838befc344",
       "railway-intelligence": "60d4fddd294b7a73b5ec245c67443de7cb890664",
       "stage2-pre-restructure": "f4c5a41cc5d39553964ad6a4372684a79bb0a6be"
     },
@@ -23,9 +23,9 @@
       "pass": 206,
       "skip": 12,
       "fail": 0,
-      "assertions": 905,
+      "assertions": 907,
       "files": 27,
-      "source": "bun test (recorded in REGRESSION_TEST_REPORT.md)"
+      "source": "bun test (final Stage 2.3 gate run: 206/12/0/907/27, 8 durable evidence files present)"
     },
     "typecheck": "0 errors",
     "routeParity": {
@@ -67,8 +67,8 @@
     },
     {
       "path": "docs/stage2.2/evidence/evidence-integrity.json",
-      "bytes": 7967,
-      "sha256": "03d39b6fa33044e9c4217041872a8a226257d394c94a1f51e88e00179ffba59f",
+      "bytes": 8178,
+      "sha256": "9d28155f2374aee5c4a2f5f4d8237374627edeca290283bd595711aa2b1298b4",
       "status": "VERIFIED",
       "note": "git-tracked evidence"
     },

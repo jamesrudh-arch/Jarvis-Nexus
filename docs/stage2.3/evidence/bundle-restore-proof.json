@@ -1,7 +1,7 @@
 {
   "format": "stage2.3-bundle-restore-proof",
-  "generatedAt": "2026-11-15T15:17:58Z",
-  "generatedAtHead": "61a7c5bafa13a8e0920252aae4d46fd37b3d9bf5",
+  "generatedAt": "2026-11-15T15:25:48Z",
+  "generatedAtHead": "1a0fe2ef275e9a5153440a821ad31c838befc344",
   "generator": "scripts/stage23_evidence_record.py (records the session's strict restoration test)",
   "method": "git init fresh repo; fetch ONLY 41092a3 (origin/main) from the working repo (object store then holds exactly what GitHub holds); fetch each committed thin bundle into it; compare heads and tree ids",
   "reproduction": "see RECOVERY_AND_ROLLBACK_REPORT.md section 2 for the exact command sequence",
