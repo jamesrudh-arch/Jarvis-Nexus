@@ -1,0 +1,107 @@
+{
+  "stage": "2.1",
+  "document": "stage21_authorization_readiness",
+  "generatedAt": "2026-11-15T05:40:00Z",
+  "challenge": "authorization-readiness: independent commit audit, actual logical-backup architecture, isolated restoration demonstration, release-risk assessment, complete blocker identification; no deploy/push/production modification",
+  "git": {
+    "localMain": "35ae5930618d15ae0d983ff6e32071c6db38e4f3",
+    "originMain": "41092a33fa13abf5acee64e8f1f3167fe46dadcd",
+    "unpushedCommitCount": 20,
+    "directiveClaimedUnpushed": 19,
+    "countDiscrepancyCommit": "35ae593 (UUID message, scripts/stage21_route_parity.py, 2026-11-14T23:48:49Z)",
+    "workingTreeClean": true,
+    "linearHistory": true,
+    "lastPushAt": "2026-11-14T12:58:03Z",
+    "rangeStats": { "files": 444, "insertions": 55924, "deletions": 65 }
+  },
+  "tests": {
+    "expected": { "pass": 191, "skip": 12, "fail": 0, "assertions": 805, "files": 26 },
+    "measured": { "pass": 188, "skip": 12, "fail": 3, "assertions": 776, "files": 26 },
+    "failures": [
+      "V4 evidence provenance > stage 2 evidence directory exists with non-empty artifacts",
+      "V4 evidence provenance > stage 2 reports exist (each phase documented)",
+      "V4 evidence provenance > recovery point artifacts exist matching the manifest"
+    ],
+    "rootCause": "entire Stage 2 evidence set was written only to gitignored download/ which the environment wiped",
+    "typecheck": "PASS 0 errors",
+    "registryConsistency": "PASS (112 requirements)"
+  },
+  "routes": { "head": 56, "headGet": 32, "headPost": 24, "production": 33, "delta": "+23 additive / -0 / 0 duplicates", "registerClaimedMissing": 21 },
+  "productionProbe": { "url": "https://jarvis-nexus-production.up.railway.app/health", "status": 200, "overall": "healthy", "migrationsApplied": 2, "repoMigrations": 3 },
+  "backupArchitecture": {
+    "layer1": "Railway volume backups: reported-only, recoverability UNVERIFIED by design, restore is L4 owner-gated; zero backups at last verified state; current state unverifiable without owner credentials",
+    "layer2": "application logical backups: read-only export of 24 tables to nexus-logical-backup v1 JSON with per-table sha256, REAL isolated in-memory restore-verify (row counts), volume write, retention prune (default 14)",
+    "scheduler": "in-process setInterval, NEXUS_BACKUP_INTERVAL_HOURS default 24 (0=off), first run 30s post-boot, single-instance assumption documented",
+    "productionPaths": { "db": "/data/nexus.db", "backups": "/data/workspaces/backups" },
+    "endpoints": ["POST /railway/backup/export (owner)", "GET /railway/backups (owner)"],
+    "rpoObjective": "one backup interval (24h default)",
+    "rtoObjective": "15 minutes (redeploy + import; NOTE: import path does not exist in product code)",
+    "gaps": [
+      "G-01 no productized restore/import path",
+      "G-02 restore-verify is count-only (content hashes not rechecked)",
+      "G-03 backups on same volume as DB; zero volume backups; no off-site export (single point of failure)",
+      "G-04 in-process scheduler single-instance only",
+      "G-05 volume-level restore never exercised"
+    ]
+  },
+  "restorationDemonstration": {
+    "executedAt": "2026-11-15T05:31:42Z",
+    "script": "scripts/stage21_isolated_restore_demo.ts",
+    "phases": "A seed+export via real production path -> B destroy source DB -> C independent isolated restore (migrations 1-3 + reinsert) -> D functional resurrection on restored DB",
+    "checks": 22,
+    "failed": 0,
+    "verdict": "PASS",
+    "verification": "per-table row counts AND recomputed content SHA-256 matched on all 24 tables (stronger than product verify)",
+    "resurrection": "world id, 8 residents, 8 properties, 1 business, event count, JARVIS task, memory marker all survived",
+    "backupArtifact": {
+      "file": "download/stage2.1/evidence/restored-demo-backup.json",
+      "bytes": 53636,
+      "sha256": "3434240ca538f65bdff80a92a6072272e0929113d06de7e97b7971d96abaee03"
+    }
+  },
+  "recoveryPoint": {
+    "id": "RP-2.1-001",
+    "created": "2026-11-15T05:32:53Z",
+    "kind": "git bundle, all refs, complete history",
+    "file": "download/stage2.1/recovery/jarvis-nexus-full-20261115-053253.bundle",
+    "bytes": 99819242,
+    "sha256": "cad3fa846c836c8e5758cc056033825a89ff1f68badb67ddfb20b1fbf69fb490",
+    "refs": { "main": "35ae593", "railway-intelligence": "60d4fdd", "stage2-pre-restructure": "f4c5a41", "origin/main": "41092a3" },
+    "restoreTest": "git clone from bundle -> HEAD 35ae593, 504 files, clean status, 3 branches, 5/5 key-file spot checks PASS",
+    "priorPoints": {
+      "RP-FC-001": "NO TRACEABLE REFERENCE ANYWHERE — claim unverifiable",
+      "RP-STAGE2-001": "defined in committed scripts/stage2_recovery_manifest.py; BOTH artifacts lost with wiped gitignored download/"
+    }
+  },
+  "commitAuditFindings": [
+    "F-COM-01 unpushed count is 20 not 19 (35ae593 postdates directive baseline)",
+    "F-COM-02 UUID commit messages on 0f9986a and 35ae593",
+    "F-COM-03 CI trigger corrupted (branches: ain]) introduced at PUSHED 945a78d — CI silently dead on GitHub; not fixed in range",
+    "F-COM-04 623da7b message announces stage2_execution_register.json deliverable; file not in commit (written to gitignored path, lost)",
+    "F-COM-05 cd46b69 cites 30-route auth matrix; committed probe script broken (word-splitting); recorded result '19 correct / 36 unexpected'; corrected matrix passes 30/30",
+    "F-COM-06 secret scan clean; one documented env-overridable dev token (nexus-tier0-dev-token, self-flagged LOW)",
+    "F-COM-07 V4 tests added in range hard-depend on gitignored evidence — now red",
+    "F-COM-08 register missingRoutes says 21, actual delta 23",
+    "F-COM-09 route parity re-verified: additive-only, no duplicates",
+    "F-COM-10 legacy /tmp bundles hold 1 + 18 unreachable commits (volatile)"
+  ],
+  "securityReprobes": {
+    "authMatrix": "30/30 owner-gated routes 401 unauthenticated (corrected probe)",
+    "webhook": "fresh 202 / duplicate 200 dup:true / stale-timestamp 401",
+    "rateLimit": "fixed-IP burst: 240 allowed then 429",
+    "secretExposure": "0 leaks in responses",
+    "corsNegative": "unlisted origin gets no access-control-allow-origin (probe evidence)"
+  },
+  "blockers": {
+    "deployGates": ["BLK-01 CI dead on remote (fix before push)", "BLK-02 V4 evidence gate red (regenerate or waive)", "BLK-03 B-01 push/deploy authorization outstanding"],
+    "claimGates": ["BLK-04 backup SPOF (off-site export absent)", "BLK-05 no productized restore path", "BLK-06 volume-backup state unverifiable without owner creds", "BLK-07 model-provider verification pending B-07"],
+    "evidence": ["BLK-07a final-closure deliverables lost permanently", "BLK-07b recovery points lost; RP-2.1-001 local-only until push", "BLK-08 broken probe script cited as evidence", "BLK-09 register missingRoutes inaccuracy"],
+    "ownerDispositions": ["BLK-10 FC-05 XFF rotation", "BLK-11 FC-06 construct('')", "BLK-12 VIS-4 real-device acceptance", "BLK-13 legacy bundle disposition"]
+  },
+  "ownerDecisions": {
+    "carried": ["B-01 push/deploy (now 20 commits)", "B-02 visual hosting + CORS", "B-03 railway token + webhook secret", "B-04 visibility + branch protection", "B-05 real-device acceptance", "B-06 UE5/Blender workstation", "B-07 live model credentials", "FC-05 XFF disposition", "FC-06 construct disposition"],
+    "new": ["D-2.1-01 CI repair before push", "D-2.1-02 evidence regeneration + V4 gate", "D-2.1-03 off-site backup export", "D-2.1-04 legacy bundle disposition", "D-2.1-05 commit-message hygiene"]
+  },
+  "verdict": "NOT READY FOR UNCONDITIONAL DEPLOYMENT AUTHORIZATION — engineering substance verified and restorable; release process (CI, evidence gate) and backup durability must be repaired first; awaiting explicit owner approval at the authorization boundary",
+  "constraintsHonored": { "deployed": false, "pushed": false, "productionModified": false, "productionReads": "one unauthenticated GET /health" }
+}
