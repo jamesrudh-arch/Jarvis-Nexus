@@ -1,0 +1,192 @@
+{
+  "run": {
+    "id": 43861694134,
+    "status": "completed",
+    "conclusion": "success",
+    "html_url": "https://github.com/jamesrudh-arch/Jarvis-Nexus/actions/runs/43861694134",
+    "head_sha": "be0f5076fb02b26b89a422502ec0c723289fad4e",
+    "event": "push",
+    "created_at": "2026-11-16T11:53:34Z",
+    "updated_at": "2026-11-16T11:54:47Z"
+  },
+  "jobs": [
+    {
+      "name": "production-build",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-16T11:53:36Z",
+      "completed_at": "2026-11-16T11:54:46Z",
+      "html_url": "https://github.com/jamesrudh-arch/Jarvis-Nexus/actions/runs/43861694134/job/133279849515",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Build the production image (Dockerfile = the deploy artifact)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Boot smoke test from the image",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "name": "visual-app-build",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-16T11:53:36Z",
+      "completed_at": "2026-11-16T11:53:54Z",
+      "html_url": "https://github.com/jamesrudh-arch/Jarvis-Nexus/actions/runs/43861694134/job/133279849769",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run oven-sh/setup-bun@v2",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install dependencies",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Build the visual app (non-production surface)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run oven-sh/setup-bun@v2",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "name": "verify",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-16T11:53:36Z",
+      "completed_at": "2026-11-16T11:54:15Z",
+      "html_url": "https://github.com/jamesrudh-arch/Jarvis-Nexus/actions/runs/43861694134/job/133279849906",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Pull ghcr.io/google/osv-scanner-action:v2.7.1",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run oven-sh/setup-bun@v2",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install dependencies",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Typecheck (tsc --noEmit)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Registry consistency validation",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Unit tests",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Integration + scenario tests (offline providers only)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Adversarial verification gate (V1-V5, incl. V4 evidence provenance)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Evidence integrity (stage package checksums)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Advisory dependency vulnerability scan (osv-scanner, non-blocking)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run oven-sh/setup-bun@v2",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    }
+  ],
+  "mandatory_all_green": true,
+  "checkedAt": "2026-11-16T12:10:02Z",
+  "note": "final CI verification of the completed evidence chain: remote HEAD be0f507 (the commit that recorded the final verification chain) \u2014 every commit on remote main carries green CI; the deployed-SHA qualification record remains ci-qualification-run.json (run 43836682784 on 44dbaeb)"
+}

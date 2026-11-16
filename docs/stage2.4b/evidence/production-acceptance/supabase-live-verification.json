@@ -1,6 +1,6 @@
 {
-  "startedAt": "2026-11-16T11:48:56Z",
-  "finishedAt": "2026-11-16T11:49:00Z",
+  "startedAt": "2026-11-16T12:10:17Z",
+  "finishedAt": "2026-11-16T12:10:24Z",
   "verdict": "PASS",
   "bucket": "jarvis-nexus-backups",
   "objectKey": "production/database/2026/11/2026-11-16T11-43-19-518Z.enc",
@@ -46,9 +46,9 @@
     },
     "isolated_restore": {
       "ok": true,
-      "detail": "restored 1795 rows across 24 tables (transaction=committed, contentVerified=True, fkViolations=[], cliExit=0, durationMs=26)",
+      "detail": "restored 1795 rows across 24 tables (transaction=committed, contentVerified=True, fkViolations=[], cliExit=0, durationMs=25)",
       "cliExitCode": 0,
-      "wallClockMs": 26
+      "wallClockMs": 25
     },
     "tables_rows": {
       "ok": true,
