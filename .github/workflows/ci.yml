@@ -111,8 +111,8 @@ jobs:
           # (503) is a failure. Migrations must have applied at boot.
           grep -q '"overall"' /tmp/health.json
           curl -s http://127.0.0.1:3000/health/detailed > /tmp/detailed.json
-          grep -q 'migrations applied: 3' /tmp/detailed.json || {
-            echo "FAIL: expected 'migrations applied: 3' in /health/detailed"; cat /tmp/detailed.json; exit 1; }
+          grep -q 'migrations applied: 4' /tmp/detailed.json || {
+            echo "FAIL: expected 'migrations applied: 4' in /health/detailed"; cat /tmp/detailed.json; exit 1; }
           echo "production image boot smoke: PASS (health 200, migrations applied)"
 
   # ---------------------------------------------------------------------------
