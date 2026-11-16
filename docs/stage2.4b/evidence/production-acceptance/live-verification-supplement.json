@@ -1,0 +1,38 @@
+{
+  "capturedAt": "2026-11-16T08:07:51Z",
+  "deployment": {
+    "id": "564d6c64-68a5-4c8c-912a-7686732fc013",
+    "status": "SUCCESS",
+    "commitHash": "250ca2587e5592deb6bbf759dca0fdff602f4904",
+    "verifiedVia": "Railway GraphQL serviceInstance.latestDeployment.meta (direct API read-back)",
+    "volumeMounts": [
+      "/data"
+    ],
+    "rollbackTarget": "3bed9747-f937-4fa3-a8ad-637042fe133d @ 41092a33 (old code, proven compatible with migrated schema)"
+  },
+  "publicMetrics": {
+    "backup_runs_total": [
+      {
+        "name": "backup_runs_total",
+        "labels": {
+          "result": "success"
+        },
+        "count": 1
+      }
+    ],
+    "backup_failures_total": [],
+    "note": "backup_runs_total{result=success}=1 from boot cycle; ZERO failure counters (no EXPORT_FAILED / VERIFY_FAILED / WRITE_FAILED / OFFSITE_* alerts) \u2014 publicly observable, secret-free"
+  },
+  "lockoutLiveVerification": {
+    "method": "150-request unauthenticated burst (rotating egress distributes across real client IPs; one identity crosses the 60/min auth-fail threshold)",
+    "result": "first 429 at request 41, x-lockout-scope=identity; 4x 429 then 401s (egress rotated to an unlocked identity mid-burst)",
+    "recovery": "after waiting past the 60s window on the real clock: honest 401 (NOT permanent 429) \u2014 F-2.4A-01 fix LIVE-VERIFIED (pre-fix code locked forever; committed repro evidence repro-f24a01-pre/post.json)",
+    "failClosedNote": "fail-closed-while-locked (valid token refused) is vantage-limited here (each probe may exit from a different egress IP); behavior is covered by the 12 committed lockout tests + e2e matrix 35/35"
+  },
+  "v08XffResolution": {
+    "method": "61 unauthenticated requests with FIXED spoofed X-Forwarded-For 203.0.113.111, then 1 with 203.0.113.222",
+    "result": "spoof A never locked (61x 401); spoof B 401",
+    "conclusion": "Railway edge OVERWRITES client-provided X-Forwarded-For \u2014 identity is the real client IP and cannot be minted by header injection. F-2.4A-02 RESOLVED: SAFE (empirically verified live in production)."
+  },
+  "egressVantage": "sandbox egress rotates across at least 2 IPs (47.57.232.232, 8.212.10.159) \u2014 documented confound for per-identity probes; resolved via the burst method above"
+}

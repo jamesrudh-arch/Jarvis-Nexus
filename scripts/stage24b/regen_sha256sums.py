@@ -12,6 +12,8 @@ EXTRA = [
     "scripts/stage24b/push_integration.sh",
     "scripts/stage24b/deploy_and_verify.py",
     "scripts/stage24b/regen_sha256sums.py",
+    "scripts/stage24b/validate_credentials.py",
+    "scripts/stage24b/watch_ci.py",
 ]
 
 def sha256(path):

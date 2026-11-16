@@ -16,6 +16,9 @@ service Jarvis-Nexus, schema-verified against backboard GraphQL v2 on
   4. variableUpsert NEXUS_BACKUP_OFFSITE_DIR=/backups  (skipDeploys=true)
   5. variableUpsert NEXUS_BACKUP_ENCRYPTION_KEY=<from .env.nexus-backup-key>
      (skipDeploys=true; value never echoed)
+  5b. variableUpsert NEXUS_BACKUP_RETENTION=14 (skipDeploys=true; makes the
+      directive-required retention variable explicit and read-back verifiable;
+      14 is the established architecture default)
   6. Re-verify: volume listing + variable names + key fingerprint (sha256
      prefix only, for non-secret comparison against the generated key).
 
@@ -102,6 +105,14 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true",
                     help="execute mutations (default: dry-run)")
+    ap.add_argument("--single-volume-mode", action="store_true",
+                    help="FINAL-EXECUTION MODE: skip volumeCreate and "
+                         "NEXUS_BACKUP_OFFSITE_DIR (Railway hard limit: one "
+                         "volume per service on ALL plans; native volume "
+                         "backups are Pro-gated). Apply ONLY the encryption "
+                         "key + retention, which are achievable and honest. "
+                         "A same-volume offsite dir would make the app "
+                         "falsely report offVolume.enabled=true.")
     args = ap.parse_args()
 
     token = load_token()
@@ -120,11 +131,19 @@ def main():
         sys.exit(2)
 
     # 2) current volume instances (read-only)
-    q_volumes = """
-    query { project(id: "%s") { environments { edges { node {
-      id name volumeInstances { edges { node { id mountPath serviceId state region sizeMB } } } }
-    } } } } }""" % PROJECT_ID
+    # NOTE (final-execution fix): the original multi-line query carried one
+    # extra closing brace -> HTTP 400 GRAPHQL_PARSE_FAILED on every run, which
+    # the original parsing silently reported as "0 volumes". Caught at dry-run
+    # during the final execution (the prior session had no token to run it);
+    # rebalanced to a single line and made failure LOUD below.
+    q_volumes = ('query { project(id: "%s") { environments { edges { node { '
+                 'id name volumeInstances { edges { node { id mountPath '
+                 'serviceId state region sizeMB } } } } } } } }') % PROJECT_ID
     code, d = gql(token, q_volumes)
+    if code != 200 or (d or {}).get("errors"):
+        log("volumes.current", "FAIL",
+            f"HTTP {code}: {json.dumps((d or {}).get('errors') or d)[:300]}")
+        sys.exit(1)
     edges = ((((d or {}).get("data") or {}).get("project") or {}) \
         .get("environments") or {}).get("edges") or []
     vol_list = []
@@ -142,7 +161,22 @@ def main():
                     for v in vol_list) or "none")
 
     has_backup_vol = any(v.get("mountPath") == MOUNT_PATH for v in vol_list)
-    if vol_list and not has_backup_vol:
+    if args.single_volume_mode:
+        log("volumes.plan", "BLOCKED",
+            "Railway platform limit: a service can only have ONE volume "
+            "(docs.railway.com/volumes/reference; live API rejection: 'would "
+            "have 2 volumes attached... A service can only have one volume'). "
+            "Native volumeInstanceBackupCreate is also Pro-gated ('Manual "
+            "backups and backup schedules are only available for Pro "
+            "workspaces'). Off-volume protection is UNAVAILABLE on this plan "
+            "- owner actions: upgrade to Pro (spending, owner-gated) or "
+            "authorize object-storage engineering (D-2.1-03).")
+        log("volumes.mode", "INFO",
+            "single-volume mode: applying encryption key + retention only; "
+            "NOT setting NEXUS_BACKUP_OFFSITE_DIR (a same-volume path would "
+            "make the app falsely report off-volume protection - forbidden by "
+            "the directive)")
+    elif vol_list and not has_backup_vol:
         log("volumes.plan", "INFO",
             f"single-volume service confirmed; second volume will be created at {MOUNT_PATH}")
     if has_backup_vol:
@@ -158,26 +192,38 @@ def main():
         "(value never printed)")
 
     mutations = []
-    if not has_backup_vol:
-        mutations.append(("volumeCreate", """
-        mutation($input: VolumeCreateInput!) { volumeCreate(input: $input) { id mountPath } }""",
+    if not args.single_volume_mode:
+        if not has_backup_vol:
+            # NOTE (final-execution fix): volumeCreate returns type Volume (fields:
+            # id/name/createdAt/...), NOT VolumeInstance — the original selection
+            # { id mountPath } failed GraphQL validation (mountPath is on
+            # VolumeInstance). Selection corrected to { id name }.
+            mutations.append(("volumeCreate", """
+            mutation($input: VolumeCreateInput!) { volumeCreate(input: $input) { id name } }""",
+                {"input": {"projectId": PROJECT_ID, "environmentId": ENV_ID,
+                           "serviceId": SERVICE_ID, "mountPath": MOUNT_PATH}}))
+        mutations.append(("variableUpsert.NEXUS_BACKUP_OFFSITE_DIR", """
+        mutation($input: VariableUpsertInput!) { variableUpsert(input: $input) }""",
             {"input": {"projectId": PROJECT_ID, "environmentId": ENV_ID,
-                       "serviceId": SERVICE_ID, "mountPath": MOUNT_PATH}}))
-    mutations.append(("variableUpsert.NEXUS_BACKUP_OFFSITE_DIR", """
-    mutation($input: VariableUpsertInput!) { variableUpsert(input: $input) }""",
-        {"input": {"projectId": PROJECT_ID, "environmentId": ENV_ID,
-                   "serviceId": SERVICE_ID, "name": "NEXUS_BACKUP_OFFSITE_DIR",
-                   "value": MOUNT_PATH, "skipDeploys": True}}))
+                       "serviceId": SERVICE_ID, "name": "NEXUS_BACKUP_OFFSITE_DIR",
+                       "value": MOUNT_PATH, "skipDeploys": True}}))
     mutations.append(("variableUpsert.NEXUS_BACKUP_ENCRYPTION_KEY", """
     mutation($input: VariableUpsertInput!) { variableUpsert(input: $input) }""",
         {"input": {"projectId": PROJECT_ID, "environmentId": ENV_ID,
                    "serviceId": SERVICE_ID, "name": "NEXUS_BACKUP_ENCRYPTION_KEY",
                    "value": key, "skipDeploys": True}}))
+    mutations.append(("variableUpsert.NEXUS_BACKUP_RETENTION", """
+    mutation($input: VariableUpsertInput!) { variableUpsert(input: $input) }""",
+        {"input": {"projectId": PROJECT_ID, "environmentId": ENV_ID,
+                   "serviceId": SERVICE_ID, "name": "NEXUS_BACKUP_RETENTION",
+                   "value": "14", "skipDeploys": True}}))
 
     if not args.apply:
         for name_, _, _vars in mutations:
             val = _vars["input"].get("value")
             shown = val if name_.endswith("OFFSITE_DIR") else "<redacted 64-hex key>"
+            if name_.endswith("RETENTION"):
+                shown = val  # non-secret count
             if "mountPath" in _vars["input"]:
                 shown = f"mountPath={_vars['input']['mountPath']}"
             log(f"dryrun.{name_}", "DRY", f"would execute ({shown})")
@@ -193,7 +239,8 @@ def main():
             detail = "applied"
             data = (d or {}).get("data") or {}
             if "volumeCreate" in data and data["volumeCreate"]:
-                detail = f"volume {data['volumeCreate'].get('id')} at {data['volumeCreate'].get('mountPath')}"
+                detail = (f"volume {data['volumeCreate'].get('id')} "
+                          f"(name: {data['volumeCreate'].get('name')}) at {MOUNT_PATH}")
             log(f"apply.{name_}", "OK", detail)
         else:
             log(f"apply.{name_}", "FAIL", f"HTTP {code}: {json.dumps(errs or d)[:300]}")
@@ -209,19 +256,31 @@ def main():
         parsed = json.loads(raw) if isinstance(raw, str) else (raw or [])
     except Exception:
         parsed = []
-    names = {v.get("name"): v for v in parsed} if isinstance(parsed, list) else {}
-    ok_dir = names.get("NEXUS_BACKUP_OFFSITE_DIR", {}).get("value") == MOUNT_PATH
-    prod_key = names.get("NEXUS_BACKUP_ENCRYPTION_KEY", {}).get("value") or ""
+    names = {}
+    # FINAL-EXECUTION FIX: Railway's `variables` query returns a DICT
+    # (name -> value), not a list of {name, value} objects. Handle both.
+    if isinstance(parsed, dict):
+        names = parsed
+    elif isinstance(parsed, list):
+        names = {v.get("name"): v for v in parsed if isinstance(v, dict)}
+    ok_dir = (names.get("NEXUS_BACKUP_OFFSITE_DIR") == MOUNT_PATH) \
+        if not args.single_volume_mode else True  # intentionally unset in this mode
+    prod_key = names.get("NEXUS_BACKUP_ENCRYPTION_KEY") or ""
     ok_key = bool(re.fullmatch(r"[0-9a-f]{64}", prod_key)) and \
         hashlib.sha256(prod_key.encode()).hexdigest()[:16] == fp
+    ok_ret = names.get("NEXUS_BACKUP_RETENTION") == "14"
     log("verify.NEXUS_BACKUP_OFFSITE_DIR", "OK" if ok_dir else "FAIL",
-        f"value == {MOUNT_PATH}: {ok_dir}")
+        ("value == " + MOUNT_PATH + f": {ok_dir}") if not args.single_volume_mode
+        else f"intentionally unset (single-volume mode): "
+             f"{names.get('NEXUS_BACKUP_OFFSITE_DIR') is None}")
     log("verify.NEXUS_BACKUP_ENCRYPTION_KEY", "OK" if ok_key else "FAIL",
         "value matches generated key (fingerprint compare; never printed): "
         f"{ok_key}")
+    log("verify.NEXUS_BACKUP_RETENTION", "OK" if ok_ret else "FAIL",
+        f"value == 14: {ok_ret}")
     save_transcript("applied")
 
-    if not (ok_dir and ok_key):
+    if not (ok_dir and ok_key and ok_ret):
         sys.exit(1)
     print("\nPhase One configuration applied and verified. "
           "Activation completes at the next deployment boot.")

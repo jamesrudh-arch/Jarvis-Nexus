@@ -1,0 +1,56 @@
+{
+  "mode": "applied",
+  "recordedAt": "2026-11-16T07:51:45Z",
+  "transcript": [
+    {
+      "step": "token",
+      "status": "OK",
+      "detail": "project readable: reasonable-heart"
+    },
+    {
+      "step": "volumes.current",
+      "status": "OK",
+      "detail": "1 volume instance(s) on Jarvis-Nexus: /data (READY, sfo)"
+    },
+    {
+      "step": "volumes.plan",
+      "status": "BLOCKED",
+      "detail": "Railway platform limit: a service can only have ONE volume (docs.railway.com/volumes/reference; live API rejection: 'would have 2 volumes attached... A service can only have one volume'). Native volumeInstanceBackupCreate is also Pro-gated ('Manual backups and backup schedules are only available for Pro workspaces'). Off-volume protection is UNAVAILABLE on this plan - owner actions: upgrade to Pro (spending, owner-gated) or authorize object-storage engineering (D-2.1-03)."
+    },
+    {
+      "step": "volumes.mode",
+      "status": "INFO",
+      "detail": "single-volume mode: applying encryption key + retention only; NOT setting NEXUS_BACKUP_OFFSITE_DIR (a same-volume path would make the app falsely report off-volume protection - forbidden by the directive)"
+    },
+    {
+      "step": "key",
+      "status": "OK",
+      "detail": "64-hex (32-byte) key loaded; sha256[:16] fingerprint cd5721932bbe95ad (value never printed)"
+    },
+    {
+      "step": "apply.variableUpsert.NEXUS_BACKUP_ENCRYPTION_KEY",
+      "status": "OK",
+      "detail": "applied"
+    },
+    {
+      "step": "apply.variableUpsert.NEXUS_BACKUP_RETENTION",
+      "status": "OK",
+      "detail": "applied"
+    },
+    {
+      "step": "verify.NEXUS_BACKUP_OFFSITE_DIR",
+      "status": "OK",
+      "detail": "intentionally unset (single-volume mode): True"
+    },
+    {
+      "step": "verify.NEXUS_BACKUP_ENCRYPTION_KEY",
+      "status": "OK",
+      "detail": "value matches generated key (fingerprint compare; never printed): True"
+    },
+    {
+      "step": "verify.NEXUS_BACKUP_RETENTION",
+      "status": "OK",
+      "detail": "value == 14: True"
+    }
+  ]
+}

@@ -1,135 +1,186 @@
-# STAGE 2.4B — PRODUCTION ACCEPTANCE REPORT
+# STAGE 2.4B — PRODUCTION ACCEPTANCE REPORT (FINAL EXECUTION)
 
-**Session:** Stage 2.4B → Production execution directive (integration + deployment qualification)
-**Recorded:** 2026-11-16 (UTC) · sandbox bun 1.3.14 · repo `/home/z/my-project` (`jamesrudh-arch/Jarvis-Nexus`)
-**Machine evidence:** `docs/stage2.4b/evidence/production-acceptance/integration-verification.json`
-**Claim discipline:** every statement below is one of ACTUAL RESULT (executed this session, evidence attached) / PRE-ESTABLISHED (Stage 2.4B, doubly verified, checksum-protected in this package) / BLOCKED (credential boundary — never fabricated).
+**Session:** Stage 2.4B → Production: FINAL EXECUTION directive (credential-supplied continuation)
+**Recorded:** 2026-11-16 (UTC) · repo `jamesrudh-arch/Jarvis-Nexus` · local `main` = deployed `main` = `250ca2587e5592deb6bbf759dca0fdff602f4904`
+**Machine evidence (this execution):** `docs/stage2.4b/evidence/production-acceptance/` — `apply-backup-config.json`, `ci-qualification-run.json`, `deploy-verify.json`, `live-verification-supplement.json`, `integration-verification.json`
+**Claim discipline:** every statement below is an ACTUAL RESULT of this execution (evidence attached), PRE-ESTABLISHED (Stage 2.4B, doubly verified, checksum-protected), or explicitly marked BLOCKED/NOT TESTED. No result is fabricated, inferred, or local-substituted for the genuine article.
 
 ---
 
 ## FINAL DEPLOYMENT VERDICT: **NOT APPROVED FOR PRODUCTION**
 
-**Reason, in one sentence:** every engineering requirement is complete, integrated and locally re-verified on the exact tree to be deployed — but the directive's own decision standard (§9) requires *actual* GitHub Actions execution (§5) and an *actual* Railway deployment with the 12-point verification battery (§6), and both remain unexecuted because the required credentials (GitHub push token, Railway API token) are absent from this sandbox following an environment recycle; fabricating them, or claiming executions that did not happen, is expressly forbidden (§2, §10).
+**Reason, in one sentence:** every requirement that is executable on the current Railway plan was executed and verified end-to-end — push, genuine GitHub Actions (all three mandatory jobs green), deployment of the exact CI-qualified commit, the 12-point live battery, the V-06/V-08 runbook items, the live lockout-recovery proof, and the encrypted-artifact restoration drill — but the directive's Phase 1 requirement of a **dedicated second backup volume is unachievable on the Railway platform** (hard limit: *one volume per service, all plans*; native volume backups are Pro-gated and this workspace is on the **trial** plan), so off-volume (volume-loss) protection remains unconfigured, the volume-loss RPO remains unbounded, and by the project's own standard — *never claim data-loss protection the deployment does not have* — that single HIGH data-protection gap is disqualifying.
 
-This is a **credential-boundary stop, not an engineering failure**. Nothing failed. The exact unblocking actions are in §7; every one of them is prepared down to schema-verified API operations and executes without further design work.
+**This is NOT a rollback trigger and NOT a defect of the delivered system.** Production is healthy on verified code and is **strictly safer than the code it replaced** (which carried the live F-2.4A-01 permanent-lockout defect, unencrypted backups, and the unresolved XFF question). No runbook rollback condition (R-list) is met. The verdict says exactly one thing: the owner's own Phase 1 backup-volume requirement cannot be satisfied on this plan, and until the owner takes one of two named actions, volume-loss scenarios remain outside the protection envelope. Those actions are in §10.
 
 ---
 
-## 1. Final integrated Git state (ACTUAL RESULT)
+## 1. Phase 0 — credential validation (ACTUAL RESULT: PASS)
+
+| Item | Result |
+|---|---|
+| GitHub token (`GITHUB_TOKEN`, `.env.local`) | VALID — authenticated as `jamesrudh-arch`; push permission on `jamesrudh-arch/Jarvis-Nexus` confirmed; scopes include `repo` + `workflow` (required: the pushed delta modifies `.github/workflows/ci.yml`) |
+| Railway token (`RAILWAY_API_TOKEN`, `.env`) | VALID for every operation the execution requires — project `reasonable-heart` readable, environment `production`, service `Jarvis-Nexus`, variables, volumes, deployments. (The user-level `me` query is not authorized for workspace-scoped `rlwy_wksp_*` tokens — expected; no execution script uses it.) |
+| File permissions | `chmod 600` applied to `.env` and `.env.local`; verified `-rw-------` |
+| Gitignore coverage | `git check-ignore -v` confirms `.env` (`.gitignore:2`) and `.env.local` (`.gitignore:3` `.env.*`) are ignored; no `.env*` file is tracked in git |
+| Secret exposure | Neither credential value was printed, logged, echoed, committed, or written to any artifact at any point in this execution |
+| Gate G3 pre-check | `origin/main` still at the approved base `6a788348` before the push — no remote drift |
+
+## 2. Phase 1 — production backup configuration (ACTUAL RESULT: PARTIAL — key + retention APPLIED and VERIFIED; second volume BLOCKED by platform)
+
+**Applied and read-back verified (Railway GraphQL, this execution):**
+
+| Configuration | Status | Read-back evidence |
+|---|---|---|
+| `NEXUS_BACKUP_ENCRYPTION_KEY` | **APPLIED** | value is 64-hex (256-bit); sha256 fingerprint matches the locally generated key (fingerprint `cd5721932bbe95ad`; value never printed, logged, or committed) |
+| `NEXUS_BACKUP_RETENTION` | **APPLIED** | value `14` (explicit; equals the architecture default, two-sided pruning) |
+| `NEXUS_BACKUP_OFFSITE_DIR` | **INTENTIONALLY UNSET** | see below — setting a same-volume path would make the app falsely report off-volume protection |
+| Both upserts | `skipDeploys: true` | no deployment was triggered by Phase 1 |
+
+**The encryption key (ACTUAL RESULT):** regenerated by CSPRNG (`secrets.token_hex(32)`, 256 bits) into `/home/z/my-project/.env.nexus-backup-key`, mode `0600`, gitignored — after the prior session's key file was lost to the sandbox recycle. No rotation conflict exists: the prior key was never applied to Railway (Phase 1 had not executed), and no production artifact was ever encrypted with it. The new key's first live use is the boot backup cycle of the new deployment — and it round-tripped end-to-end (see §6, restoration drill).
+
+**The second-volume blocker (genuine, documented, twice-verified against the live platform):**
+
+1. `volumeCreate(mountPath="/backups", serviceId=Jarvis-Nexus)` → rejected by Railway: *"Service 8f8a9401… would have 2 volumes attached after this patch (a75b3159…, 980188d5…). **A service can only have one volume.**"* — this is a documented hard Railway limitation (docs.railway.com/volumes/reference: "Each service can only have a single volume"), not plan-specific and not bypassable. The rejected patch left an orphan Volume record (`980188d5`, no instance, no data) which was **cleaned up** (`volumeDelete` → `true`; verified: only `jarvis-nexus-volume`/`/data` remains).
+2. Native platform snapshots (`volumeInstanceBackupCreate`) → rejected: *"Manual backups and backup schedules are only available for **Pro workspaces**."* The deployment meta confirms the plan is `trial`. Upgrading the plan is external spending — owner-gated, not taken.
+3. A same-volume `NEXUS_BACKUP_OFFSITE_DIR` (e.g. `/data/...`) was evaluated and **rejected on principle**: the app would then report `rpo.offVolume.enabled=true` and `offsite.copied=true` — a false off-volume claim (both copies die with the volume), which the directive expressly forbids ("Never claim off-volume protection unless independently verified") and which the app's own reporting semantics would misrepresent.
+
+**What production actually has after Phase 1 + deployment (honest posture, app-reported and independently confirmed):** AES-256-GCM-encrypted, snapshot-consistent, isolated-restore-verified logical backups on the `/data` volume (boot cycle + 24 h interval; retention 14, atomic writes, tmp-sweep); volume-loss RPO **unbounded** (single volume); the app fail-visibly reports `rpo.offVolume.enabled=false` with the note *"never claim data-loss protection the deployment does not have"*.
+
+## 3. Phase 2 — controlled GitHub push + CI qualification (ACTUAL RESULT: PASS)
+
+**Push (`scripts/stage24b/push_integration.sh 250ca2587e5592deb6bbf759dca0fdff602f4904`), seven gates all green:**
+
+| Gate | Result |
+|---|---|
+| G1 | local `main` = `250ca25…`, fast-forward from approved base `6a788348` |
+| G2 | working tree clean (execution-script fixes stashed for the push; restored after; they join this evidence commit) |
+| G3 | `origin/main` still at `6a788348` pre-push — no drift, no overwrite of production changes |
+| G4 | single refspec `refs/heads/main`, no force, no tags |
+| G5 | zero credential-pattern matches in the entire pushed delta |
+| G6 | evidence checksums verify on the pushed tree (stage2.4b + 2.3 + 2.2) |
+| G7 | post-push `ls-remote`: `origin/main` = `250ca25…` — push verified |
+
+**Genuine GitHub Actions qualification (run on GitHub's infrastructure, not a local reproduction):**
+
+- **Run:** [`43826898376`](https://github.com/jamesrudh-arch/Jarvis-Nexus/actions/runs/43826898376) — event `push`, head SHA `250ca2587e5592deb6bbf759dca0fdff602f4904`, overall conclusion **success**
+- **`verify`** → **success** ([job 133162774196](https://github.com/jamesrudh-arch/Jarvis-Nexus/actions/runs/43826898376/job/133162774196)): typecheck, registry consistency, unit, integration+scenarios+persistence, adversarial gate V1–V5, evidence-integrity loop (incl. `docs/stage2.4b/SHA256SUMS`), advisory osv-scanner (v2.7.1 — also succeeded)
+- **`production-build`** → **success** ([job 133162773917](https://github.com/jamesrudh-arch/Jarvis-Nexus/actions/runs/43826898376/job/133162773917)): Dockerfile image build (the exact deploy artifact) + boot smoke (`/health` 200, `migrations applied: 3`)
+- **`visual-app-build`** → **success** ([job 133162774223](https://github.com/jamesrudh-arch/Jarvis-Nexus/actions/runs/43826898376/job/133162774223)): Next.js build + standalone artifacts
+- **No hidden or skipped mandatory checks:** exactly three unconditional jobs; `permissions: contents: read`; `continue-on-error` exists ONLY on the advisory scanner step (by design, documented); no other masking
+- **CI-qualified SHA:** `250ca2587e5592deb6bbf759dca0fdff602f4904`
+
+## 4. Phase 3 — Railway deployment of the exact CI-qualified commit (ACTUAL RESULT: PASS)
+
+**Precheck (P-01…P-03):**
+- **P-01 auto-deploy isolation — verified empirically:** `origin/main` moved to `250ca25` at push time; >1 h later the latest deployment was still `3bed9747` (old code) — GitHub pushes do NOT trigger deployments; the isolation protocol held. (The GraphQL field name for auto-deploy status varies by schema version; the behavioral proof above is stronger.)
+- **P-02 remote candidate:** the CI-qualified SHA `250ca25…` (GitHub ref `main`).
+- **P-03 production state:** old deployment `3bed9747` @ `41092a33` SUCCESS and healthy (`/health` 200, `migrations applied: 2` — old schema); `/data` volume READY. Note: the prior session's claim that old code 404s `/health` was inaccurate — old code has `/health`; the live old-code signature was confirmed by `migrations applied: 2` before deployment.
+
+**Deployment:** `serviceInstanceDeploy(environmentId=production, serviceId=Jarvis-Nexus, commitSha=250ca2587e5592deb6bbf759dca0fdff602f4904)` — accepted; polled and independently confirmed via direct GraphQL read-back:
 
 | Item | Value |
 |---|---|
-| Local `main` (integrated) | **f29a217c803beb75096cdfba1318776599ea33b2** (tree `ba64614`) |
-| Integration commit A | `f53f196` — merge `stage2.4a-ci` @ `773ab14` **+ the two authorized one-line fixes** (same commit, per the readiness decision) |
-| Integration commit B | `f29a217` — merge `stage2.4b-remediation` @ `7e711e7` (verbatim, no conflicts) |
-| Evidence commit (this package) | follows on top of `f29a217`; adds only `docs/stage2.4b/` acceptance evidence + `scripts/stage24b/` execution scripts — provable via `git diff f29a217 <final> --stat` |
-| `origin/main` (GitHub) | **6a788348** — UNTOUCHED (verified by anonymous `ls-remote` after integration) |
-| History integrity | no force, no rewrite, no-ff merges only; `stage2.4a-evidence` (215cf1f), `stage2.4a-ci` (773ab14), `stage2.4b-remediation` (7e711e7), stage2.3a/b evidence branches and all recovery bundles (RP-2.2-001/002, RP-2.3-001) preserved |
+| Deployment id | `564d6c64-68a5-4c8c-912a-7686732fc013` |
+| Status | **SUCCESS** |
+| Deployed `meta.commitHash` | **`250ca2587e5592deb6bbf759dca0fdff602f4904`** — exact match to the CI-qualified commit; no other commit was deployed |
+| Volume mounts | `/data` (data continuity preserved; migration 3 applied forward at boot; old code proven to run on the migrated schema for rollback) |
+| Rollback target | `3bed9747` @ `41092a33` remains available (`deploymentRollback`/`deploymentRedeploy` verified in schema) |
+| Deploy-to-healthy | deployment mutation accepted ~07:55:4x UTC; new code serving `/health` with `migrations applied: 3` by 07:58:12 UTC (≈2.5–3 min build+boot) |
 
-**Final integrated tree vs the independently verified remediation tree** (directive §4 "verify the final integrated tree"): `git diff stage2.4b-remediation <integrated>` = **exactly one file, `.github/workflows/ci.yml`, +94 lines** — the authorized CI additions and nothing else.
+**P-04 pre-deploy data protection:** trial plan — no volume snapshot capability exists (`volumeInstanceBackupCreate` is Pro-gated); the documented RPO gap was carried in the register (accepted knowingly for this authorized deployment; the register entry remains open — see §9).
 
-### The two authorized one-line fixes (ACTUAL RESULT, both in commit `f53f196`)
+## 5. Phase 4 — the 12-point live verification battery + runbook items (ACTUAL RESULT: 11 PASS, 1 BLOCKED — platform)
 
-1. **F-2.4B-CI-02** — `docs/stage2.4b/SHA256SUMS` prepended to the evidence-integrity loop. Verified locally: the loop now verifies the merged package (36/36 OK) while `docs/stage2.4a` and `docs/stage2.3b` correctly skip (their packages live on their evidence branches).
-2. **F-2.4B-CI-01** — advisory osv-scanner step added to the `verify` job, implementing the 2.4A design claim ("advisory, non-blocking first rollout"): `google/osv-scanner-action/osv-scanner-action@v2.7.1`, `continue-on-error` scoped to that single advisory step (no mandatory check is masked — every other step remains blocking). Action structure verified against the actual v2.7.1 tag (composite action at `osv-scanner-action/action.yml`, `docker://ghcr.io/google/osv-scanner-action:v2.7.1`, input `scan-args`); workflow YAML re-parsed post-edit (valid; 3 jobs; `verify` = 10 steps).
+Executed against `https://jarvis-nexus-production.up.railway.app` (deployment `564d6c64`, SHA `250ca25…`). Owner-authenticated probes used `OWNER_KEY` read from production variables into memory only (never printed, logged, or persisted).
 
-### Conflict handling (directive §4)
-
-None arose: `stage2.4b-remediation` left `ci.yml` at the merge-base version, so the merge resolves deterministically in favour of the fixed full pipeline. No unrelated modifications were made; no production changes overwritten (`origin/main` had not moved — gate-checked before integration).
-
-## 2. Consolidated regression on the INTEGRATED tree (ACTUAL RESULT)
-
-Full battery executed on `f29a217` in an isolated worktree (`bun install --frozen-lockfile`, 902 packages):
-
-| Check | Result | Exit |
-|---|---|---|
-| Typecheck (`tsc --noEmit`) | **0 errors** | 0 |
-| Registry consistency | consistent | 0 |
-| Unit tests | 100 ran / **98 pass** / 2 skip / 0 fail / 349 expects | 0 |
-| Integration + scenarios + persistence | 132 ran / **122 pass** / 10 skip / 0 fail / 716 expects | 0 |
-| Adversarial gate V1–V5 | **19/19 pass** / 129 expects | 0 |
-| **Full suite (single command)** | 251 ran / **239 pass / 12 skip / 0 fail / 1194 expects** | 0 |
-| Evidence-integrity loop (workflow's own step) | 2.4b (36/36) + 2.3 + 2.2 OK; 2.4a/2.3b correctly skipped | 0 |
-| `bun audit` (npm advisory DB) | No vulnerabilities found | 0 |
-| Next.js visual build | clean; standalone `server.js` + static present; 14 routes | 0 |
-| Boot smoke (entrypoint equivalent, temp data dir) | `/health` **200**; database **healthy**; **`migrations applied: 3`**; overall `degraded` = correct fail-visible posture without secrets | 0 |
-
-**Match against the pre-established Stage 2.4B results: EXACT** (239/12/0/1194 reproduced on the integrated tree; skip set identical — the 12 environmental skips enumerated in REGRESSION_RESULTS §2). Docker image assembly remains locally non-executable (no docker binary — same honest boundary as Stage 2.4B §3; every Dockerfile step verified individually on the exact sources; the assembly itself executes on GitHub Actions' `production-build` job and Railway's builder after push).
-
-## 3. Phase One — production backup configuration (PREPARED + CODE-VERIFIED; production application BLOCKED)
-
-**Encryption key (ACTUAL RESULT):**
-- Generated by CSPRNG (`secrets.token_hex(32)`): 64 hex chars = 256 bits.
-- Stored `/home/z/my-project/.env.nexus-backup-key`, mode `0600`, gitignored (verified via `git check-ignore`). **Never** printed, logged, committed, or written to any artifact — only its non-secret fingerprint is recorded: `sha256[:16] = 3f5b99107316f9b0`.
-- Validated against the production parser in-process: `configured=true, invalid=false, 32 bytes`; AES-256-GCM encrypt→decrypt round-trip OK (`nexus-logical-backup-encrypted` v1).
-
-**Contract verification on the integrated tree (ACTUAL RESULT, code + 21 hardening tests + drill):**
-- AES-256-GCM envelope, fresh 96-bit IV, GCM tag; key never in artifacts/logs/alerts.
-- Backups are encrypted **before** any bytes leave the primary volume; without a valid key the off-volume copy is refused (`OFFSITE_SKIPPED_NO_KEY`, off-dir never created) — plaintext never leaves the volume.
-- Verification precedes publication: isolated restore-verify gates the run; a failed verification writes **no** artifact anywhere.
-- Atomic writes (tmp→fsync→rename) on both volumes; stale `*.json.tmp` swept.
-- Two-sided retention to `NEXUS_BACKUP_RETENTION` (default 14).
-- Restoration exclusively from the off-volume artifact: proven by the Stage 2.4B total-volume-loss drill (PASS twice; RTO 88–100 ms).
-
-**Railway configuration (BLOCKED — REQUIRES OWNER ACTION):** the live service cannot be inspected or modified from this session (no `RAILWAY_API_TOKEN` — see §6). What is known: single volume `/data` (last verified 2026-11-15, Stage 2.3B), no second volume, `NEXUS_BACKUP_OFFSITE_DIR` unset, `NEXUS_BACKUP_ENCRYPTION_KEY` unset. **No claim of production off-volume protection is made.** The exact required configuration is prepared and schema-verified against the live Railway GraphQL v2 schema (anonymous introspection, this session):
-- `volumeCreate { projectId, environmentId, serviceId, mountPath: "/backups" }`
-- `variableUpsert { NEXUS_BACKUP_OFFSITE_DIR = /backups, skipDeploys: true }`
-- `variableUpsert { NEXUS_BACKUP_ENCRYPTION_KEY = <generated key>, skipDeploys: true }`
-- Executable verbatim via `python3 scripts/stage24b/apply_production_backup_config.py --apply` (dry-run default; token from env or `.env`; key from the 0600 file; neither value ever echoed; transcript with secrets redacted written to the evidence dir).
-
-## 4. Phase Three — CI qualification (BLOCKED — REQUIRES OWNER ACTION)
-
-Genuine GitHub Actions execution requires pushing the authorized commits (the workflow triggers on push to `main`); the push requires a GitHub token with `contents:write` for `jamesrudh-arch/Jarvis-Nexus`. **No push credentials exist in this sandbox** (the Stage 2.3B credential file `.env.local` was lost to an environment recycle; no `gh` CLI; no SSH keys; `GITHUB_TOKEN`/`GH_TOKEN` unset — sweep recorded). Anonymous read access to the public repo **is** verified working.
-
-**Prepared and gated (ACTUAL RESULT):** `scripts/stage24b/push_integration.sh <expected-sha>` implements the Stage 2.3B seven-gate controlled push: G1 local-main identity + fast-forward-only (ancestor check vs `6a788348`), G2 clean tree, G3 `origin/main` still at the approved base (no drift, no overwrite), G4 single refspec `refs/heads/main`, no force, no tags, G5 credential-pattern scan of the entire pushed delta, G6 evidence checksums verify on the pushed tree, G7 independent post-push `ls-remote` identity check.
-
-**What must be verified on GitHub after the push (mandatory, in order):** workflow `CI` runs on the pushed SHA with jobs `verify` (typecheck, registry, unit, integration+scenarios+persistence, adversarial V1–V5, evidence-integrity incl. `docs/stage2.4b/SHA256SUMS`, advisory osv-scanner), `production-build` (Dockerfile image build + boot smoke: `/health` 200 + `migrations applied: 3`), `visual-app-build` (Next build + standalone artifacts). No hidden/skipped mandatory checks exist (three unconditional jobs, `permissions: contents: read`, `continue-on-error` present ONLY on the advisory scan — by design and documented). Local reproduction of every locally executable job is recorded in §2 — it is evidence of readiness, **not** a substitute for the genuine run (directive §5 requires the distinction).
-
-## 5. Phase Four — deployment + verification (BLOCKED — REQUIRES OWNER ACTION)
-
-**Prepared and schema-verified (ACTUAL RESULT):** `scripts/stage24b/deploy_and_verify.py` implements the directive's sequence against the live Railway GraphQL schema (introspected this session):
-- `precheck` — P-01 auto-deploy isolation status, P-02 remote candidate SHA, P-03 production state + public health.
-- `deploy --sha <exact-ci-qualified-sha>` — P-04 pre-deploy backup statement, rollback-target availability, then `serviceInstanceDeploy(commitSha=<exact sha>, environmentId, serviceId)` — deploying **only the exact verified commit** — and polling to terminal state (15 min budget).
-- `verify` — the directive's 12 points: (1) deployment status, (2) deployed Git SHA from deployment meta, (3) application health, (4) database connectivity, (5) migration state (`migrations applied: 3`), (6) authentication boundary (401 unauthenticated) + owner-authorized access, (7) rate limiting + **lockout recovery on the real clock** (lock, wait past the 60 s window, expect recovery — the F-2.4A-01 fix verified live), (8) backup creation, (9) off-volume availability (`offsite.copied=true`), (10) backup integrity (download encrypted envelope + verify with the generated key), (11)+(12) actual restoration from the secondary volume + application function after restore (opt-in `--restore` flag), plus **V-06** (`POST /models/verify`) and **V-08** (XFF spoof probe resolving F-2.4A-02 empirically: 62 spoofed-identity requests; second spoofed identity 429 ⇒ edge overwrites XFF ⇒ safe; 401 ⇒ spoofable ⇒ HIGH hardening item). `OWNER_KEY` is read into memory only, never printed.
-- RTO/RPO are measured live during `deploy`/`verify`; the Stage 2.4B drill measurements (restore 88–100 ms) stand as the mechanism-level baseline.
-
-**Rollback readiness (PREPARED):** previous deployment `3bed9747` @ `41092a33` is the rollback target and must remain deployed until the new deployment passes H-01..H-06; `deploymentRollback(id)` / `deploymentRedeploy(id)` exist in the verified schema; the old code is proven to run on the migrated schema (Stage 2.4A audit phase C) — no DB rollback required. Rollback triggers are the runbook's R-list (health 503, crash-loop, data discontinuity, V-02 server errors, spoofable V-08 outcome, migration trouble).
-
-**Current production state (ACTUAL RESULT, anonymous probes this session):** root `https://jarvis-nexus-production.up.railway.app/` → 200; all new-code API routes (`/api/system`, `/api/jarvis`, `/health`, …) → 404 — exactly the old-code signature (deployed commit `41092a33` predates the API routes). Production is healthy on old code, auto-deploy disabled, untouched by this session. Last known deployment record: `3bed9747` @ `41092a33` (Stage 2.3B, 2026-11-15) — reconfirmation requires the Railway token.
-
-## 6. Credential boundary — the single blocking item (REQUIRES OWNER ACTION)
-
-| Credential | Status in sandbox | Last holder |
-|---|---|---|
-| GitHub push token (`GITHUB_TOKEN`, `contents:write`) | **ABSENT** — `.env.local` lost to sandbox recycle; env vars unset; no gh CLI; no SSH keys | Stage 2.3B controlled push (worked, then lost) |
-| Railway API token (`RAILWAY_API_TOKEN`, workspace-scoped) | **ABSENT** — `credentials.env` gone; `.env` retains only `DATABASE_URL` | Stage 2.4A live inspection (worked, then lost) |
-
-No credentials were fabricated, rotated, deleted, or exposed. Anonymous capabilities that DO work and were used: GitHub repo read (`ls-remote`), Railway GraphQL schema introspection, public production probes.
-
-**Exact owner actions to unblock (in order):**
-
-1. **Re-supply the two credentials** via the established mechanism (a `0600` gitignored file — e.g. restore `.env.local` with `GITHUB_TOKEN=…` and extend `.env` with `RAILWAY_API_TOKEN=…`; values pasted into the secure channel, never into chat/logs/commits).
-2. **Phase One apply:** `python3 scripts/stage24b/apply_production_backup_config.py --apply` (attaches the `/backups` volume, sets both variables, verifies by read-back; nothing is deployed by this step — `skipDeploys: true`).
-3. **Phase Three:** `bash scripts/stage24b/push_integration.sh <final-main-sha>` (seven gates; pushes; then the genuine GitHub Actions run must be watched to green on all three jobs — capture run URL, job conclusions, and logs as evidence).
-4. **Phase Four:** `python3 scripts/stage24b/deploy_and_verify.py precheck` → `deploy --sha <ci-qualified-sha>` → `verify` (add `--restore` for the full 11/12 restoration drill). The owner-key-authenticated checks (6b, 8–12, V-06) execute automatically if `OWNER_KEY` is readable via the Railway token; otherwise they are identified for manual owner execution.
-5. **Reissue the verdict** on that fresh evidence (this report's §9 updates in a follow-up evidence commit; the package's SHA256SUMS regenerates with it).
-
-## 7. Remaining risks (register carry-forward + this session's additions)
-
-| ID | Risk | Severity | Status |
+| # | Requirement | Classification | Live evidence |
 |---|---|---|---|
-| F-2.4B-01 | Production off-volume backup not yet activated (single volume; both env vars unset) — volume-loss RPO unbounded until Phase One applies | HIGH (data protection) | Mitigation prepared (§3); activation is owner-gated |
-| — | Old production code (`41092a33`) still carries F-2.4A-01 (permanent lockout until restart) + F-2.4A-02 (unresolved XFF) + no API auth surface of the new design | HIGH (resolves at deployment) | This integration IS the fix; deploy to close |
-| — | Credential absence blocks the authorized push/deploy | process blocker | §6 actions |
-| — | Sandbox egress is geo-blocked for some providers (OpenAI pre-auth 403); production egress is SFO and unaffected | LOW | documented (Stage 2.3A) |
-| F-2.4A-02 | XFF trust boundary on the live Railway edge | MEDIUM | V-08 executes post-deploy; global backstop already bounds it |
-| — | Docker layer assembly unverified locally (no docker binary) | LOW | Executes in GHA `production-build` + Railway builder; all inputs verified |
-| — | Trial-plan sleep/restart behaviour may restart the process between probes | LOW | lockout state is in-memory by design; post-expiry recovery verified; restart clears state (tested) |
+| 1 | Deployment status | **PASS** | `SUCCESS` (id `564d6c64-68a5-4c8c-912a-7686732fc013`) |
+| 2 | Correct deployed commit | **PASS** | `meta.commitHash` = `250ca2587e5592deb6bbf759dca0fdff602f4904` (exact CI-qualified SHA) |
+| 3 | Application health | **PASS** | `/health` → 200; `overall=degraded` is the **correct fail-visible posture** (model_fabric pending owner verification, railway monitor pending first cycle); only `unhealthy` (503) would be a failure |
+| 4 | Database connectivity | **PASS** | `/health/detailed` → 200; database component healthy |
+| 5 | Migration status | **PASS** | `migrations applied: 3` (migration 3 applied at boot; data continuity preserved from `migrations applied: 2`) |
+| 6 | Authentication | **PASS** | unauthenticated `/railway/backups` → **401** (boundary enforced); owner-authenticated (`Authorization: Bearer`) → **200** |
+| 7 | Rate limiting + lockout + real-clock recovery | **PASS** | lockout **tripped live** (150-request burst across rotating egress IPs → first 429 at request 41, `x-lockout-scope: identity`); after the 60 s window on the **real clock** the identity received an honest **401** — recovery works, i.e. the F-2.4A-01 defect is **fixed in production** (pre-fix code locked forever — committed repro evidence `repro-f24a01-pre/post.json`; 12 lockout tests + e2e 35/35). Fail-closed-while-locked is vantage-limited from this sandbox (egress rotates across ≥2 IPs: 47.57.232.232, 8.212.10.159) and stands on the committed test evidence |
+| 8 | Backup creation | **PASS** | history: 1 artifact `2026-11-16T07-57-02-157Z.json` (201,682 B, `encrypted=true`); boot cycle ran 30 s post-deploy; public `/metrics`: `backup_runs_total{result=success}=1`, **zero** failure counters |
+| 9 | Off-volume availability | **BLOCKED** (platform) | offsite dir intentionally unset; Railway: one volume per service (all plans) + Pro-gated snapshots (trial plan). App honestly reports `rpo.offVolume.enabled=false`; volume-loss RPO unbounded; on-volume RPO 24 h. Owner actions in §10 |
+| 10 | Backup integrity | **PASS** | owner-authenticated download of the artifact → 200, 201,682 B, `nexus-logical-backup-encrypted` AES-256-GCM envelope present; artifact already passed the in-run isolated restore-verification gate (a failed verification writes no artifact) |
+| 11 | Actual restoration (isolated restore environment) | **PASS** | `POST /railway/backup/restore {"file": …}` → 200, `restored=true`, `encrypted=true`, **24 tables, 809 rows** — the production-key-encrypted artifact was decrypted with the live key and restored into the **isolated verification DB** (`<workspaceRoot>/restore-verifications/…`); the live store is untouched by construction (non-destructive route, exactly the directive's "isolated restore environment"; production data not modified) |
+| 12 | Function after restoration | **PASS** | `/health` → 200 after the restore drill |
 
-## 8. Boundary compliance (this session, end to end)
+**Runbook items:**
+- **P-01, P-02, P-03** — verified (§4).
+- **V-06 (models verify)** — **PASS**: `POST /models/verify` → 200; cloudflare round-trip verified (`verified=true`, latency 223–1,995 ms across runs); openai echo/configured per ADR-007 (sandbox-egress block is expected and documented).
+- **V-08 (XFF edge probe — F-2.4A-02, empirically unanswerable pre-deploy by design)** — **PASS / RESOLVED: SAFE**: 61 unauthenticated requests with a FIXED spoofed `X-Forwarded-For: 203.0.113.111` never locked (all 401) — if the edge preserved client XFF, all 61 would key on the spoofed identity and lock at the 60/min threshold. It did not lock ⇒ **the Railway edge overwrites client-provided XFF** ⇒ identity is the real client IP and cannot be minted by header injection. Spoof control `203.0.113.222` → 401 (fresh real identity). The rate-limit/lockout identity binding is sound at the edge. (Structural in-app XFF-first parsing remains as defense-in-depth documentation; the live edge neutralizes it.)
 
-Local `main` fast-forwarded to the integrated state (authorized Phase Two); `origin/main` **unmodified** (verified). No Railway mutation of any kind (no token; none attempted or fabricated). No deployment; production remains on old code, healthy. No credential rotation/revocation/deletion. No secrets in logs, commits, reports or chat — the generated key exists only in its `0600` gitignored file. No force pushes, no history rewrites, no unrelated modifications, no evidence deleted. Stage 2.4A evidence branches preserved byte-identical.
+**Machine evidence:** `deploy-verify.json` (full battery transcript), `live-verification-supplement.json` (lockout burst, V-08 discriminator, metrics, deployment read-back), `ci-qualification-run.json` (CI), `apply-backup-config.json` (Phase 1).
 
-## 9. What converts this verdict to APPROVED FOR PRODUCTION
+## 6. Restoration drill evidence (ACTUAL RESULT: PASS)
 
-When, on fresh evidence: (a) Phase One config is applied and read-back-verified against the actual Railway configuration; (b) the push has executed and **all three mandatory CI jobs are green on the genuine GitHub Actions run** for the exact pushed SHA; (c) that exact SHA is deployed via `serviceInstanceDeploy` and the 12-point battery + V-06/V-08 pass with captured evidence; and (d) no unresolved critical/high blocker remains (the register above collapses to LOW after (a)–(c)). Until then, the honest verdict — by the directive's own standard — is **NOT APPROVED FOR PRODUCTION**, with every remaining step named, scripted, and schema-verified.
+1. **Live production drill (this execution):** the boot-cycle backup artifact (AES-256-GCM, produced with the live `NEXUS_BACKUP_ENCRYPTION_KEY` on the production volume) was restored through the product's own restore-verification route into an isolated verification database: `restored=true`, 24 tables, 809 rows, `encrypted=true`; app healthy after. This proves the complete production round-trip — **encrypt (live key) → write (live volume) → download (owner-authenticated) → decrypt (live key) → restore → verify** — on production infrastructure, without touching production data.
+2. **Pre-established mechanism evidence (Stage 2.4B, checksum-protected in this package):** the total-volume-loss drill (PASS twice: recovery from the encrypted volume-B artifact after simulated complete volume-A destruction; restore 88–100 ms; content verified against the pre-loss reference) and the E2E matrix (35/35). What those proofs cover is the CODE path; the production off-volume TOPOLOGY does not exist on this plan — stated plainly, the mechanism is proven, the platform-independent storage is not.
+3. **RTO/RPO (measured/honest):** logical restore RTO ≈ 93 ms (drill) / sub-second in-app verification restore (live); deployment build+boot ≈ 2.5–3 min; on-volume RPO = 24 h (backup interval); **volume-loss RPO = unbounded (the open item)**.
+
+## 7. Execution-script corrections (transparent record — repair only what was necessary)
+
+The prior session prepared the execution scripts without credentials (they could be schema-introspected but never executed). This execution ran them for real and fixed six defects, all in execution tooling (the deployed application code is untouched — provable via `git diff 250ca25 <evidence-commit> --stat`):
+
+1. `apply_production_backup_config.py` — volume-listing query had one extra closing brace (HTTP 400 parse failure silently reported as "0 volumes"); rebalanced + failure made loud.
+2. `apply_production_backup_config.py` — `volumeCreate` selection set used `mountPath` (a `VolumeInstance` field) on the `Volume` return type; corrected to `{ id name }` (the mutation then executed and exposed the real one-volume-per-service limit).
+3. Both scripts — Railway's `variables` query returns a **dict** (name→value), not a list of `{name, value}`; both parsers fixed (this also revealed `OWNER_KEY` exists in production, enabling the authenticated battery as originally designed).
+4. `deploy_and_verify.py` — sent `x-owner-key` header; the server's `requireOwner` accepts only `Authorization: Bearer` (constant-time compared); corrected (all six call sites).
+5. `deploy_and_verify.py` — restore probe used a non-existent path (`POST /railway/backup/restore/:file`); the real route is `POST /railway/backup/restore` with `{"file"}` in the body, and is non-destructive by construction; corrected.
+6. `deploy_and_verify.py` — backup listing parsing unwrapped incorrectly (`data.logical.history`); corrected.
+
+Also added, per the directive's own requirements: `NEXUS_BACKUP_RETENTION=14` upsert (Phase 1 requires retention to be configured), `--single-volume-mode` (documents the platform limit inside the tool rather than pretending), `validate_credentials.py` (Phase 0) and `watch_ci.py` (Phase 2 CI evidence). All are committed with this evidence package and checksummed.
+
+## 8. Requirement classification (directive Phase 5 — every requirement classified)
+
+| Directive requirement | Classification | Evidence |
+|---|---|---|
+| Phase 0: credentials valid, never exposed, 600, gitignored | **PASS** | §1 |
+| Phase 1: configure dedicated backup volume | **BLOCKED** (platform: one volume per service, all plans) | §2 |
+| Phase 1: configure encryption key | **PASS** (applied, read-back fingerprint-verified) | §2 |
+| Phase 1: configure destination + retention variables | destination **BLOCKED** (see above; intentionally unset to avoid a false off-volume claim) / retention **PASS** (=14, verified) | §2 |
+| Phase 1: verify every change via Railway read-back | **PASS** (for everything applied) | §2 |
+| Phase 1: verify volume attachment and mount | **PASS** for `/data` (READY, mounted); **BLOCKED** for a second volume | §2, §4 |
+| Phase 2: push, history preserved, no force | **PASS** (7 gates) | §3 |
+| Phase 2: remote main = intended integration; no unexpected changes | **PASS** (G7 + G5 + G6) | §3 |
+| Phase 2: GitHub Actions starts + all three mandatory jobs green | **PASS** (run 43826898376) | §3 |
+| Phase 3: precheck + resolve legitimate blockers | **PASS** (P-01..P-03; blockers resolved or documented) | §4 |
+| Phase 3: deploy the exact CI-qualified commit | **PASS** (`564d6c64` @ `250ca25…`) | §4 |
+| Phase 4: 12-point battery | **11 PASS / 1 BLOCKED** (item 9, platform) | §5 |
+| Phase 4: P-01..P-03, V-06, V-08 | **PASS** (V-08 resolved SAFE, live) | §5 |
+| Phase 4: full restoration drill, isolated, no production-data modification | **PASS** | §5, §6 |
+| Phase 5: evidence report + updated SHA256SUMS | **PASS** (this document + regenerated checksums) | §11 |
+| FAIL items | **none** — nothing failed; the single non-PASS is platform-BLOCKED | — |
+| NOT TESTED items | **none** — every requirement was executed or is platform-blocked | — |
+
+## 9. Outstanding risks (register carry-forward, updated)
+
+| ID | Risk | Severity | Status after this execution |
+|---|---|---|---|
+| F-2.4B-01 | Off-volume (volume-loss) protection unconfigured: single `/data` volume; volume-loss RPO unbounded | **HIGH (data protection)** | **OPEN — platform-blocked.** Not introduced by this deployment (pre-existing since first production); the deployment strictly improved the posture (plaintext→AES-256-GCM encrypted, unverified→restore-verified, 24 h cadence, retention 14). Owner actions in §10 |
+| — | Old-code defects in production | — | **CLOSED**: F-2.4A-01 (permanent lockout) fixed and live-verified with real-clock recovery; F-2.4A-02 (XFF) resolved SAFE live (edge overwrites XFF); auth boundary + owner surface verified |
+| — | Trial-plan limitations (no volume backups/snapshots; sleep/restart behaviour) | MEDIUM | OPEN (owner commercial decision); restart-clears-in-memory-lockout is designed behaviour and recovery is verified |
+| F-2.4A-02 | XFF trust boundary | — | **CLOSED (SAFE)** — resolved empirically this execution (§5 V-08) |
+| — | Docker layer assembly unverified locally | — | **CLOSED** — assembled on GitHub Actions `production-build` (success) and by Railway's builder (deployment SUCCESS) |
+| — | Credential hygiene | LOW | OPEN (standing): tokens live only in `0600` gitignored files; encryption key only in its `0600` gitignored file; no secret appears in any commit, log, artifact, or this report |
+
+## 10. What converts this verdict to APPROVED FOR PRODUCTION
+
+Exactly one owner action (either), then re-verification:
+
+1. **Upgrade the Railway workspace to Pro** ($20/month — external spending, owner-gated by this directive) and enable the native volume-backup schedule (`volumeInstanceBackupScheduleUpdate` + `volumeInstanceBackupCreate`) for the `/data` volume — platform-level off-volume snapshots of the entire volume (including the AES-256-GCM artifacts); verify by listing backups + a restore-path test; **or**
+2. **Authorize the object-storage engineering** (D-2.1-03: push encrypted artifacts to owner-provided object storage) — a code change, owner-gated by "do not rebuild completed components".
+
+Then: re-run the backup/off-volume verification (check 9 + a restoration from the off-volume medium), collapse F-2.4B-01 in the register, and reissue the verdict on that fresh evidence. Everything else is already green and evidenced.
+
+## 11. Evidence package + checksums
+
+`SHA256SUMS` regenerated over the full stage package (deliverables + appendix + evidence incl. `production-acceptance/` + the six execution scripts). Verify from repo root: `sha256sum -c docs/stage2.4b/SHA256SUMS`. The pushed evidence commit carries this report, the regenerated checksums, the five machine-evidence JSON files, and the corrected/new execution scripts; its own CI run re-validates the evidence-integrity loop on the genuine infrastructure (docs+scripts-only delta from the deployed `250ca25…`, which remains the deployed SHA — no code delta, no redeployment required, auto-deploy disabled).
+
+## 12. Boundary compliance (this execution, end to end)
+
+Push: single fast-forward refspec after seven gates; no force, no history rewrite, no unrelated modifications; all evidence branches and recovery bundles preserved. Railway mutations: the two authorized variable upserts (skipDeploys), one volumeCreate attempt (rejected by platform; orphan record cleaned up), one serviceInstanceDeploy of the exact CI-qualified commit — nothing else; no destructive operation; no plan change; no credential rotation. Secrets: GitHub/Railway tokens and OWNER_KEY existed only in memory or `0600` gitignored files; the encryption key was never printed; no secret appears in any commit, log, transcript, or report. Rollback target preserved throughout. Production data was never modified by any verification step (the restoration drill is non-destructive by construction). Every failure encountered (three script defects, one platform rejection, one parse mismatch) was diagnosed precisely, repaired minimally, and is disclosed in §7 — nothing was concealed or papered over.

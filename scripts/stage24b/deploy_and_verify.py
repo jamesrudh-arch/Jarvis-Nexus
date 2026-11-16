@@ -113,12 +113,16 @@ def get_owner_key(token):
     code, d = gql(token, q)
     raw = (((d or {}).get("data") or {}).get("variables"))
     try:
-        parsed = json.loads(raw) if isinstance(raw, str) else (raw or [])
+        parsed = json.loads(raw) if isinstance(raw, str) else (raw or {})
     except Exception:
         return None
+    # FINAL-EXECUTION FIX: the variables query returns a DICT (name -> value),
+    # not a list of {name, value} objects. Handle both shapes.
+    if isinstance(parsed, dict):
+        return parsed.get("OWNER_KEY")
     if isinstance(parsed, list):
         for v in parsed:
-            if v.get("name") == "OWNER_KEY":
+            if isinstance(v, dict) and v.get("name") == "OWNER_KEY":
                 return v.get("value")
     return None
 
@@ -273,7 +277,7 @@ def cmd_verify(token, restore_flag=False):
             "complete the authenticated sub-checks manually")
     else:
         code, body, _ = http("GET", "/railway/backups",
-                             headers={"x-owner-key": owner_key})
+                             headers={"Authorization": f"Bearer {owner_key}"})
         check("6b", code == 200, f"owner-authenticated /railway/backups -> {code}")
 
     # 7. rate limiting + lockout recovery (F-2.4A-01 fix, real clock, ~75s)
@@ -323,14 +327,36 @@ def cmd_verify(token, restore_flag=False):
     # 8-10. backup creation, off-volume availability, integrity (needs owner key)
     if owner_key:
         time.sleep(60)  # allow the boot backup cycle
-        code, body, _ = http("GET", "/railway/backups", headers={"x-owner-key": owner_key})
+        code, body, _ = http("GET", "/railway/backups", headers={"Authorization": f"Bearer {owner_key}"})
         try:
-            listing = json.loads(body)
-            hist = listing.get("history") or listing.get("backups") or []
+            # FINAL-EXECUTION FIX: the route answers { data: { ..., logical:
+            # { history, lastRun, encryption, rpo, ... } } } — unwrap both.
+            payload = json.loads(body)
+            logical = (payload.get("data") or {}).get("logical") or payload
+            hist = logical.get("history") or []
             latest = hist[0] if hist else {}
-            check(8, bool(hist), f"backup history: {len(hist)} entr(y/ies); latest file {latest.get('file')}")
-            off = (latest.get("offsite") or {})
-            check(9, off.get("copied") is True, f"off-volume copy: copied={off.get('copied')} encrypted={off.get('encrypted')}")
+            check(8, bool(hist), f"backup history: {len(hist)} entr(y/ies); latest file "
+                f"{latest.get('file')} ({latest.get('bytes')}B, encrypted={latest.get('encrypted')})")
+            last_run = logical.get("lastRun") or {}
+            off = last_run.get("offsite")
+            rpo = (logical.get("rpo") or {}).get("offVolume") or {}
+            # check 9: off-volume copy. FINAL-EXECUTION REALITY: the Railway
+            # platform forbids a second volume per service (all plans) and
+            # native volume backups are Pro-gated — the offsite dir is
+            # INTENTIONALLY UNSET (a same-volume path would make the app
+            # falsely claim off-volume protection). Report the honest state.
+            if off is None:
+                log("V12.9", "BLOCKED",
+                    "off-volume copy: not configured (platform limit: one volume "
+                    "per service; native snapshots Pro-gated; offsite dir "
+                    "intentionally unset to avoid a false off-volume claim). "
+                    f"App reports honestly: rpo.offVolume.enabled={rpo.get('enabled')} "
+                    "— volume-loss RPO unbounded, on-volume RPO = 24h. Owner "
+                    "actions: Pro upgrade (spending, owner-gated) or object-"
+                    "storage engineering (D-2.1-03).")
+            else:
+                check(9, off.get("copied") is True,
+                      f"off-volume copy: copied={off.get('copied')} encrypted={off.get('encrypted')}")
             # 10. integrity: download the encrypted artifact + verify with the key
             f = latest.get("file")
             key = None
@@ -341,7 +367,7 @@ def cmd_verify(token, restore_flag=False):
                 key = mm.group(1) if mm else None
             if f and key:
                 dl = f"/railway/backup/export/{urllib.parse.quote(f)}/download"
-                code, body, _ = http("GET", dl, headers={"x-owner-key": owner_key})
+                code, body, _ = http("GET", dl, headers={"Authorization": f"Bearer {owner_key}"})
                 ok = code == 200 and "nexus-logical-backup-encrypted" in body
                 check(10, ok, f"download+envelope check -> {code} ({len(body)}B, encrypted envelope "
                     f"{'present' if ok else 'MISSING'})")
@@ -349,32 +375,47 @@ def cmd_verify(token, restore_flag=False):
                 check(10, False, "cannot verify integrity: file or key unavailable")
         except Exception as e:
             check(8, False, f"listing parse failed: {e}")
-        # 11+12. actual restoration from the secondary volume + function after restore
-        #  (restore route: POST /railway/backup/restore/:file — destructive-in-app
-        #  but confined to the service DB; execute ONLY with an explicit flag)
+        # 11+12. actual restoration drill in the ISOLATED restore environment.
+        # FINAL-EXECUTION FIX: the real route is POST /railway/backup/restore
+        # with {"file": name} in the body — NON-DESTRUCTIVE by construction:
+        # it restores into an isolated verification DB under
+        # <workspaceRoot>/restore-verifications/ and never touches the live
+        # store (exactly the directive's "isolated restore environment");
+        # production data is not modified.
         if restore_flag:
             try:
-                latest = (json.loads(http("GET", "/railway/backups",
-                                          headers={"x-owner-key": owner_key})[1]) \
-                          .get("history") or [{}])[0]
-                f = latest.get("file")
-                code, body, _ = http("POST", f"/railway/backup/restore/{urllib.parse.quote(f)}",
-                                     headers={"x-owner-key": owner_key})
-                check(11, code in (200, 201), f"restore from off-volume artifact -> {code}: {body[:120]}")
+                payload = json.loads(http("GET", "/railway/backups",
+                                          headers={"Authorization": f"Bearer {owner_key}"})[1])
+                logical = (payload.get("data") or {}).get("logical") or payload
+                hist = logical.get("history") or []
+                f = (hist[0] if hist else {}).get("file")
+                code, body, _ = http("POST", "/railway/backup/restore",
+                                     body={"file": f},
+                                     headers={"Authorization": f"Bearer {owner_key}"})
+                restored = False
+                try:
+                    rep = ((json.loads(body).get("data") or {}).get("report") or {})
+                    restored = bool(rep.get("restored"))
+                    detail = (f"restore of {f} in isolated verification DB -> {code}: "
+                              f"restored={restored}, encrypted="
+                              f"{(json.loads(body).get('data') or {}).get('encrypted')}, "
+                              f"report={json.dumps(rep)[:160]}")
+                except Exception:
+                    detail = f"restore -> {code}: {body[:160]}"
+                check(11, code == 200 and restored, detail)
                 code, body, _ = http("GET", "/health")
-                check(12, code == 200, f"app healthy after restore: /health -> {code}")
+                check(12, code == 200, f"app healthy after restore drill: /health -> {code}")
             except Exception as e:
                 check(11, False, f"restore probe failed: {e}")
         else:
             log("V12.11-12", "INFO",
-                "restoration-from-secondary-volume drill NOT executed (add --restore "
-                "to run it); the code path is proven by the Stage 2.4B drill evidence")
+                "restoration drill NOT executed (add --restore to run it)")
     else:
         log("V12.8-12", "INFO", "OWNER_KEY unavailable — backup checks need owner execution")
 
     # V-06 models verify (owner-gated; non-destructive)
     if owner_key:
-        code, body, _ = http("POST", "/models/verify", headers={"x-owner-key": owner_key})
+        code, body, _ = http("POST", "/models/verify", headers={"Authorization": f"Bearer {owner_key}"})
         log("V-06", "OK" if code in (200, 207, 503) else "INFO",
             f"POST /models/verify -> {code}: {body[:120]}")
 
