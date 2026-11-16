@@ -45,3 +45,97 @@ jobs:
           # the repository's own independent verifier is red. The adversarial
           # suite is the release gate; it must run in CI, not only locally.
           bun test tests/adversarial
+
+      - name: Evidence integrity (stage package checksums)
+        run: |
+          # Stage 2.4A F-2.4A-05: every committed evidence package must verify
+          # against its own SHA256SUMS. A docs file edited without re-recording
+          # checksums must fail CI instead of silently invalidating the record.
+          # F-2.4B-CI-02: docs/stage2.4b/SHA256SUMS joins the loop (present
+          # once the stage2.4b-remediation merge lands; guarded until then).
+          set -eu
+          for sums in docs/stage2.4b/SHA256SUMS docs/stage2.4a/SHA256SUMS docs/stage2.3b/SHA256SUMS docs/stage2.3/SHA256SUMS docs/stage2.2/SHA256SUMS; do
+            if [ -f "$sums" ]; then
+              echo "verifying $sums"
+              sha256sum --quiet -c "$sums"
+            else
+              echo "skip (not present): $sums"
+            fi
+          done
+
+      # F-2.4B-CI-01: advisory dependency vulnerability scan (osv-scanner).
+      # The 2.4A design (CI_BUILD_GAP_REMEDIATION §1, on stage2.4a-evidence)
+      # specified an advisory, non-blocking first rollout; this step implements
+      # exactly that. continue-on-error is scoped to THIS advisory step only:
+      # every mandatory check in this pipeline runs to completion and fails
+      # the job on failure — nothing mandatory is masked.
+      - name: Advisory dependency vulnerability scan (osv-scanner, non-blocking)
+        continue-on-error: true
+        uses: google/osv-scanner-action/osv-scanner-action@v2.7.1
+        with:
+          scan-args: |-
+            --recursive
+            ./
+
+  # ---------------------------------------------------------------------------
+  # Stage 2.4A (F-2.4A-05): the production build was absent from CI. This job
+  # builds the EXACT artifact Railway deploys (Dockerfile image) and smoke-boots
+  # it. A broken Dockerfile, lockfile regression, or boot-time crash (e.g. a
+  # failing migration) now fails CI instead of failing the deployment.
+  # ---------------------------------------------------------------------------
+  production-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the production image (Dockerfile = the deploy artifact)
+        run: docker build -t jarvis-nexus:ci .
+
+      - name: Boot smoke test from the image
+        run: |
+          set -eu
+          docker run -d --name nexus-smoke -p 3000:3000 jarvis-nexus:ci
+          trap 'docker logs nexus-smoke 2>&1 | tail -50; docker rm -f nexus-smoke >/dev/null 2>&1 || true' EXIT
+          # The app boots in ~1s locally; allow generous CI headroom.
+          for i in $(seq 1 60); do
+            code=$(curl -s -o /tmp/health.json -w '%{http_code}' http://127.0.0.1:3000/health || true)
+            if [ "$code" = "200" ]; then break; fi
+            sleep 1
+          done
+          if [ "$code" != "200" ]; then
+            echo "FAIL: /health did not return 200 (last code: $code)"; exit 1
+          fi
+          # 200 with overall "degraded" is CORRECT when secrets are absent
+          # (fail-visible by design, Stage 2.4A audit §H). Only "unhealthy"
+          # (503) is a failure. Migrations must have applied at boot.
+          grep -q '"overall"' /tmp/health.json
+          curl -s http://127.0.0.1:3000/health/detailed > /tmp/detailed.json
+          grep -q 'migrations applied: 3' /tmp/detailed.json || {
+            echo "FAIL: expected 'migrations applied: 3' in /health/detailed"; cat /tmp/detailed.json; exit 1; }
+          echo "production image boot smoke: PASS (health 200, migrations applied)"
+
+  # ---------------------------------------------------------------------------
+  # Stage 2.4A: the Next.js visual app is NOT part of the Docker image (the
+  # Dockerfile does not copy src/), but it is a maintained repo surface that
+  # broke silently once before (Stage 2.2). Keep it building — honestly
+  # labeled as the non-production surface.
+  # ---------------------------------------------------------------------------
+  visual-app-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build the visual app (non-production surface)
+        run: |
+          bunx next build
+          test -f .next/standalone/server.js || { echo "FAIL: standalone server.js missing"; exit 1; }
+          test -d .next/static || { echo "FAIL: static chunks missing"; exit 1; }
