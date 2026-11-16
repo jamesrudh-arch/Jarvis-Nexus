@@ -5,7 +5,7 @@
 # preserved verbatim), evidence/ incl. the reverify/ second-pass record, the
 # production-acceptance extension (report + session evidence) and the three
 # Stage 2.4B production-execution scripts under scripts/stage24b/.
-# Regenerated 2026-11-16T12:11:43Z for the production acceptance package.
+# Regenerated 2026-11-16T16:47:23Z for the production acceptance package.
 352b5431255b7e0e9032ece6b4cbb88e2d0122c736409dc18dc58e1b42c37fdb  docs/stage2.4b/AUTH_LOCKOUT_REMEDIATION.md
 dd84af14a3b2add5a3b8274830841f1363e67f6e38f97d060b7affd966d51a20  docs/stage2.4b/BACKUP_ARCHITECTURE.md
 c5d0826a11e411fb26830491d88547a43657e3e9362242748b3a7618aee051fe  docs/stage2.4b/BACKUP_RESTORE_VERIFICATION.md
@@ -37,7 +37,7 @@ d8c6865b3121e8e90e796ac35540aa86c7217909bb35d6d7481e6e595035f56a  docs/stage2.4b
 1bb820966055fe47d5162b06951ec6db96a6a6aaa9f2d77793630a0a593f7e85  docs/stage2.4b/evidence/production-acceptance/boot-backup-observation.json
 43008412da13efe28592df2fdf74cf3f6503c084c049fb30d55af42e91e695e2  docs/stage2.4b/evidence/production-acceptance/ci-final-verification-run.json
 fdecfb437acfee777ae4930f8a3487ebeedc17a01f71bb33680d618d413d8c1e  docs/stage2.4b/evidence/production-acceptance/ci-qualification-run.json
-a9faf0579904fd573a79100636836eb146fcf3639793635053b3b339310ed4f9  docs/stage2.4b/evidence/production-acceptance/deploy-verify.json
+b571c80660782b4da2c2f654a5d8ee28e071b41ccad47865c811c5a761f7da2f  docs/stage2.4b/evidence/production-acceptance/deploy-verify.json
 ae68a8caed7da8f4241964928047e46e0100a7d462d6ebd898aa1d89011870a2  docs/stage2.4b/evidence/production-acceptance/integration-verification.json
 dcd042a6703d9fce67451d2a3f477f6ad581aa4d621e6dd11132ec574c81bb06  docs/stage2.4b/evidence/production-acceptance/live-verification-supplement.json
 4ab8907a7f83544604d1ae945f69dc7ae8ac8b6973ca15fabf664b78e8d05f66  docs/stage2.4b/evidence/production-acceptance/supabase-endpoints-probe.json
@@ -56,7 +56,7 @@ d63b712a76fd153dacbed8483cadc52a93888935f9c61dd9cc6a97e5aa458fbe  docs/stage2.4b
 fe0dbb3d786fb5f29517ea081fa6dd2ab13491eba8ba017240684913c2baa628  docs/stage2.4b/evidence/xff-edge-probe.json
 0db18c86a1054cae680a65faeb97e9a62f02ad92b9ac1f800e8c95899e7d3373  scripts/stage24b/apply_production_backup_config.py
 6b77ce4919565ce1b46a5fb94a9780e2f81b3748b8ac2beb871a1ed2d6cbb009  scripts/stage24b/apply_supabase_config.py
-0c919620b25fd2e8fa9d5ea7e983ef54fefef4e7789520959936f0b439e683b2  scripts/stage24b/deploy_and_verify.py
+95fa76e57ebd280c2d68c7212b17929e72d45c17b7cdf7793f11fbb31bc7cc00  scripts/stage24b/deploy_and_verify.py
 7f631a58aab0041ec5f8b6bf9825db5faa831a16c091767279fe04964065cdea  scripts/stage24b/final_acceptance_intake.py
 1b5ef69ce4d241e72131fec7da9b5cf27de9438789266cc4f1540a2260bef519  scripts/stage24b/list_railway_vars.py
 e21f4931065f7fc585707bccbb2d2920464a0569b7d6574bd9b13d9dd040e7e6  scripts/stage24b/probe_deployments.py
