@@ -1,7 +1,7 @@
 {
-  "startedAt": "2026-11-16T16:42:12Z",
-  "finishedAt": "2026-11-16T16:42:19Z",
-  "verdict": "FAIL",
+  "startedAt": "2026-11-16T16:51:06Z",
+  "finishedAt": "2026-11-16T16:51:15Z",
+  "verdict": "PASS",
   "production": "https://jarvis-nexus-production.up.railway.app",
   "stages": {
     "pwa.shell": {
@@ -25,7 +25,7 @@
       "detail": "unknown asset -> 404 (404 expected)"
     },
     "root.pointer": {
-      "ok": false,
+      "ok": true,
       "detail": "root JSON points at /app/"
     },
     "auth.boundary": {
@@ -34,27 +34,27 @@
     },
     "converse.real_model": {
       "ok": true,
-      "detail": "real reply via cloudflare:@cf/meta/llama-3.1-8b-instruct in 386ms: 'I can hear you, sir.'"
+      "detail": "real reply via cloudflare:@cf/meta/llama-3.1-8b-instruct in 1306ms: 'I can hear you, sir. Can I assist you with anything?'"
     },
     "converse.session_created": {
       "ok": true,
-      "detail": "session A: nexus_conv_9d77430c-73d0-48e5-9e69-97fad37e8429"
+      "detail": "session A: nexus_conv_e0f087b7-9bf1-42a5-b36c-9eeb6df40a4d"
     },
     "converse.second_turn": {
       "ok": true,
       "detail": "same session continued: 'Functional.'"
     },
     "memory.fact_stored": {
-      "ok": false,
-      "detail": "personal fact stored: memoriesStored=0"
+      "ok": true,
+      "detail": "personal fact stored: memoriesStored=1"
     },
     "memory.transcript_persisted": {
       "ok": true,
       "detail": "session A transcript: 6 messages persisted"
     },
     "memory.cross_session_recall": {
-      "ok": false,
-      "detail": "NEW session recalled the fact from long-term memory: \"I don't have any information about your personal preferences or favourite test codenames.\""
+      "ok": true,
+      "detail": "NEW session recalled the fact from long-term memory: 'Your favourite test codename is Aurelia.'"
     },
     "presence.sleep": {
       "ok": true,
@@ -62,7 +62,7 @@
     },
     "presence.wake": {
       "ok": true,
-      "detail": "woke from SLEEPING: 'Good morning, sir.'"
+      "detail": "woke from SLEEPING: \"Good morning, sir. All systems are functioning normally. Shall I begin today's briefing?\""
     },
     "backup.supabase": {
       "ok": true,

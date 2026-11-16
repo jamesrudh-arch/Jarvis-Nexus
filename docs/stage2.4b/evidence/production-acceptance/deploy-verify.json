@@ -1,95 +1,95 @@
 {
-  "recordedAt": "2026-11-16T16:41:06Z",
+  "recordedAt": "2026-11-16T16:53:30Z",
   "steps": [
     {
       "step": "V12.1",
       "status": "OK",
-      "detail": "status=SUCCESS id=3708abf6-c77a-4d54-8b1b-3c45fe78f448",
-      "at": "2026-11-16T16:39:34Z"
+      "detail": "status=SUCCESS id=5470459a-befb-4a35-b9e2-1256e2335d40",
+      "at": "2026-11-16T16:51:59Z"
     },
     {
       "step": "V12.2",
       "status": "OK",
-      "detail": "deployed SHA in meta: 8e689f80ff32f37f9fbafabd6ec7c33b1f9426a8",
-      "at": "2026-11-16T16:39:34Z"
+      "detail": "deployed SHA in meta: 03f85fe5430759ef51b0e3dc4338c79c5148df85",
+      "at": "2026-11-16T16:51:59Z"
     },
     {
       "step": "V12.3",
       "status": "OK",
-      "detail": "/health -> 200, overall=degraded (467ms)",
-      "at": "2026-11-16T16:39:34Z"
+      "detail": "/health -> 200, overall=degraded (226ms)",
+      "at": "2026-11-16T16:51:59Z"
     },
     {
       "step": "V12.4",
       "status": "OK",
       "detail": "/health/detailed -> 200, database component present",
-      "at": "2026-11-16T16:39:34Z"
+      "at": "2026-11-16T16:51:59Z"
     },
     {
       "step": "V12.5",
       "status": "OK",
       "detail": "migration state: migrations applied: 4",
-      "at": "2026-11-16T16:39:34Z"
+      "at": "2026-11-16T16:51:59Z"
     },
     {
       "step": "V12.6",
       "status": "OK",
       "detail": "unauthenticated /railway/backups -> 401 (401 expected: auth boundary enforced)",
-      "at": "2026-11-16T16:39:35Z"
+      "at": "2026-11-16T16:52:00Z"
     },
     {
       "step": "V12.6b",
       "status": "OK",
       "detail": "owner-authenticated /railway/backups -> 200",
-      "at": "2026-11-16T16:39:37Z"
+      "at": "2026-11-16T16:52:02Z"
     },
     {
       "step": "V12.7.lockout",
       "status": "INFO",
       "detail": "no 429 within 62 attempts (threshold may key on auth-failures only; run the POST-based probe from the runbook)",
-      "at": "2026-11-16T16:39:50Z"
+      "at": "2026-11-16T16:52:15Z"
     },
     {
       "step": "V-08",
       "status": "INFO",
       "detail": "spoof A never 429-ed (last code 401); endpoint may require auth first \u2014 classify with the full runbook probe manually",
-      "at": "2026-11-16T16:40:02Z"
+      "at": "2026-11-16T16:52:27Z"
     },
     {
       "step": "V12.8",
       "status": "OK",
-      "detail": "backup history: 4 entr(y/ies); latest file 2026-11-16T16-37-44-232Z.json (408831B, encrypted=True)",
-      "at": "2026-11-16T16:41:05Z"
+      "detail": "backup history: 5 entr(y/ies); latest file 2026-11-16T16-51-02-624Z.json (459531B, encrypted=True)",
+      "at": "2026-11-16T16:53:29Z"
     },
     {
       "step": "V12.9",
       "status": "BLOCKED",
       "detail": "off-volume copy: not configured (platform limit: one volume per service; native snapshots Pro-gated; offsite dir intentionally unset to avoid a false off-volume claim). App reports honestly: rpo.offVolume.enabled=True \u2014 volume-loss RPO unbounded, on-volume RPO = 24h. Owner actions: Pro upgrade (spending, owner-gated) or object-storage engineering (D-2.1-03).",
-      "at": "2026-11-16T16:41:05Z"
+      "at": "2026-11-16T16:53:29Z"
     },
     {
       "step": "V12.10",
       "status": "OK",
-      "detail": "download+envelope check -> 200 (408831B, encrypted envelope present)",
-      "at": "2026-11-16T16:41:05Z"
+      "detail": "download+envelope check -> 200 (459531B, encrypted envelope present)",
+      "at": "2026-11-16T16:53:30Z"
     },
     {
       "step": "V12.11-12",
       "status": "INFO",
       "detail": "restoration drill NOT executed (add --restore to run it)",
-      "at": "2026-11-16T16:41:05Z"
+      "at": "2026-11-16T16:53:30Z"
     },
     {
       "step": "V-06",
       "status": "OK",
-      "detail": "POST /models/verify -> 200: {\"data\":[{\"provider\":\"cloudflare\",\"verified\":true,\"detail\":\"round-trip succeeded\",\"latencyMs\":235},{\"provider\":\"openai\",",
-      "at": "2026-11-16T16:41:06Z"
+      "detail": "POST /models/verify -> 200: {\"data\":[{\"provider\":\"cloudflare\",\"verified\":true,\"detail\":\"round-trip succeeded\",\"latencyMs\":214},{\"provider\":\"openai\",",
+      "at": "2026-11-16T16:53:30Z"
     },
     {
       "step": "battery.summary",
       "status": "INFO",
       "detail": "9/9 checks passed; any FAIL requires failure-handling per directive \u00a77",
-      "at": "2026-11-16T16:41:06Z"
+      "at": "2026-11-16T16:53:30Z"
     }
   ]
 }
