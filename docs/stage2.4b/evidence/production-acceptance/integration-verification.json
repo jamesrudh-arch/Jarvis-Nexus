@@ -1,0 +1,114 @@
+{
+  "record": "Stage 2.4B production-acceptance session — Phase Two integration + local CI battery",
+  "recordedAt": "2026-11-16T07:05:00Z",
+  "session": "stage2.4b-production (integration execution directive)",
+  "operator": "autonomous senior engineering session (Z.ai sandbox, bun 1.3.14)",
+  "baseline": {
+    "mainBefore": "6a788348a6aa7f59558e41143b3b786858548aff",
+    "stage2.4a-ci": "773ab14",
+    "stage2.4b-remediation": "7e711e7",
+    "stage2.4a-evidence": "215cf1f (preserved, unmerged by design)",
+    "originMainAtStart": "6a788348a6aa7f59558e41143b3b786858548aff (verified by anonymous ls-remote)"
+  },
+  "integration": {
+    "mergeA": {
+      "commit": "f53f196",
+      "action": "merge --no-ff stage2.4a-ci (773ab14) + the two authorized one-line fixes in the same commit",
+      "fixes": [
+        {
+          "id": "F-2.4B-CI-01",
+          "change": "advisory osv-scanner step added to the verify job: google/osv-scanner-action/osv-scanner-action@v2.7.1, continue-on-error scoped to that step only",
+          "verification": "action repo structure cloned at tag v2.7.1; composite action path osv-scanner-action/action.yml confirmed (docker://ghcr.io/google/osv-scanner-action:v2.7.1, input scan-args); workflow YAML re-parsed after edit (yaml.safe_load OK, 3 jobs, verify=10 steps)"
+        },
+        {
+          "id": "F-2.4B-CI-02",
+          "change": "docs/stage2.4b/SHA256SUMS prepended to the evidence-integrity for-loop",
+          "verification": "loop executed locally on the integrated tree: docs/stage2.4b/SHA256SUMS verifies (36/36)"
+        }
+      ]
+    },
+    "mergeB": {
+      "commit": "f29a217",
+      "action": "merge --no-ff stage2.4b-remediation @ 7e711e7 (verbatim, no conflicts, no manual edits)"
+    },
+    "mainAfter": "f29a217c803beb75096cdfba1318776599ea33b2",
+    "mainTreeAfter": "ba6461405bcec2e216396c82dc3f08682005eae8",
+    "treeDiffVsRemediationTree": {
+      "files": [".github/workflows/ci.yml"],
+      "stat": "+94 lines, 0 deletions",
+      "interpretation": "the integrated tree equals the independently re-verified remediation tree plus exactly the authorized CI additions; no unrelated modification"
+    }
+  },
+  "localCiBattery": {
+    "bunInstallFrozenLockfile": {"exit": 0, "result": "902 packages"},
+    "typecheck": {"exit": 0, "result": "0 errors"},
+    "registryValidate": {"exit": 0, "result": "registries consistent"},
+    "unitTests": {"exit": 0, "ran": 100, "pass": 98, "skip": 2, "fail": 0, "expects": 349},
+    "integrationScenarioPersistence": {"exit": 0, "ran": 132, "pass": 122, "skip": 10, "fail": 0, "expects": 716},
+    "adversarialV1V5": {"exit": 0, "ran": 19, "pass": 19, "skip": 0, "fail": 0, "expects": 129},
+    "fullSuiteSingleCommand": {"exit": 0, "ran": 251, "pass": 239, "skip": 12, "fail": 0, "expects": 1194, "duration": "8.28s"},
+    "expectedFromStage2.4B": {"pass": 239, "skip": 12, "fail": 0, "expects": 1194},
+    "match": "EXACT — every number reproduced on the integrated tree",
+    "evidenceIntegrityLoop": {
+      "exit": 0,
+      "verified": ["docs/stage2.4b/SHA256SUMS (36/36 OK)", "docs/stage2.3/SHA256SUMS", "docs/stage2.2/SHA256SUMS"],
+      "correctlySkipped": ["docs/stage2.4a/SHA256SUMS (evidence branch only)", "docs/stage2.3b/SHA256SUMS (evidence branch only)"]
+    },
+    "bunAudit": {"exit": 0, "result": "No vulnerabilities found"},
+    "nextBuildVisual": {"exit": 0, "result": "clean; .next/standalone/server.js + .next/static present; all 14 routes built"},
+    "bootSmokeEntrypointEquivalent": {
+      "command": "PORT=3179 NEXUS_DB_PATH=/tmp/24b-smoke/data/nexus.db NEXUS_WORKSPACE_ROOT=/tmp/24b-smoke/data/workspaces NODE_ENV=production bun apps/nexus-api/src/main.ts",
+      "result": "/health 200; overall degraded (correct: no secrets in sandbox — fail-visible design; only unhealthy/503 is failure); database healthy; migrations applied: 3"
+    },
+    "dockerImageBuild": {
+      "status": "NOT LOCALLY EXECUTABLE",
+      "reason": "no docker binary in this sandbox (re-verified this session); covered by the same honest statement as Stage 2.4B REGRESSION_RESULTS §3: every Dockerfile step verified individually on the exact sources; the layer-assembly step is the only untested-locally piece and executes on GitHub Actions (production-build job) and Railway at deploy time"
+    }
+  },
+  "phaseOnePreparation": {
+    "encryptionKey": {
+      "generated": true,
+      "algorithm": "CSPRNG (python secrets.token_hex(32))",
+      "length": "64 hex chars = 256 bits",
+      "storage": "/home/z/my-project/.env.nexus-backup-key (mode 0600, gitignored — verified via git check-ignore)",
+      "exposure": "never printed, logged, committed, or placed in any artifact; only sha256[:16] fingerprint recorded",
+      "fingerprint": "3f5b99107316f9b0",
+      "validatedAgainstAppParser": {
+        "configured": true, "invalid": false, "keyBytes": 32,
+        "roundTrip": "encryptBackupDoc -> decryptBackupDoc OK; alg aes-256-gcm; envelope nexus-logical-backup-encrypted v1"
+      }
+    },
+    "codeContractVerifiedOnIntegratedTree": {
+      "encryption": "AES-256-GCM envelope, fresh 96-bit IV, GCM tag; key never in artifacts/logs/alerts",
+      "encryptedBeforeLeavingVolume": "encode step precedes the off-volume copy; plaintext artifacts are NEVER copied off (OFFSITE_SKIPPED_NO_KEY alert, off dir not created)",
+      "verificationBeforePublication": "isolated restore verification gates the run — a failed verification writes NO artifact anywhere",
+      "atomicWrites": "tmp -> fsync -> rename on both volumes; stale *.json.tmp swept",
+      "retention": "two-sided pruning to NEXUS_BACKUP_RETENTION (default 14), newest kept",
+      "restorationExclusivelyFromOffVolumeArtifact": "proven by the Stage 2.4B drill (total volume-A loss; recovery only via verified encrypted volume-B artifact; PASS twice)"
+    },
+    "railwaySchemaIntrospection": {
+      "method": "anonymous introspection of backboard.railway.com/graphql/v2 (works without auth)",
+      "verifiedOperations": {
+        "volumeCreate": "input {projectId: String!, mountPath: String!, serviceId: String, environmentId: String, region: String}",
+        "variableUpsert": "input {projectId: String!, environmentId: String!, name: String!, value: String!, serviceId: String, skipDeploys: Boolean}",
+        "serviceInstanceDeploy": "(commitSha: String, environmentId: String!, latestCommit: Boolean, serviceId: String!) -> Boolean!",
+        "serviceInstanceAutoDeployUpdate": "input {enabled: Boolean!, environmentId: String!, projectId: String!, ...}",
+        "volumeListing": "project(id).environments.edges.node.volumeInstances{edges{node{id mountPath serviceId state region sizeMB}}}",
+        "deploymentListing": "serviceInstance(environmentId, serviceId).latestDeployment{id status meta}"
+      }
+    },
+    "executionScript": "scripts/stage24b/apply_production_backup_config.py (dry-run default; --apply executes; never prints key or token)"
+  },
+  "credentialBoundary": {
+    "github": "NO push credentials in this sandbox: .env.local (Stage 2.3B push credential store) lost to sandbox recycle; no gh CLI; no SSH keys; GITHUB_TOKEN/GH_TOKEN unset. Anonymous READ of the public repo verified working (ls-remote).",
+    "railway": "NO API token: credentials.env gone; .env retains only DATABASE_URL; RAILWAY_API_TOKEN unset. Anonymous schema introspection works; project data requires the token.",
+    "consequence": "Phase Three (push + genuine GitHub Actions runs) and Phase Four (deployment + production verification) cannot be executed from this session. They are fully prepared (scripts + schema-verified operations + exact SHAs) and execute the moment credentials are re-supplied.",
+    "classification": "REQUIRES OWNER ACTION — never fabricated"
+  },
+  "boundaryCompliance": {
+    "mainLocalOnly": "local main fast-forwarded to f29a217 (authorized Phase Two); origin/main UNTOUCHED (still 6a788348 — verified)",
+    "railwayProductionUntouched": "no Railway API mutation, no deployment, no variable change, no volume change (no token; none attempted)",
+    "branchesPreserved": "stage2.4a-evidence (215cf1f), stage2.4a-ci (773ab14), stage2.4b-remediation (7e711e7), stage2.3a/b-evidence, all recovery bundles — untouched",
+    "noSecrets": "key and any credential values never printed/logged/committed; key file gitignored (verified); no secrets in the pushed delta (G5 pattern scan ready in push script)"
+  }
+}

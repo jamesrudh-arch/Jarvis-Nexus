@@ -2,9 +2,10 @@
 # Standard sha256sum format: verify from repo root with
 #   sha256sum -c docs/stage2.4b/SHA256SUMS
 # Covers the required deliverables, appendix/first-pass/ (first-pass documents,
-# preserved verbatim) and evidence/ incl. the reverify/ second-pass record.
-# Convention corrected vs the first pass: repo-root-relative paths, CI-loop
-# compatible (matches docs/stage2.3 and docs/stage2.2).
+# preserved verbatim), evidence/ incl. the reverify/ second-pass record, the
+# production-acceptance extension (report + session evidence) and the three
+# Stage 2.4B production-execution scripts under scripts/stage24b/.
+# Regenerated 2026-11-16T07:01:05Z for the production acceptance package.
 352b5431255b7e0e9032ece6b4cbb88e2d0122c736409dc18dc58e1b42c37fdb  docs/stage2.4b/AUTH_LOCKOUT_REMEDIATION.md
 dd84af14a3b2add5a3b8274830841f1363e67f6e38f97d060b7affd966d51a20  docs/stage2.4b/BACKUP_ARCHITECTURE.md
 c5d0826a11e411fb26830491d88547a43657e3e9362242748b3a7618aee051fe  docs/stage2.4b/BACKUP_RESTORE_VERIFICATION.md
@@ -13,6 +14,7 @@ c5d0826a11e411fb26830491d88547a43657e3e9362242748b3a7618aee051fe  docs/stage2.4b
 bb6ee142acd1c83f7bd851eb8a2fe405527b3e92ad33d2be48301695191d7ebc  docs/stage2.4b/REGRESSION_RESULTS.md
 1129615fedd1cb935df0ccbf967cff72d37a47025f0aab366c4c382b4013d697  docs/stage2.4b/SECURITY_RESULTS.md
 ca37c134209a63455148a719263329d414cce9ca3491076193b1ab08a7de108e  docs/stage2.4b/STAGE_2.4B_FINAL_REPORT.md
+ed67fe121814727d8bd4e848228da51476a3b42c521a02c15852403b4261b78c  docs/stage2.4b/STAGE_2.4B_PRODUCTION_ACCEPTANCE_REPORT.md
 60777c436f7f6dfe3d68cb478892ab2eec9de6913da4ff545c559bb26564fbbe  docs/stage2.4b/UPDATED_RISK_REGISTER.md
 03e405b3c188b405199ab6a51f0b38ad7185cb36870772ee8bd24a03c632d40a  docs/stage2.4b/appendix/first-pass/BACKUP_ARCHITECTURE.md
 0f5cfdab11637913c0d7cc3da05ed4bfd402cdfa2c375e7c820a18d2dbe0a7bd  docs/stage2.4b/appendix/first-pass/BACKUP_IMPLEMENTATION.md
@@ -27,9 +29,11 @@ ff40e6f9f8f9d49e293ddeefaf6754d59a07a90852f83b4a8be6740e1b5017c9  docs/stage2.4b
 2db94fbf8de09b41661bdb02497e4625666d813d04131acf4102264284e76e18  docs/stage2.4b/appendix/first-pass/RISK_REGISTER.md
 2dd900242ce1857860adfad880cb46772f9372dc8be27efa7ab79ca6cf9a1e14  docs/stage2.4b/appendix/first-pass/RPO_RTO_ASSESSMENT.md
 d8c6865b3121e8e90e796ac35540aa86c7217909bb35d6d7481e6e595035f56a  docs/stage2.4b/appendix/first-pass/SECURITY_REASSESSMENT.md
+6d7f43d43501d7826615e3ac600de94a83725875d2e46c9db1cf42a8be3bd09a  docs/stage2.4b/appendix/first-pass/SHA256SUMS
 348894bec0f8516094695c1cc8a059da92909853f6fcfdcd043562bf52d957aa  docs/stage2.4b/evidence/ci-qualification.json
 168a7a38af9acbab01b0a897e3c169dd0d468f8f095367f239373baf8f054ce7  docs/stage2.4b/evidence/drill-offvolume-restore.json
 587778a61cebedf13274d42b036edc49d182fd0da804deef8eca0c63a42b0189  docs/stage2.4b/evidence/e2e-matrix.json
+ae68a8caed7da8f4241964928047e46e0100a7d462d6ebd898aa1d89011870a2  docs/stage2.4b/evidence/production-acceptance/integration-verification.json
 de724e8946e49265d42c5a3d7af8c875b229ba9b61bf71bae1a66144cf3863ef  docs/stage2.4b/evidence/repro-f24a01-post.json
 7af4ea852b35e0a30d4db8e23789059dcfdeab3c54bf40aab07a66f51a9d6b5b  docs/stage2.4b/evidence/repro-f24a01-pre.json
 63764779c2bc41b3a8c7b966f164096bbc23887df1fe81942c192ca80bd785e2  docs/stage2.4b/evidence/reverify/SESSION_RECORD.md
@@ -41,3 +45,7 @@ a6f5a8e13482b6bcdc13ba671a1a9ff6493ca3724533922cd5184f07ed3e331e  docs/stage2.4b
 d63b712a76fd153dacbed8483cadc52a93888935f9c61dd9cc6a97e5aa458fbe  docs/stage2.4b/evidence/reverify/xff-edge-probe.json
 2826e00228b2ed8936be40e5d5e717b1b202bb1a388f9245f06d84574a46a3b3  docs/stage2.4b/evidence/suite-output.txt
 fe0dbb3d786fb5f29517ea081fa6dd2ab13491eba8ba017240684913c2baa628  docs/stage2.4b/evidence/xff-edge-probe.json
+0a6ce323d0bfa06ae3c7f536333582affbcb5bc9e34f354d1db7d895f2a34b25  scripts/stage24b/apply_production_backup_config.py
+22b18dcd2f2ccb2d6137131ed63e15aac21f1f2f3c3435ea577a91cde72df390  scripts/stage24b/deploy_and_verify.py
+215e41add7272006d30168cdc220609c7c5eaf902b47988c8a978c863ae254f4  scripts/stage24b/push_integration.sh
+1987f007c4e2dbc4aeca85a11091a973b70cf7d28353dd8b9f243c9724359f10  scripts/stage24b/regen_sha256sums.py
