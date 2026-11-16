@@ -1,0 +1,11 @@
+{
+  "baseline": {},
+  "endpoint": "https://jarvis-nexus-production.up.railway.app/metrics",
+  "final": {
+    "backup_runs_total{\"result\":\"success\"}": 1,
+    "backup_supabase_uploads_total{\"result\":\"ok\"}": 1
+  },
+  "note": "public counters only \u2014 no secrets; success requires an independently verified upload (backup_supabase_uploads_total{result=ok}), never a bare HTTP 200",
+  "verdict": "SUCCESS",
+  "watchedAt": "2026-11-16T11:43:25Z"
+}

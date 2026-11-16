@@ -138,17 +138,20 @@ def main():
     print(f"fingerprints: url-host={url.split('//')[1].split('/')[0]} "
           f"service-key={fp(skey)} encryption-key={fp(enc_key)}")
 
-    # volume + latest deployment (rollback target intact)
-    code, d = gql(token, 'query { service(id: "%s") { id name '
-                  'volumeInstances { edges { node { id status mountingEnabled volume { name } mountPath } } } } }' % SERVICE_ID)
-    if code == 200:
-        svc = (d.get("data") or {}).get("service") or {}
+    # volume instances live under the ENVIRONMENT node (proven query shape —
+    # service.volumeInstances does not exist on the live schema)
+    code, d = gql(token, 'query { project(id: "%s") { environments { edges { node { '
+                  'id name volumeInstances { edges { node { id mountPath '
+                  'serviceId state region sizeMB } } } } } } } }' % PROJECT_ID)
+    if code == 200 and not d.get("errors"):
         vols = []
-        for e in (((svc.get("volumeInstances") or {}).get("edges")) or []):
-            n = e["node"]
-            vols.append(f"{(n.get('volume') or {}).get('name')}@{n.get('mountPath')}:{n.get('status')}")
-        print(f"volume instances: {vols or 'NONE'}")
-        data_ok = any("@/data:" in v and v.endswith("READY") for v in vols)
+        for e in ((((d.get("data") or {}).get("project") or {}).get("environments") or {}).get("edges") or []):
+            for ve in (((e["node"].get("volumeInstances") or {}).get("edges")) or []):
+                n = ve["node"]
+                if n.get("serviceId") == SERVICE_ID:
+                    vols.append(f"{n.get('mountPath')}@{n.get('state')}:{n.get('region')}")
+        print(f"volume instances on service: {vols or 'NONE'}")
+        data_ok = any(v.startswith("/data@READY") for v in vols)
         print(f"/data attached+READY: {data_ok}")
     else:
         print("WARN: volume query failed:", code)

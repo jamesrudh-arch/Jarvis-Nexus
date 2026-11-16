@@ -20,6 +20,9 @@ EXTRA = [
     "scripts/stage24b/probe_deployments.py",
     "scripts/stage24b/probe_supabase_api.py",
     "scripts/stage24b/probe_supabase_endpoints.py",
+    "scripts/stage24b/final_acceptance_intake.py",
+    "scripts/stage24b/recover_production_secrets.py",
+    "scripts/stage24b/watch_boot_backup.py",
 ]
 
 def sha256(path):

@@ -1,101 +1,95 @@
 {
-  "recordedAt": "2026-11-16T09:01:01Z",
+  "recordedAt": "2026-11-16T11:45:08Z",
   "steps": [
     {
       "step": "V12.1",
       "status": "OK",
-      "detail": "status=SUCCESS id=a2b46ae7-e933-47ce-af24-4f23053cd780",
-      "at": "2026-11-16T08:59:32Z"
+      "detail": "status=SUCCESS id=f69a57ba-4a4a-47c1-ad6d-4a8f9537da60",
+      "at": "2026-11-16T11:43:32Z"
     },
     {
       "step": "V12.2",
       "status": "OK",
-      "detail": "deployed SHA in meta: 3751c4c8993650d73bb13953513dfb0da71a24f8",
-      "at": "2026-11-16T08:59:32Z"
+      "detail": "deployed SHA in meta: 44dbaeb10ccc46f34a275e526bd2768269c11861",
+      "at": "2026-11-16T11:43:32Z"
     },
     {
       "step": "V12.3",
       "status": "OK",
-      "detail": "/health -> 200, overall=degraded (185ms)",
-      "at": "2026-11-16T08:59:32Z"
+      "detail": "/health -> 200, overall=degraded (229ms)",
+      "at": "2026-11-16T11:43:32Z"
     },
     {
       "step": "V12.4",
       "status": "OK",
       "detail": "/health/detailed -> 200, database component present",
-      "at": "2026-11-16T08:59:32Z"
+      "at": "2026-11-16T11:43:32Z"
     },
     {
       "step": "V12.5",
       "status": "OK",
       "detail": "migration state: migrations applied: 3",
-      "at": "2026-11-16T08:59:32Z"
+      "at": "2026-11-16T11:43:32Z"
     },
     {
       "step": "V12.6",
       "status": "OK",
       "detail": "unauthenticated /railway/backups -> 401 (401 expected: auth boundary enforced)",
-      "at": "2026-11-16T08:59:33Z"
+      "at": "2026-11-16T11:43:33Z"
     },
     {
       "step": "V12.6b",
       "status": "OK",
       "detail": "owner-authenticated /railway/backups -> 200",
-      "at": "2026-11-16T08:59:33Z"
+      "at": "2026-11-16T11:43:35Z"
     },
     {
       "step": "V12.7.lockout",
       "status": "INFO",
       "detail": "no 429 within 62 attempts (threshold may key on auth-failures only; run the POST-based probe from the runbook)",
-      "at": "2026-11-16T08:59:45Z"
+      "at": "2026-11-16T11:43:48Z"
     },
     {
       "step": "V-08",
       "status": "INFO",
       "detail": "spoof A never 429-ed (last code 401); endpoint may require auth first \u2014 classify with the full runbook probe manually",
-      "at": "2026-11-16T08:59:58Z"
+      "at": "2026-11-16T11:44:00Z"
     },
     {
       "step": "V12.8",
       "status": "OK",
-      "detail": "backup history: 2 entr(y/ies); latest file 2026-11-16T08-58-07-132Z.json (308459B, encrypted=True)",
-      "at": "2026-11-16T09:01:00Z"
+      "detail": "backup history: 3 entr(y/ies); latest file 2026-11-16T11-43-19-518Z.json (356203B, encrypted=True)",
+      "at": "2026-11-16T11:45:06Z"
     },
     {
       "step": "V12.9",
       "status": "BLOCKED",
-      "detail": "off-volume copy: not configured (platform limit: one volume per service; native snapshots Pro-gated; offsite dir intentionally unset to avoid a false off-volume claim). App reports honestly: rpo.offVolume.enabled=False \u2014 volume-loss RPO unbounded, on-volume RPO = 24h. Owner actions: Pro upgrade (spending, owner-gated) or object-storage engineering (D-2.1-03).",
-      "at": "2026-11-16T09:01:00Z"
+      "detail": "off-volume copy: not configured (platform limit: one volume per service; native snapshots Pro-gated; offsite dir intentionally unset to avoid a false off-volume claim). App reports honestly: rpo.offVolume.enabled=True \u2014 volume-loss RPO unbounded, on-volume RPO = 24h. Owner actions: Pro upgrade (spending, owner-gated) or object-storage engineering (D-2.1-03).",
+      "at": "2026-11-16T11:45:06Z"
     },
     {
       "step": "V12.10",
       "status": "OK",
-      "detail": "download+envelope check -> 200 (308459B, encrypted envelope present)",
-      "at": "2026-11-16T09:01:00Z"
+      "detail": "download+envelope check -> 200 (356203B, encrypted envelope present)",
+      "at": "2026-11-16T11:45:07Z"
     },
     {
-      "step": "V12.11",
-      "status": "OK",
-      "detail": "restore of 2026-11-16T08-58-07-132Z.json in isolated verification DB -> 200: restored=True, encrypted=True, report={\"restored\": true, \"doc\": {\"format\": \"nexus-logical-backup\", \"version\": 1, \"exportedAt\": \"2026-11-16T08:58:07.132Z\"}, \"tables\": 24, \"rows\": 1491, \"transaction\":",
-      "at": "2026-11-16T09:01:01Z"
-    },
-    {
-      "step": "V12.12",
-      "status": "OK",
-      "detail": "app healthy after restore drill: /health -> 200",
-      "at": "2026-11-16T09:01:01Z"
+      "step": "V12.11-12",
+      "status": "INFO",
+      "detail": "restoration drill NOT executed (add --restore to run it)",
+      "at": "2026-11-16T11:45:07Z"
     },
     {
       "step": "V-06",
       "status": "OK",
-      "detail": "POST /models/verify -> 200: {\"data\":[{\"provider\":\"cloudflare\",\"verified\":true,\"detail\":\"round-trip succeeded\",\"latencyMs\":213},{\"provider\":\"openai\",",
-      "at": "2026-11-16T09:01:01Z"
+      "detail": "POST /models/verify -> 200: {\"data\":[{\"provider\":\"cloudflare\",\"verified\":true,\"detail\":\"round-trip succeeded\",\"latencyMs\":1520},{\"provider\":\"openai\"",
+      "at": "2026-11-16T11:45:08Z"
     },
     {
       "step": "battery.summary",
       "status": "INFO",
-      "detail": "11/11 checks passed; any FAIL requires failure-handling per directive \u00a77",
-      "at": "2026-11-16T09:01:01Z"
+      "detail": "9/9 checks passed; any FAIL requires failure-handling per directive \u00a77",
+      "at": "2026-11-16T11:45:08Z"
     }
   ]
 }

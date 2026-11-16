@@ -121,24 +121,44 @@ def main():
     stage("public_url_refused", code in (400, 401, 403, 404),
           f"unauthenticated public object URL answered HTTP {code} (refusal expected)")
 
-    # 3) list backups
-    list_body = json.dumps({"prefix": "production/database/", "limit": 1000, "offset": 0,
-                            "sortBy": {"column": "name", "order": "asc"}}).encode()
-    code, body = http(f"{url}/storage/v1/object/list/{BUCKET}", key=skey, method="POST", body=list_body)
-    if code != 200:
-        stage("list_backups", False, f"listing HTTP {code}: {body[:200].decode('utf-8', 'replace')}")
+    # 3) list backups — RECURSIVE WALK (the layout is production/database/
+    # YYYY/MM/<id>.enc, so a single list of the root prefix only returns the
+    # year "folder" entries; folders carry metadata:null — same semantics the
+    # product's walkObjects implements, independently re-implemented here)
+    def walk(prefix, depth=0, max_depth=6):
+        if depth > max_depth:
+            return []
+        lb = json.dumps({"prefix": prefix, "limit": 1000, "offset": 0,
+                         "sortBy": {"column": "name", "order": "asc"}}).encode()
+        code, body = http(f"{url}/storage/v1/object/list/{BUCKET}", key=skey, method="POST", body=lb)
+        if code != 200:
+            raise RuntimeError(f"listing {prefix!r} HTTP {code}: {body[:200].decode('utf-8', 'replace')}")
+        found = []
+        for o in json.loads(body.decode()):
+            if o.get("metadata") is None:  # folder marker
+                found += walk(f"{prefix}{o['name']}/", depth + 1, max_depth)
+            else:
+                found.append({"key": f"{prefix}{o['name']}",
+                              "size": int((o.get("metadata") or {}).get("size") or 0),
+                              "updated_at": o.get("updated_at") or o.get("created_at")})
+        return found
+
+    try:
+        objects = walk("production/database/")
+    except RuntimeError as e:
+        stage("list_backups", False, str(e))
         finish(started, False)
         return
-    objects = json.loads(body.decode())
-    enc_objects = [o for o in objects if o.get("name", "").endswith(".enc")]
+    enc_objects = [o for o in objects if o["key"].endswith(".enc")]
     stage("list_backups", len(enc_objects) > 0,
-          f"{len(enc_objects)} encrypted artifact(s), {len(objects)} object(s) total")
+          f"{len(enc_objects)} encrypted artifact(s), {len(objects)} object(s) total "
+          f"(recursive walk of production/database/)")
 
     # pick target: newest by updated_at (or the requested key)
     target_key = args.object_key
     if not target_key:
         enc_objects.sort(key=lambda o: o.get("updated_at") or "", reverse=True)
-        target_key = enc_objects[0]["name"] if enc_objects else None
+        target_key = enc_objects[0]["key"] if enc_objects else None
     if not target_key:
         stage("select_backup", False, "no backup artifacts in the bucket — has a production backup run happened?")
         finish(started, False)
@@ -209,14 +229,34 @@ def main():
             ["bun", "run", "restore", "--file", art_path, "--db", target_db],
             cwd=REPO, capture_output=True, text=True, timeout=300,
             env={**os.environ, "NEXUS_BACKUP_ENCRYPTION_KEY": enc_key})
-        try:
-            report = json.loads((restore.stdout.strip().splitlines() or ["{}"])[-1])
-        except Exception:
-            report = {"restored": False, "errors": [restore.stderr[-300:]]}
-        stage("isolated_restore", report.get("restored") is True,
+        # the CLI ALWAYS writes <db>.restore-log.json (finally block) — the
+        # deterministic report source; stdout additionally carries human text
+        log_path = f"{target_db}.restore-log.json"
+        report, duration_ms = {}, None
+        if os.path.exists(log_path):
+            try:
+                log = json.load(open(log_path))
+                report = log.get("report") or {}
+                duration_ms = log.get("wallClockMs")
+                # raw report carries perTable[].contentMatch; surface a single
+                # boolean (all tables content-verified) like the CLI does
+                per_table = report.get("perTable")
+                if isinstance(per_table, list) and per_table:
+                    report["contentVerified"] = all(p.get("contentMatch") is True for p in per_table)
+            except Exception:
+                report = {}
+        if not report:  # fall back to stdout JSON block, then stderr tail
+            try:
+                report = json.loads((restore.stdout.strip().splitlines() or ["{}"])[-1])
+            except Exception:
+                report = {"restored": False,
+                          "errors": [(restore.stderr[-300:] or restore.stdout[-300:])]}
+        stage("isolated_restore", report.get("restored") is True and report.get("contentVerified") is True,
               f"restored {report.get('rows')} rows across {report.get('tables')} tables "
               f"(transaction={report.get('transaction')}, contentVerified={report.get('contentVerified')}, "
-              f"fkViolations={report.get('foreignKeyViolations')})")
+              f"fkViolations={report.get('foreignKeyViolations')}, cliExit={restore.returncode}, "
+              f"durationMs={duration_ms})",
+              cliExitCode=restore.returncode, wallClockMs=duration_ms)
         stage("tables_rows", report.get("tables") == 24 and (report.get("rows") or 0) > 0,
               f"tables={report.get('tables')} rows={report.get('rows')}")
 
@@ -225,7 +265,7 @@ def main():
     posture = {
         "artifacts": len(enc_objects),
         "withMetadata": sum(1 for o in enc_objects
-                            if http(f"{url}/storage/v1/object/{BUCKET}/{re.sub(r'.enc$', '.meta.json', o['name'])}", key=skey)[0] == 200),
+                            if http(f"{url}/storage/v1/object/{BUCKET}/{re.sub(r'.enc$', '.meta.json', o['key'])}", key=skey)[0] == 200),
         "oldest": min((o.get("updated_at") for o in enc_objects if o.get("updated_at")), default=None),
         "newest": max((o.get("updated_at") for o in enc_objects if o.get("updated_at")), default=None),
     }

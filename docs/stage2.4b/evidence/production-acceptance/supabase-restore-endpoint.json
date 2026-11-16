@@ -1,0 +1,165 @@
+{
+ "executedAt": "2026-11-16T11:46:50Z",
+ "httpStatus": 200,
+ "durationSeconds": 4.0,
+ "request": {
+  "backupId": "2026-11-16T11-43-19-518Z"
+ },
+ "response": {
+  "id": "supabase-restore-1794829610389",
+  "source": "supabase:production/database/2026/11/2026-11-16T11-43-19-518Z.enc",
+  "objectKey": "production/database/2026/11/2026-11-16T11-43-19-518Z.enc",
+  "sha256": "9b4635fae88475b19a45e7f3b38448c0074d545e1f70ea636314780653d16f4a",
+  "target": "/data/workspaces/restore-verifications/supabase-restore-1794829610389/nexus.db",
+  "log": "/data/workspaces/restore-verifications/supabase-restore-1794829610389/restore-log.json",
+  "report": {
+   "restored": true,
+   "doc": {
+    "format": "nexus-logical-backup",
+    "version": 1,
+    "exportedAt": "2026-11-16T11:43:19.518Z"
+   },
+   "tables": 24,
+   "rows": 1795,
+   "transaction": "committed",
+   "perTable": [
+    {
+     "name": "schema_migrations",
+     "rows": 3,
+     "contentMatch": true
+    },
+    {
+     "name": "kv",
+     "rows": 3,
+     "contentMatch": true
+    },
+    {
+     "name": "jarvis_tasks",
+     "rows": 2,
+     "contentMatch": true
+    },
+    {
+     "name": "naei_agents",
+     "rows": 10,
+     "contentMatch": true
+    },
+    {
+     "name": "naei_tasks",
+     "rows": 0,
+     "contentMatch": true
+    },
+    {
+     "name": "memories",
+     "rows": 3,
+     "contentMatch": true
+    },
+    {
+     "name": "world_events",
+     "rows": 5,
+     "contentMatch": true
+    },
+    {
+     "name": "world_snapshots",
+     "rows": 1,
+     "contentMatch": true
+    },
+    {
+     "name": "worlds",
+     "rows": 1,
+     "contentMatch": true
+    },
+    {
+     "name": "residents",
+     "rows": 8,
+     "contentMatch": true
+    },
+    {
+     "name": "vehicles",
+     "rows": 0,
+     "contentMatch": true
+    },
+    {
+     "name": "properties",
+     "rows": 8,
+     "contentMatch": true
+    },
+    {
+     "name": "businesses",
+     "rows": 1,
+     "contentMatch": true
+    },
+    {
+     "name": "accounts",
+     "rows": 9,
+     "contentMatch": true
+    },
+    {
+     "name": "transactions",
+     "rows": 2,
+     "contentMatch": true
+    },
+    {
+     "name": "mcp_servers",
+     "rows": 1,
+     "contentMatch": true
+    },
+    {
+     "name": "mcp_audit",
+     "rows": 3,
+     "contentMatch": true
+    },
+    {
+     "name": "requirements",
+     "rows": 0,
+     "contentMatch": true
+    },
+    {
+     "name": "ledger",
+     "rows": 0,
+     "contentMatch": true
+    },
+    {
+     "name": "technologies",
+     "rows": 0,
+     "contentMatch": true
+    },
+    {
+     "name": "metrics",
+     "rows": 1734,
+     "contentMatch": true
+    },
+    {
+     "name": "railway_events",
+     "rows": 0,
+     "contentMatch": true
+    },
+    {
+     "name": "railway_audit",
+     "rows": 0,
+     "contentMatch": true
+    },
+    {
+     "name": "railway_state",
+     "rows": 1,
+     "contentMatch": true
+    }
+   ],
+   "foreignKeyViolations": [],
+   "errors": [],
+   "startedAt": "2026-11-16T11:46:50.404Z",
+   "finishedAt": "2026-11-16T11:46:50.500Z",
+   "durationMs": 96,
+   "notes": [
+    "single transaction committed; content SHA-256 (rowid-ordered) verified per table; PRAGMA foreign_key_check clean"
+   ]
+  },
+  "restoreVerification": {
+   "at": "2026-11-16T11:46:50.500Z",
+   "objectKey": "production/database/2026/11/2026-11-16T11-43-19-518Z.enc",
+   "backupId": "2026-11-16T11-43-19-518Z",
+   "restored": true,
+   "tables": 24,
+   "rows": 1795
+  }
+ }
+}

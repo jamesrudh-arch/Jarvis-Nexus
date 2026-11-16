@@ -1,0 +1,63 @@
+{
+  "startedAt": "2026-11-16T11:48:56Z",
+  "finishedAt": "2026-11-16T11:49:00Z",
+  "verdict": "PASS",
+  "bucket": "jarvis-nexus-backups",
+  "objectKey": "production/database/2026/11/2026-11-16T11-43-19-518Z.enc",
+  "artifactSha256": "9b4635fae88475b19a45e7f3b38448c0074d545e1f70ea636314780653d16f4a",
+  "retentionPosture": {
+    "artifacts": 2,
+    "withMetadata": 1,
+    "oldest": "2026-11-16T08:58:09.157Z",
+    "newest": "2026-11-16T11:43:20.684Z"
+  },
+  "stages": {
+    "bucket_privacy": {
+      "ok": true,
+      "detail": "bucket jarvis-nexus-backups metadata public=False"
+    },
+    "public_url_refused": {
+      "ok": true,
+      "detail": "unauthenticated public object URL answered HTTP 400 (refusal expected)"
+    },
+    "list_backups": {
+      "ok": true,
+      "detail": "2 encrypted artifact(s), 3 object(s) total (recursive walk of production/database/)"
+    },
+    "select_backup": {
+      "ok": true,
+      "detail": "selected production/database/2026/11/2026-11-16T11-43-19-518Z.enc"
+    },
+    "metadata_record": {
+      "ok": true,
+      "detail": "verification record present at production/database/2026/11/2026-11-16T11-43-19-518Z.meta.json (verified=True)"
+    },
+    "download": {
+      "ok": true,
+      "detail": "356203 bytes downloaded independently from production/database/2026/11/2026-11-16T11-43-19-518Z.enc"
+    },
+    "sha256": {
+      "ok": true,
+      "detail": "downloaded sha256 9b4635fae88475b1\u2026 vs recorded 9b4635fae88475b1\u2026 (match)"
+    },
+    "decrypt_verify": {
+      "ok": true,
+      "detail": "AES-256-GCM authentication + isolated in-memory restore-verify of the DOWNLOADED artifact: {\"ok\": true, \"encrypted\": true, \"tables\": 24, \"rows\": 1795, \"rowsMatched\": true, \"contentMatched\": true}"
+    },
+    "isolated_restore": {
+      "ok": true,
+      "detail": "restored 1795 rows across 24 tables (transaction=committed, contentVerified=True, fkViolations=[], cliExit=0, durationMs=26)",
+      "cliExitCode": 0,
+      "wallClockMs": 26
+    },
+    "tables_rows": {
+      "ok": true,
+      "detail": "tables=24 rows=1795"
+    },
+    "retention_posture": {
+      "ok": true,
+      "detail": "2 artifact(s), 1 with verified metadata; newest=2026-11-16T11:43:20.684Z; retention=14d (enforced by the app after every verified upload)"
+    }
+  },
+  "note": "independent verification: production artifacts downloaded from Supabase Storage, SHA-256 verified, AES-256-GCM authenticated with the existing production key, and restored into an ISOLATED database via the product restore CLI; live production was never touched"
+}

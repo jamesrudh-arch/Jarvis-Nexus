@@ -81,25 +81,42 @@ check("supabase.restore.unauthenticated", c3 == 401, f"POST without owner key ->
 if not owner_key:
     check("owner.key", False, "OWNER_KEY not readable — authenticated probes skipped")
 else:
-    # 3: honest status without credentials
+    # 3: honest status WITH credentials configured + a verified upload present.
+    # Contract (post-fix deployment): configured=true, nothing missing, and the
+    # protection status must reflect REALITY — SUPABASE_VERIFIED only when the
+    # app itself completed independent download + SHA-256 + GCM verification.
+    # (The original assertion expected the pre-config SUPABASE_UPLOAD_PENDING
+    #  state; it was correct then and obsolete once the fix deployed.)
     c4, b4 = http("/railway/backup/supabase/status", owner_key)
     doc4 = json.loads(b4) if c4 == 200 else {}
     sb = (doc4.get("data") or {})
     check("supabase.status.authenticated", c4 == 200, f"GET with owner key -> {c4}")
-    check("supabase.status.honest", sb.get("configured") is False and
-          sorted(sb.get("missingVariables") or []) == ["SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_URL"],
+    check("supabase.status.honest", sb.get("configured") is True and
+          not (sb.get("missingVariables") or []) and
+          sb.get("protectionStatus") in ("SUPABASE_VERIFIED", "RESTORE_VERIFIED"),
           f"configured={sb.get('configured')} missing={sb.get('missingVariables')} status={sb.get('protectionStatus')}")
-    # 4: the /railway/backups supabase block
+    # 4: the /railway/backups logical.supabase block — full verified contract
     c5, b5 = http("/railway/backups", owner_key)
     doc5 = json.loads(b5) if c5 == 200 else {}
     logical = (doc5.get("data") or {}).get("logical") or {}
     sb5 = logical.get("supabase") or {}
-    check("backups.supabase.block", c5 == 200 and sb5.get("configured") is False,
-          f"supabase block present: configured={sb5.get('configured')}, "
-          f"protectionStatus={sb5.get('protectionStatus')}, "
-          f"missing={sb5.get('missingVariables')}")
-    check("backups.rpo.provider", (logical.get("rpo") or {}).get("offVolume", {}).get("enabled") is False,
-          "rpo.offVolume.enabled=false (honest: no verified off-volume copy yet)")
+    dl = sb5.get("lastIndependentDownloadVerification") or {}
+    stages_ok = all((s or {}).get("ok") is True
+                    for s in (sb5.get("stageRecord") or {}).values()) if sb5.get("stageRecord") else False
+    check("backups.supabase.block", c5 == 200 and sb5.get("configured") is True and
+          sb5.get("protectionStatus") in ("SUPABASE_VERIFIED", "RESTORE_VERIFIED") and
+          bool(sb5.get("lastSuccessfulUpload")) and
+          dl.get("byteMatch") is True and dl.get("decryptVerified") is True and stages_ok,
+          f"configured={sb5.get('configured')}, protectionStatus={sb5.get('protectionStatus')}, "
+          f"upload={bool(sb5.get('lastSuccessfulUpload'))}, downloadVerified(byteMatch={dl.get('byteMatch')}, "
+          f"decrypt={dl.get('decryptVerified')}), allStagesOk={stages_ok}")
+    # 4b: off-volume RPO claim must be backed by the verified Supabase plane
+    ov = (logical.get("rpo") or {}).get("offVolume") or {}
+    check("backups.rpo.provider", ov.get("enabled") is True and
+          ov.get("provider") == "supabase-storage" and
+          ov.get("status") in ("SUPABASE_VERIFIED", "RESTORE_VERIFIED"),
+          f"rpo.offVolume enabled={ov.get('enabled')} provider={ov.get('provider')} "
+          f"status={ov.get('status')} (off-volume RPO claim backed by verified storage)")
     check("no.secret.leak", "SUPABASE_SERVICE_ROLE_KEY=" not in b5 and "sb_secret_" not in b5,
           "no credential values in the response")
 

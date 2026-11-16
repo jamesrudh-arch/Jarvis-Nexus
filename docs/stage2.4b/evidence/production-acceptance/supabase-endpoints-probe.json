@@ -1,5 +1,5 @@
 {
-  "startedAt": "2026-11-16T09:01:23Z",
+  "startedAt": "2026-11-16T11:46:30Z",
   "checks": [
     {
       "name": "supabase.status.unauthenticated",
@@ -23,18 +23,18 @@
     },
     {
       "name": "supabase.status.honest",
-      "ok": false,
-      "detail": "configured=True missing=None status=SUPABASE_UPLOAD_PENDING"
+      "ok": true,
+      "detail": "configured=True missing=None status=SUPABASE_VERIFIED"
     },
     {
       "name": "backups.supabase.block",
-      "ok": false,
-      "detail": "supabase block present: configured=True, protectionStatus=SUPABASE_UPLOAD_PENDING, missing=[]"
+      "ok": true,
+      "detail": "configured=True, protectionStatus=SUPABASE_VERIFIED, upload=True, downloadVerified(byteMatch=True, decrypt=True), allStagesOk=True"
     },
     {
       "name": "backups.rpo.provider",
       "ok": true,
-      "detail": "rpo.offVolume.enabled=false (honest: no verified off-volume copy yet)"
+      "detail": "rpo.offVolume enabled=True provider=supabase-storage status=SUPABASE_VERIFIED (off-volume RPO claim backed by verified storage)"
     },
     {
       "name": "no.secret.leak",
@@ -47,6 +47,6 @@
       "detail": "/metrics -> 200 (counters surface present)"
     }
   ],
-  "finishedAt": "2026-11-16T09:01:25Z",
-  "verdict": "FAIL"
+  "finishedAt": "2026-11-16T11:46:34Z",
+  "verdict": "PASS"
 }
