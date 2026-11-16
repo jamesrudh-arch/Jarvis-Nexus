@@ -61,6 +61,14 @@ export { RailwayAuditLog, RAILWAY_AUDIT_CATEGORIES } from "./audit";
 export type { AuditEntryInput, StoredAuditRecord, RailwayAuditCategory } from "./audit";
 export { BackupService, NEXUS_TABLES } from "./backup";
 export type { BackupReport, LogicalBackupDoc, EncryptedBackupDoc, EncryptionKeyInfo, RestoreVerification, RestoreReport } from "./backup";
+export {
+  SupabaseStorageClient, parseSupabaseBackupConfig, redactSupabaseSecrets,
+  backupObjectKey, backupMetaKey, newBackupId, backupIdDate, SUPABASE_PROTECTION_ORDER,
+} from "./supabase-backup";
+export type {
+  SupabaseBackupConfig, SupabaseErrorKind, SupabaseBackupError, SupabaseStage, SupabaseStageResult,
+  SupabaseBackupRecord, SupabaseListedBackup, RetentionDeletion, RetentionReport, ProtectionStatus,
+} from "./supabase-backup";
 export { RailwayIntelligence } from "./intelligence";
 export type { IntelligenceAnswer, CanonicalQuestion } from "./intelligence";
 export { RAILWAY_THREAT_MODEL, threatModelSummary } from "./threat-model";

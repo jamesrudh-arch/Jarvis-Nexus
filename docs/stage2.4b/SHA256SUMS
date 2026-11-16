@@ -5,7 +5,7 @@
 # preserved verbatim), evidence/ incl. the reverify/ second-pass record, the
 # production-acceptance extension (report + session evidence) and the three
 # Stage 2.4B production-execution scripts under scripts/stage24b/.
-# Regenerated 2026-11-16T08:19:26Z for the production acceptance package.
+# Regenerated 2026-11-16T08:53:42Z for the production acceptance package.
 352b5431255b7e0e9032ece6b4cbb88e2d0122c736409dc18dc58e1b42c37fdb  docs/stage2.4b/AUTH_LOCKOUT_REMEDIATION.md
 dd84af14a3b2add5a3b8274830841f1363e67f6e38f97d060b7affd966d51a20  docs/stage2.4b/BACKUP_ARCHITECTURE.md
 c5d0826a11e411fb26830491d88547a43657e3e9362242748b3a7618aee051fe  docs/stage2.4b/BACKUP_RESTORE_VERIFICATION.md
@@ -50,8 +50,11 @@ d63b712a76fd153dacbed8483cadc52a93888935f9c61dd9cc6a97e5aa458fbe  docs/stage2.4b
 2826e00228b2ed8936be40e5d5e717b1b202bb1a388f9245f06d84574a46a3b3  docs/stage2.4b/evidence/suite-output.txt
 fe0dbb3d786fb5f29517ea081fa6dd2ab13491eba8ba017240684913c2baa628  docs/stage2.4b/evidence/xff-edge-probe.json
 0db18c86a1054cae680a65faeb97e9a62f02ad92b9ac1f800e8c95899e7d3373  scripts/stage24b/apply_production_backup_config.py
+6b77ce4919565ce1b46a5fb94a9780e2f81b3748b8ac2beb871a1ed2d6cbb009  scripts/stage24b/apply_supabase_config.py
 89748e336fe06e7bbc0b0567d3f4709cf214ad8169fe03d31c7866a0c8589fd4  scripts/stage24b/deploy_and_verify.py
-215e41add7272006d30168cdc220609c7c5eaf902b47988c8a978c863ae254f4  scripts/stage24b/push_integration.sh
-b297e3a4e2fdab7739943d3c09fdeddde8ade9142a9959dc239b050e34c6de10  scripts/stage24b/regen_sha256sums.py
+1b5ef69ce4d241e72131fec7da9b5cf27de9438789266cc4f1540a2260bef519  scripts/stage24b/list_railway_vars.py
+a4d23a3dfe9b3a79dca8e118cdf3b0cd7caa1ffa162b8e3adc1f3b22bdad1abe  scripts/stage24b/push_integration.sh
+7b1848c17498cdc652403af7cb6eb251e92877b0069a800ec828a92b3d707b9b  scripts/stage24b/regen_sha256sums.py
 89b4cfc804bc1681eb175ab5f83552753c65a28f72e5ab1875dbffb25068faa1  scripts/stage24b/validate_credentials.py
+05b54d25d2c6d6bd1b22abe0612dc5d7c6f8d0e3e1ea437387a4e0139a124a70  scripts/stage24b/verify_supabase_live.py
 8ae0eb59a09f3d29b32e67336b983e6339ee1a4058e2f22575c62a4645951845  scripts/stage24b/watch_ci.py

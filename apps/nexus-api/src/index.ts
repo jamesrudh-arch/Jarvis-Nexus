@@ -18,7 +18,8 @@ import { WorldRuntime, createWorld } from "@nexus/world";
 import { McpGateway, TEST_MCP_SERVER_NAME, testMcpServerScript } from "@nexus/mcp-gateway";
 import { NexusLogger, HealthRegistry, MetricsCollector, newCorrelationId } from "@nexus/observability";
 import { ok, err, safeJsonStringify, NexusError } from "@nexus/core";
-import { railwayFromEnv, introspectLiveFields, diffContract, contractIsCompatible, BackupService } from "@nexus/railway";
+import { railwayFromEnv, introspectLiveFields, diffContract, contractIsCompatible, BackupService, SupabaseStorageClient, parseSupabaseBackupConfig, redactSupabaseSecrets } from "@nexus/railway";
+import type { EncryptedBackupDoc, ProtectionStatus, SupabaseBackupRecord, SupabaseListedBackup, RetentionReport } from "@nexus/railway";
 import { CreateObjectiveRequest, CreateNaeiTaskRequest, AdvanceWorldRequest, CreateMemoryRequest, CONTRACT_VERSION, RailwayDiagnoseRequest, RailwayRecoveryPlanRequest, RailwayExecuteRequest, RailwayAuthorizationRequestSchema } from "@nexus/contracts";
 import { mkdirSync, writeFileSync, readdirSync, statSync, rmSync, readFileSync, existsSync, openSync, writeSync, fsyncSync, closeSync, renameSync } from "node:fs";
 import { createHash, timingSafeEqual } from "node:crypto";
@@ -804,6 +805,199 @@ export function createApp(cfg: NexusApiConfig) {
       "x-backup-encrypted": fmt === "encrypted" ? "true" : "false",
     });
   });
+  // -- SUPABASE OFF-VOLUME BACKUP ROUTES (all owner-gated) --------------------
+  app.get("/railway/backup/supabase/status", requireOwner, (c) => {
+    if (!sbConfigured || !sbClient) {
+      return c.json({
+        data: {
+          configured: false,
+          missingVariables: (sbParsed as { missing: string[] }).missing,
+          protectionStatus: protectionStatus(),
+          note: "SUPABASE_URL and/or SUPABASE_SERVICE_ROLE_KEY are not configured — off-volume uploads are skipped (LOCAL_BACKUP_ONLY); on-volume backups continue unaffected",
+        },
+      }, 200);
+    }
+    return c.json({
+      data: {
+        configured: true,
+        bucket: (sbParsed as { config: { bucket: string } }).config.bucket,
+        protectionStatus: protectionStatus(),
+        note: "off-volume protection is claimed ONLY after independent download + SHA-256 + AES-256-GCM authentication verification",
+      },
+    });
+  });
+  app.get("/railway/backup/supabase/list", requireOwner, async (c) => {
+    if (!sbConfigured || !sbClient) return c.json({ error: "unconfigured", detail: `missing: ${(sbParsed as { missing: string[] }).missing.join(", ")}` }, 503);
+    try {
+      const backups = await sbClient.listBackups();
+      const privacy = await sbClient.bucketPrivacy();
+      return c.json({
+        data: {
+          bucket: (sbParsed as { config: { bucket: string } }).config.bucket,
+          bucketPrivacy: privacy,
+          count: backups.length,
+          verified: backups.filter((b) => b.verified === true).length,
+          orphans: backups.filter((b) => b.orphan).length,
+          backups,
+          note: "orphan = artifact without a verified metadata record (failed/incomplete upload) — never a valid backup",
+        },
+      });
+    } catch (e) {
+      return c.json({ error: "supabase_error", detail: e instanceof Error ? e.message : String(e) }, 502);
+    }
+  });
+  app.post("/railway/backup/supabase/verify", requireOwner, async (c) => {
+    // Independent re-verification of an existing Supabase object (default:
+    // newest): download -> SHA-256 -> AES-256-GCM auth. No upload involved.
+    if (!sbConfigured || !sbClient) return c.json({ error: "unconfigured", detail: `missing: ${(sbParsed as { missing: string[] }).missing.join(", ")}` }, 503);
+    if (!encKeyInfo.configured || !encKeyInfo.key) return c.json({ error: "unconfigured", detail: "NEXUS_BACKUP_ENCRYPTION_KEY is not configured — cannot verify an encrypted artifact" }, 503);
+    const body = await c.req.json().catch(() => ({})) as { key?: string; backupId?: string };
+    try {
+      let target = typeof body.key === "string" && body.key.length > 0 ? body.key : null;
+      if (!target && typeof body.backupId === "string" && body.backupId.length > 0) {
+        const backups = await sbClient.listBackups();
+        const hit = backups.find((b) => b.backupId === body.backupId);
+        if (!hit) return c.json({ error: "not_found", detail: `no backup with id ${body.backupId}` }, 404);
+        target = hit.objectKey;
+      }
+      if (!target) {
+        const backups = await sbClient.listBackups();
+        const newestVerified = backups.find((b) => b.verified === true) ?? backups[0];
+        if (!newestVerified) return c.json({ error: "not_found", detail: "no backups in the bucket" }, 404);
+        target = newestVerified.objectKey;
+      }
+      let expectedSha: string;
+      const listed = await sbClient.listBackups();
+      const meta = listed.find((b) => b.objectKey === target);
+      if (meta?.sha256) {
+        expectedSha = meta.sha256;
+      } else {
+        // no metadata — verify against the downloaded object itself and record
+        const bytes = await sbClient.downloadObject(target);
+        expectedSha = createHash("sha256").update(bytes).digest("hex");
+      }
+      const { record } = await sbClient.verifyExistingBackup(target, expectedSha, encKeyInfo.key);
+      lastSupabaseRecord = record;
+      metrics.increment("backup_supabase_verifications_total", { result: "ok" });
+      persistSupabaseStatus();
+      return c.json({ data: { verified: true, record } });
+    } catch (e) {
+      sbFailureCounters.downloads += 1;
+      recordSupabaseError(e, "manual verification");
+      metrics.increment("backup_supabase_verifications_total", { result: "fail" });
+      persistSupabaseStatus();
+      return c.json({ error: "verification_failed", detail: e instanceof Error ? e.message : String(e) }, 422);
+    }
+  });
+  app.post("/railway/backup/supabase/restore", requireOwner, async (c) => {
+    // Restoration workflow (mission §7): list -> select -> download -> SHA-256
+    // -> decrypt -> ISOLATED restore -> schema integrity + table/row counts.
+    // NON-DESTRUCTIVE BY CONSTRUCTION: the target is a fresh database under
+    // <workspaceRoot>/restore-verifications/<id>/nexus.db. The live store is
+    // NEVER touched by this route.
+    if (!sbConfigured || !sbClient) return c.json({ error: "unconfigured", detail: `missing: ${(sbParsed as { missing: string[] }).missing.join(", ")}` }, 503);
+    if (!encKeyInfo.configured || !encKeyInfo.key) return c.json({ error: "unconfigured", detail: "NEXUS_BACKUP_ENCRYPTION_KEY is not configured — cannot restore an encrypted artifact" }, 503);
+    const body = await c.req.json().catch(() => ({})) as { key?: string; backupId?: string };
+    try {
+      let target = typeof body.key === "string" && body.key.length > 0 ? body.key : null;
+      if (!target && typeof body.backupId === "string" && body.backupId.length > 0) {
+        const backups = await sbClient.listBackups();
+        const hit = backups.find((b) => b.backupId === body.backupId);
+        if (!hit) return c.json({ error: "not_found", detail: `no backup with id ${body.backupId}` }, 404);
+        target = hit.objectKey;
+      }
+      if (!target) {
+        const backups = await sbClient.listBackups();
+        const newestVerified = backups.find((b) => b.verified === true) ?? backups[0];
+        if (!newestVerified) return c.json({ error: "not_found", detail: "no backups in the bucket" }, 404);
+        target = newestVerified.objectKey;
+      }
+      const listed = await sbClient.listBackups();
+      const meta = listed.find((b) => b.objectKey === target);
+      const expectedSha = meta?.sha256;
+      // 1-4) independent download + SHA-256 verification
+      let bytes: Buffer;
+      let sha256: string;
+      try {
+        const download = await sbClient.downloadObject(target);
+        bytes = download;
+        sha256 = createHash("sha256").update(bytes).digest("hex");
+        if (expectedSha && sha256 !== expectedSha) {
+          throw new Error(`SHA-256 mismatch for ${target}: downloaded ${sha256.slice(0, 16)}… != recorded ${expectedSha.slice(0, 16)}…`);
+        }
+      } catch (e) {
+        sbFailureCounters.downloads += 1;
+        metrics.increment("backup_supabase_restores_total", { result: "download_failed" });
+        recordSupabaseError(e, "restore download");
+        return c.json({ error: "download_failed", detail: e instanceof Error ? e.message : String(e) }, 502);
+      }
+      // 5) decrypt with the existing production key (GCM auth enforced)
+      let doc: LogicalBackupDoc;
+      try {
+        const parsed: unknown = JSON.parse(bytes.toString("utf8"));
+        const decoded = BackupService.decodeBackupDoc(parsed, encKeyInfo.key);
+        doc = decoded.doc;
+      } catch (e) {
+        sbFailureCounters.restores += 1;
+        metrics.increment("backup_supabase_restores_total", { result: "decrypt_failed" });
+        recordSupabaseError(e, "restore decrypt");
+        recordBackupAlert("SUPABASE_RESTORE_FAILED", `decryption of ${target} failed: ${e instanceof Error ? e.message : String(e)}`);
+        return c.json({ error: "decrypt_failed", detail: e instanceof Error ? e.message : String(e) }, 422);
+      }
+      // 6-9) isolated restore + schema integrity + counts
+      const id = `supabase-restore-${Date.now()}`;
+      const dir = join(cfg.workspaceRoot, "restore-verifications", id);
+      mkdirSync(dir, { recursive: true });
+      const targetPath = join(dir, "nexus.db");
+      const isolated = NexusDb.open(targetPath);
+      let report;
+      try {
+        report = BackupService.restoreLogicalBackup(isolated, doc);
+      } finally {
+        writeFileSync(join(dir, "restore-log.json"), JSON.stringify({
+          id, source: `supabase:${target}`, objectKey: target, sha256, target: targetPath,
+          generatedAt: new Date().toISOString(), encrypted: true, report,
+        }, null, 2));
+        isolated.close();
+      }
+      lastRestoreVerification = {
+        at: new Date().toISOString(),
+        objectKey: target,
+        backupId: target.split("/").pop()?.replace(/\.enc$/, "") ?? "unknown",
+        restored: report.restored,
+        tables: report.restored ? report.tables : 0,
+        rows: report.restored ? report.rows : 0,
+      };
+      metrics.increment("backup_supabase_restores_total", { result: report.restored ? "ok" : "restore_failed" });
+      if (!report.restored) {
+        sbFailureCounters.restores += 1;
+        recordBackupAlert("SUPABASE_RESTORE_FAILED", `isolated restore of ${target} failed: ${report.errors.join("; ")}`);
+      }
+      persistSupabaseStatus();
+      return c.json({ data: { id, source: `supabase:${target}`, objectKey: target, sha256, target: targetPath, log: join(dir, "restore-log.json"), report, restoreVerification: lastRestoreVerification } }, report.restored ? 200 : 422);
+    } catch (e) {
+      sbFailureCounters.restores += 1;
+      metrics.increment("backup_supabase_restores_total", { result: "error" });
+      recordSupabaseError(e, "restore workflow");
+      return c.json({ error: "restore_failed", detail: e instanceof Error ? e.message : String(e) }, 502);
+    }
+  });
+  app.post("/railway/backup/supabase/retry", requireOwner, (c) => {
+    // Manual retry of a pending upload (owner action after alert remediation).
+    if (!sbConfigured || !sbClient) return c.json({ error: "unconfigured", detail: `missing: ${(sbParsed as { missing: string[] }).missing.join(", ")}` }, 503);
+    if (supabaseInFlight) return c.json({ data: { accepted: false, reason: "an upload/verification is already in flight" } }, 409);
+    const newest = newestEncryptedArtifact();
+    if (!newest) return c.json({ error: "not_found", detail: "no encrypted on-volume artifact to upload" }, 404);
+    if (lastSupabaseRecord?.verified && lastSupabaseRecord.sha256 === newest.sha256) {
+      return c.json({ data: { accepted: false, reason: "newest artifact is already verified off-volume", objectKey: lastSupabaseRecord.objectKey } }, 200);
+    }
+    const name = basename(newest.file).replace(/\.json$/, "");
+    enqueueSupabaseUpload({
+      backupId: name, file: newest.file, sha256: newest.sha256,
+      exportedAt: newest.at, tables: 0, rows: 0,
+    });
+    return c.json({ data: { accepted: true, backupId: name, note: "upload+verification queued; watch /railway/backups supabase.protectionStatus" } }, 202);
+  });
   app.post("/railway/reconcile", requireOwner, async (c) => {
     const r = await railway.reconciliation.reconcile();
     return r.ok ? c.json({ data: r.value }) : c.json({ error: r.error.toJSON() }, 502);
@@ -900,6 +1094,261 @@ export function createApp(cfg: NexusApiConfig) {
     recordBackupAlert("OFFSITE_KEY_INVALID", `${encKeyInfo.error ?? "invalid NEXUS_BACKUP_ENCRYPTION_KEY"}; off-volume copies are disabled until it is fixed (on-volume backups continue as plaintext v1 with this alert visible)`);
   }
 
+  // ---- SUPABASE OFF-VOLUME BACKUP PLANE (independent-storage mission) ------
+  // Second, INDEPENDENT storage plane for the encrypted artifacts. Railway's
+  // trial plan allows ONE volume per service and native snapshots are
+  // Pro-gated — this is the honest path to independently verified off-volume
+  // protection. The on-volume pipeline above is UNCHANGED; this layer uploads
+  // the encrypted artifact to a PRIVATE Supabase Storage bucket and only
+  // reports protection after INDEPENDENT download + SHA-256 + AES-256-GCM
+  // authentication verification. A failed upload NEVER silently counts as a
+  // successful off-volume backup (status stays SUPABASE_UPLOAD_PENDING).
+  const sbParsed = parseSupabaseBackupConfig(cfg.env);
+  const sbConfigured = sbParsed.configured;
+  const sbClient = sbConfigured ? new SupabaseStorageClient({ ...sbParsed.config }) : null;
+  const SB_RETRY_BASE_MS = Math.max(250, Number(cfg.env.NEXUS_BACKUP_SUPABASE_RETRY_BASE_MS ?? 60_000));
+  const SB_RETRY_MAX = Math.max(1, Number(cfg.env.NEXUS_BACKUP_SUPABASE_RETRY_MAX ?? 6));
+
+  interface SupabaseJob {
+    backupId: string;
+    file: string;               // on-volume artifact (source of truth for bytes)
+    sha256: string;             // SHA-256 of the serialized encrypted artifact
+    exportedAt: string;
+    tables: number;
+    rows: number;
+    attempts: number;
+    enqueuedAt: string;
+  }
+  interface PersistedSupabaseStatus {
+    lastRecord: SupabaseBackupRecord | null;
+    lastRestoreVerification: { at: string; objectKey: string; backupId: string; restored: boolean; tables: number; rows: number } | null;
+    failureCounters: { uploads: number; downloads: number; restores: number; retries: number };
+  }
+  const sbQueue: SupabaseJob[] = [];
+  let supabaseInFlight = false;
+  let supabaseRetryTimer: ReturnType<typeof setTimeout> | null = null;
+  let supabaseBootResumeTimer: ReturnType<typeof setTimeout> | null = null;
+  let lastSupabaseRecord: SupabaseBackupRecord | null = null;
+  let lastRestoreVerification: PersistedSupabaseStatus["lastRestoreVerification"] = null;
+  const sbFailureCounters = { uploads: 0, downloads: 0, restores: 0, retries: 0 };
+  const sbDeletionLog: Array<{ at: string; objectKey: string; reason: string }> = [];
+  let lastRetentionReport: RetentionReport | null = null;
+  let lastSupabaseError: { at: string; kind: string; message: string; stage?: string } | null = null;
+
+  // restore persisted status (survives restarts; stored in railway_state)
+  {
+    const persisted = railway.state.get<PersistedSupabaseStatus>("backup:supabase:status");
+    if (persisted) {
+      lastSupabaseRecord = persisted.lastRecord ?? null;
+      lastRestoreVerification = persisted.lastRestoreVerification ?? null;
+      if (persisted.failureCounters) {
+        sbFailureCounters.uploads = persisted.failureCounters.uploads ?? 0;
+        sbFailureCounters.downloads = persisted.failureCounters.downloads ?? 0;
+        sbFailureCounters.restores = persisted.failureCounters.restores ?? 0;
+        sbFailureCounters.retries = persisted.failureCounters.retries ?? 0;
+      }
+    }
+  }
+  const persistSupabaseStatus = (): void => {
+    railway.state.set<PersistedSupabaseStatus>("backup:supabase:status", {
+      lastRecord: lastSupabaseRecord,
+      lastRestoreVerification,
+      failureCounters: { ...sbFailureCounters },
+    });
+  };
+
+  /** Protection status — the mission's five honest states. BACKUP_FAILED
+   * covers both "last run failed" and "no successful run yet". */
+  const protectionStatus = (): ProtectionStatus => {
+    if (!lastBackupRun?.ok) return "BACKUP_FAILED";
+    if (!sbConfigured || !sbClient) return "LOCAL_BACKUP_ONLY";
+    const record = lastSupabaseRecord;
+    if (record?.verified) {
+      // the verified record must correspond to the NEWEST on-volume artifact;
+      // a newer local artifact means the upload is still pending
+      const newest = newestEncryptedArtifact();
+      if (!newest || newest.sha256 === record.sha256) {
+        if (lastRestoreVerification?.restored && lastRestoreVerification.objectKey === record.objectKey) {
+          return "RESTORE_VERIFIED";
+        }
+        return "SUPABASE_VERIFIED";
+      }
+    }
+    return "SUPABASE_UPLOAD_PENDING";
+  };
+
+  /** Newest on-volume ENCRYPTED artifact (source for boot-resume + status). */
+  const newestEncryptedArtifact = (): { file: string; sha256: string; at: string } | null => {
+    try {
+      const files = readdirSync(backupDir)
+        .filter((f) => f.endsWith(".json"))
+        .map((f) => ({ f, mtime: statSync(join(backupDir, f)).mtimeMs }))
+        .sort((a, b) => b.mtime - a.mtime);
+      for (const { f } of files) {
+        const p = join(backupDir, f);
+        if (BackupService.peekBackupFormat(p) === "encrypted") {
+          const bytes = readFileSync(p);
+          return { file: p, sha256: createHash("sha256").update(bytes).digest("hex"), at: statSync(p).mtime.toISOString() };
+        }
+      }
+    } catch { /* no backups yet */ }
+    return null;
+  };
+
+  const recordSupabaseError = (e: unknown, context: string): void => {
+    const err = e instanceof Error ? e : new Error(String(e));
+    lastSupabaseError = {
+      at: new Date().toISOString(),
+      kind: (e as { kind?: string })?.kind ?? "UNKNOWN",
+      message: redactSupabaseSecrets(err.message).slice(0, 400),
+      stage: (e as { stage?: string })?.stage,
+    };
+    logger.error?.("backup.supabase", `${context}: ${lastSupabaseError.message}`, { kind: lastSupabaseError.kind });
+  };
+
+  /**
+   * Process the Supabase upload queue: for each job, read the on-volume
+   * artifact (proving it is intact on disk), upload it with duplicate
+   * protection, then run the FULL independent verification pipeline, then
+   * enforce retention. Failures schedule an exponential-backoff retry; the
+   * status NEVER becomes SUPABASE_VERIFIED without independent verification.
+   */
+  const processSupabaseQueue = async (): Promise<void> => {
+    if (!sbConfigured || !sbClient || supabaseInFlight) return;
+    const job = sbQueue[0];
+    if (!job) return;
+    supabaseInFlight = true;
+    let requeueWithBackoff = false;
+    try {
+      // 0) the artifact must still exist and hash-match what the run produced
+      let bytes: Buffer;
+      try {
+        bytes = readFileSync(job.file);
+      } catch (e) {
+        recordBackupAlert("SUPABASE_SOURCE_MISSING", `on-volume artifact ${basename(job.file)} disappeared before upload; job abandoned`);
+        recordSupabaseError(e, "read on-volume artifact");
+        sbQueue.shift();
+        return;
+      }
+      const sha = createHash("sha256").update(bytes).digest("hex");
+      if (sha !== job.sha256) {
+        recordBackupAlert("SUPABASE_SOURCE_MUTATED", `on-volume artifact ${basename(job.file)} hash changed since the backup run; job abandoned (never upload unverified bytes)`);
+        sbQueue.shift();
+        return;
+      }
+      const enc = JSON.parse(bytes.toString("utf8")) as EncryptedBackupDoc;
+      if (enc.format !== "nexus-logical-backup-encrypted") {
+        recordBackupAlert("SUPABASE_SKIPPED_NO_KEY", "newest artifact is PLAINTEXT (no valid NEXUS_BACKUP_ENCRYPTION_KEY) — a plaintext artifact must never leave the volume");
+        sbQueue.shift();
+        return;
+      }
+      if (!encKeyInfo.configured || !encKeyInfo.key) {
+        recordBackupAlert("SUPABASE_SKIPPED_NO_KEY", "SUPABASE_* is configured but NEXUS_BACKUP_ENCRYPTION_KEY is not — off-volume upload refused (plaintext must never leave the volume)");
+        sbQueue.shift();
+        return;
+      }
+      // 1-8) upload + independent download + byte-match + GCM auth verification
+      const record = await sbClient.uploadVerifiedBackup({
+        enc,
+        serialized: new Uint8Array(bytes),
+        encryptionKey: encKeyInfo.key,
+        exportedAt: job.exportedAt,
+        backupId: job.backupId,
+      });
+      lastSupabaseRecord = record;
+      lastSupabaseError = null;
+      metrics.increment("backup_supabase_uploads_total", { result: "ok" });
+      logger.info("backup.supabase", "supabase off-volume backup verified", {
+        objectKey: record.objectKey, sha256: record.sha256.slice(0, 16), bytes: record.bytes,
+        stages: Object.keys(record.stages).length, duplicateProtected: true,
+      });
+      // 9) retention enforcement (records every deletion)
+      try {
+        lastRetentionReport = await sbClient.enforceRetention();
+        for (const d of lastRetentionReport.deleted) {
+          sbDeletionLog.push({ at: d.deletedAt, objectKey: d.objectKey, reason: d.reason });
+          metrics.increment("backup_supabase_retention_deletions_total", { reason: d.reason });
+        }
+        if (sbDeletionLog.length > 100) sbDeletionLog.splice(0, sbDeletionLog.length - 100);
+      } catch (e) {
+        // retention failure NEVER invalidates the verified backup; it is retried next run
+        recordSupabaseError(e, "retention enforcement");
+        recordBackupAlert("SUPABASE_RETENTION_FAILED", `retention sweep failed (backup remains verified): ${e instanceof Error ? e.message : String(e)}`);
+      }
+      persistSupabaseStatus();
+      sbQueue.shift();
+    } catch (e) {
+      // failure handling must itself be crash-safe: if the app is shutting
+      // down (db closed), recording the failure may throw — never let that
+      // escalate into an unhandled rejection.
+      try {
+        const kind = (e as { kind?: string })?.kind ?? "UNKNOWN";
+        const stage = (e as { stage?: string })?.stage ?? "unknown";
+        sbFailureCounters.uploads += 1;
+        recordSupabaseError(e, `supabase upload/verification (stage ${stage})`);
+        recordBackupAlert("SUPABASE_UPLOAD_FAILED", `stage ${stage} failed (${kind}): ${e instanceof Error ? e.message : String(e)} — status stays SUPABASE_UPLOAD_PENDING; on-volume backup unaffected`);
+        metrics.increment("backup_supabase_uploads_total", { result: "fail" });
+        job.attempts += 1;
+        const permanent = kind === "PUBLIC_BUCKET" || kind === "UNCONFIGURED";
+        if (job.attempts >= SB_RETRY_MAX || permanent) {
+          recordBackupAlert("SUPABASE_RETRY_EXHAUSTED", `giving up on ${basename(job.file)} after ${job.attempts} attempt(s) (${kind}); manual retry available via POST /railway/backup/supabase/retry`);
+          persistSupabaseStatus();
+          sbQueue.shift();
+        } else {
+          requeueWithBackoff = true;
+        }
+      } catch {
+        // shutdown race: the app is closing; abandon retry scheduling quietly
+        sbQueue.shift();
+      }
+    } finally {
+      supabaseInFlight = false;
+    }
+    if (requeueWithBackoff) {
+      sbFailureCounters.retries += 1;
+      metrics.increment("backup_supabase_retries_total", {});
+      const delay = Math.min(SB_RETRY_BASE_MS * 2 ** (job.attempts - 1), 30 * 60_000);
+      logger.info?.("backup.supabase", `retry scheduled`, { attempt: job.attempts, delayMs: delay });
+      supabaseRetryTimer = setTimeout(() => {
+        supabaseRetryTimer = null;
+        void processSupabaseQueue();
+      }, delay);
+      supabaseRetryTimer.unref?.();
+    } else {
+      // continue with the next queued job, if any
+      if (sbQueue.length > 0) void processSupabaseQueue();
+    }
+  };
+
+  const enqueueSupabaseUpload = (job: Omit<SupabaseJob, "attempts" | "enqueuedAt">): void => {
+    if (!sbConfigured) return; // not an error: LOCAL_BACKUP_ONLY posture, visible in status
+    if (sbQueue.some((j) => j.sha256 === job.sha256)) return; // duplicate-upload protection (queue level)
+    sbQueue.push({ ...job, attempts: 0, enqueuedAt: new Date().toISOString() });
+    void processSupabaseQueue();
+  };
+
+  // boot-resume: if Supabase is configured and the newest on-volume encrypted
+  // artifact is not yet verified off-volume, re-enqueue it (a restart must not
+  // silently drop a pending off-volume upload).
+  if (sbConfigured && encKeyInfo.configured) {
+    supabaseBootResumeTimer = setTimeout(() => {
+      supabaseBootResumeTimer = null;
+      try {
+        const newest = newestEncryptedArtifact();
+        if (newest && newest.sha256 !== lastSupabaseRecord?.sha256) {
+          const name = basename(newest.file).replace(/\.json$/, "");
+          enqueueSupabaseUpload({
+            backupId: name, file: newest.file, sha256: newest.sha256,
+            exportedAt: newest.at, tables: 0, rows: 0,
+          });
+          logger.info?.("backup.supabase", "boot-resume: re-enqueued newest artifact for off-volume verification", { file: name });
+        }
+      } catch { /* nothing to resume */ }
+    }, 45_000);
+    supabaseBootResumeTimer.unref?.();
+  }
+
+
   /** Atomic durable write (Stage 2.4B): tmp file -> fsync -> rename. A crash
    * between any two steps can only leave a complete file or a junk .tmp —
    * never a truncated artifact under the real name. */
@@ -946,11 +1395,15 @@ export function createApp(cfg: NexusApiConfig) {
     rows: number;
     rowsMatched?: boolean;
     encrypted: boolean;
+    /** SHA-256 of the serialized on-volume artifact (drives off-volume verification). */
+    artifactSha256?: string;
     verification: ReturnType<typeof BackupService.verifyLogicalBackup> | null;
     pruned: number;
     tmpSwept: number;
     prunedOffsite: number;
     offsite: { dir: string; copied: boolean; encrypted: boolean; file?: string; error?: string } | null;
+    /** Supabase off-volume plane: enqueued for upload+verification (async). */
+    supabaseEnqueued?: boolean;
   }
   let lastBackupRun: (BackupRunResult & { at?: string }) | null = null;
   let backupInFlight = false;
@@ -983,7 +1436,9 @@ export function createApp(cfg: NexusApiConfig) {
       //    plaintext v1 on-volume otherwise (see the offsite rule below)
       const encKey = encKeyInfo.configured ? encKeyInfo.key : undefined;
       const encrypted = encKey !== undefined;
-      const bytes = Buffer.from(JSON.stringify(encrypted ? BackupService.encryptBackupDoc(doc, encKey) : doc), "utf8");
+      const artifactDoc = encrypted ? BackupService.encryptBackupDoc(doc, encKey) : doc;
+      const bytes = Buffer.from(JSON.stringify(artifactDoc), "utf8");
+      const artifactSha256 = createHash("sha256").update(bytes).digest("hex");
       // 4) atomic on-volume write
       mkdirSync(backupDir, { recursive: true });
       const file = join(backupDir, `${doc.exportedAt.replace(/[:.]/g, "-")}.json`);
@@ -1023,11 +1478,28 @@ export function createApp(cfg: NexusApiConfig) {
       }
       // 6) on-volume retention + junk sweep
       const onVol = pruneBackupDir(backupDir, BACKUP_RETENTION);
+      // 7) Supabase off-volume plane — enqueue the ENCRYPTED artifact for
+      //    async upload + independent verification. A plaintext artifact is
+      //    NEVER enqueued (must not leave the volume); a missing key shows up
+      //    as LOCAL_BACKUP_ONLY / SUPABASE_SKIPPED_NO_KEY — never silent.
+      let supabaseEnqueued = false;
+      if (sbConfigured) {
+        if (!encrypted) {
+          recordBackupAlert("SUPABASE_SKIPPED_NO_KEY", "SUPABASE_* is configured but no valid NEXUS_BACKUP_ENCRYPTION_KEY is set; off-volume upload SKIPPED — a plaintext artifact must never leave the volume");
+        } else {
+          enqueueSupabaseUpload({
+            backupId: doc.exportedAt.replace(/[:.]/g, "-"),
+            file, sha256: artifactSha256, exportedAt: doc.exportedAt,
+            tables: doc.tables.length, rows,
+          });
+          supabaseEnqueued = true;
+        }
+      }
       const result: BackupRunResult = {
         ok: true,
-        file, tables: doc.tables.length, rows, rowsMatched: true, encrypted, verification,
+        file, tables: doc.tables.length, rows, rowsMatched: true, encrypted, artifactSha256, verification,
         pruned: onVol.pruned, tmpSwept: onVol.tmpSwept, prunedOffsite,
-        offsite,
+        offsite, supabaseEnqueued,
       };
       lastBackupRun = { ...result, at: doc.exportedAt };
       metrics.increment("backup_runs_total", { result: "success" });
@@ -1054,7 +1526,6 @@ export function createApp(cfg: NexusApiConfig) {
         }))
         .sort((a, b) => b.at.localeCompare(a.at));
     } catch { /* directory may not exist yet — no backups taken */ }
-    const lastOk = lastBackupRun?.ok ? lastBackupRun : null;
     return {
       schedule: {
         intervalHours: BACKUP_INTERVAL_HOURS,
@@ -1083,13 +1554,60 @@ export function createApp(cfg: NexusApiConfig) {
       lastRun: lastBackupRun,
       historyCount: history.length,
       history: history.slice(0, 20),
+      supabase: {
+        configured: sbConfigured,
+        missingVariables: sbConfigured ? [] : (sbParsed as { configured: false; missing: string[] }).missing,
+        bucket: sbConfigured ? (sbParsed as { config: { bucket: string } }).config.bucket : null,
+        destination: sbConfigured ? `supabase-storage://${(sbParsed as { config: { bucket: string } }).config.bucket}/${(sbParsed as { config: { environment: string } }).config.environment}/database/` : null,
+        protectionStatus: protectionStatus(),
+        lastSuccessfulLocalBackupAt: lastBackupRun?.ok ? (lastBackupRun.at ?? null) : null,
+        lastSuccessfulUpload: lastSupabaseRecord?.verified
+          ? { at: lastSupabaseRecord.stages.upload?.at ?? null, objectKey: lastSupabaseRecord.objectKey, backupId: lastSupabaseRecord.backupId }
+          : null,
+        lastIndependentDownloadVerification: lastSupabaseRecord?.verified
+          ? { at: lastSupabaseRecord.stages.download?.at ?? null, byteMatch: lastSupabaseRecord.stages.byte_match?.ok === true, decryptVerified: lastSupabaseRecord.stages.decrypt_verify?.ok === true }
+          : null,
+        lastRestorationVerification: lastRestoreVerification,
+        lastArtifact: lastSupabaseRecord
+          ? { backupId: lastSupabaseRecord.backupId, objectKey: lastSupabaseRecord.objectKey, bytes: lastSupabaseRecord.bytes, sha256: lastSupabaseRecord.sha256, tables: lastSupabaseRecord.tables, rows: lastSupabaseRecord.rows, exportedAt: lastSupabaseRecord.exportedAt }
+          : null,
+        stageRecord: lastSupabaseRecord?.stages ?? null,
+        pendingUploads: sbQueue.map((j) => ({ backupId: j.backupId, file: basename(j.file), attempts: j.attempts, enqueuedAt: j.enqueuedAt })),
+        retry: { baseMs: SB_RETRY_BASE_MS, maxAttempts: SB_RETRY_MAX, inFlight: supabaseInFlight },
+        retention: {
+          days: sbConfigured ? (sbParsed as { config: { retentionDays: number } }).config.retentionDays : Number(cfg.env.NEXUS_BACKUP_RETENTION ?? 14),
+          lastRun: lastRetentionReport
+            ? { at: lastRetentionReport.ranAt, listed: lastRetentionReport.listed, verified: lastRetentionReport.verifiedBackups, kept: lastRetentionReport.keptVerified, deleted: lastRetentionReport.deleted.length, protectedNewest: lastRetentionReport.protectedNewest, skippedOnlyRecoveryPoint: lastRetentionReport.skippedOnlyRecoveryPoint }
+            : null,
+          deletionLog: sbDeletionLog.slice(-20),
+          note: "the newest verified backup is never deleted; the only recovery point is never deleted; every deletion is recorded",
+        },
+        failureCounters: { ...sbFailureCounters },
+        lastError: lastSupabaseError,
+        note: sbConfigured
+          ? "off-volume protection is claimed ONLY after independent download + SHA-256 + AES-256-GCM authentication verification; a failed upload keeps the status at SUPABASE_UPLOAD_PENDING"
+          : "SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY not configured — on-volume backups only (LOCAL_BACKUP_ONLY); RPO for volume-loss scenarios remains unbounded",
+      },
       rpo: {
         objectiveHours: BACKUP_INTERVAL_HOURS,
         meaning: "maximum acceptable data loss window = one backup interval (plus any unexported writes)",
-        offVolume: lastOk?.offsite?.copied
-          ? { enabled: true, encrypted: true, lastCopiedAt: lastOk.at ?? null }
-          : { enabled: false, encrypted: false, lastCopiedAt: null },
-        offVolumeNote: "RPO for VOLUME-LOSS scenarios is unbounded until an off-volume copy is configured AND verified — never claim data-loss protection the deployment does not have",
+        offVolume: (() => {
+          const status = protectionStatus();
+          const supabaseFull = status === "SUPABASE_VERIFIED" || status === "RESTORE_VERIFIED";
+          const legacyDir = lastBackupRun?.ok === true && lastBackupRun.offsite?.copied === true && lastBackupRun.offsite?.encrypted === true;
+          return {
+            enabled: supabaseFull || legacyDir === true,
+            encrypted: supabaseFull || legacyDir === true,
+            provider: supabaseFull ? "supabase-storage" : legacyDir ? "second-volume-dir" : null,
+            status,
+            lastCopiedAt: supabaseFull
+              ? (lastSupabaseRecord?.stages.upload?.at ?? null)
+              : legacyDir
+                ? (lastBackupRun?.at ?? null)
+                : null,
+          };
+        })(),
+        offVolumeNote: "RPO for VOLUME-LOSS scenarios is covered ONLY in SUPABASE_VERIFIED/RESTORE_VERIFIED (independent storage + independent verification) or by a VERIFIED ENCRYPTED second-volume copy — never claim data-loss protection the deployment does not have",
       },
       rto: {
         objectiveMinutes: 15,
@@ -1136,7 +1654,13 @@ export function createApp(cfg: NexusApiConfig) {
      * identities, no counters. Exists so the memory-bound regression test can
      * assert the sweep actually reclaims expired buckets. */
     debugBucketSizes: () => ({ authFail: authFailBuckets.size, rate: rateBuckets.size }),
-    stopBackupScheduler: () => { if (backupTimer) clearInterval(backupTimer); if (backupFirstTimer) clearTimeout(backupFirstTimer); },
+    stopBackupScheduler: () => {
+      if (backupTimer) clearInterval(backupTimer);
+      if (backupFirstTimer) clearTimeout(backupFirstTimer);
+      if (supabaseRetryTimer) { clearTimeout(supabaseRetryTimer); supabaseRetryTimer = null; }
+      if (supabaseBootResumeTimer) { clearTimeout(supabaseBootResumeTimer); supabaseBootResumeTimer = null; }
+      sbQueue.length = 0; // abandon pending off-volume jobs on shutdown
+    },
   };
 }
 

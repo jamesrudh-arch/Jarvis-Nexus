@@ -21,7 +21,12 @@ set -euo pipefail
 
 REPO=/home/z/my-project
 EXPECTED_SHA="${1:?usage: push_integration.sh <expected-local-sha>}"
-BASE_SHA="6a788348a6aa7f59558e41143b3b786858548aff"
+#   G3  origin/main still at the approved base (no remote drift,
+#       no overwrite of production changes). Base history: 6a78834 (the
+#       250ca25 integration push) -> 12f2a33 (after the Stage 2.4B
+#       final-execution + CI-qualification pushes, CI runs 43826898376 /
+#       43829977870 green) — the pin tracks the last VERIFIED remote state.
+BASE_SHA="12f2a337e28a3535a0d7d8037cda60f5c66da41f"
 cd "$REPO"
 
 # --- token (never printed) ---
