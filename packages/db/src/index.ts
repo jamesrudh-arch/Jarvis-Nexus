@@ -329,6 +329,34 @@ CREATE TABLE railway_state (
 );
 `,
   },
+  {
+    id: 4,
+    name: "jarvis_conversation",
+    sql: `
+-- JARVIS conversational core (Stage 3.1, 2026-11-16): persistent dialogue
+-- sessions and turns. The orchestrator's jarvis_tasks table remains the
+-- record of EXECUTED objectives; these tables hold the continuous personal
+-- conversation with JARVIS (persona, cross-session context, memory recall).
+CREATE TABLE conversations (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  state TEXT NOT NULL DEFAULT 'ACTIVE',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX idx_conversations_updated ON conversations(updated_at DESC);
+
+CREATE TABLE conversation_messages (
+  id TEXT PRIMARY KEY,
+  conversation_id TEXT NOT NULL REFERENCES conversations(id),
+  role TEXT NOT NULL,
+  content TEXT NOT NULL,
+  meta TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL
+);
+CREATE INDEX idx_convmsg_conv ON conversation_messages(conversation_id, created_at);
+`,
+  },
 ];
 
 export function migrate(db: NexusDb): { applied: number[]; skipped: number[] } {

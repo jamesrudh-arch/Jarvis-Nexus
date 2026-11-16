@@ -104,6 +104,17 @@
         "zod": "^4.6.7",
       },
     },
+    "packages/conversation": {
+      "name": "@nexus/conversation",
+      "version": "0.1.0",
+      "dependencies": {
+        "@nexus/contracts": "workspace:*",
+        "@nexus/core": "workspace:*",
+        "@nexus/db": "workspace:*",
+        "@nexus/memory": "workspace:*",
+        "@nexus/model-fabric": "workspace:*",
+      },
+    },
     "packages/core": {
       "name": "@nexus/core",
       "version": "0.1.0",
@@ -382,6 +393,8 @@
     "@nexus/cognition": ["@nexus/cognition@workspace:packages/cognition"],
 
     "@nexus/contracts": ["@nexus/contracts@workspace:packages/contracts"],
+
+    "@nexus/conversation": ["@nexus/conversation@workspace:packages/conversation"],
 
     "@nexus/core": ["@nexus/core@workspace:packages/core"],
 

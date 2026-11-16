@@ -20,6 +20,7 @@
       "@nexus/db": ["./packages/db/src/index.ts"],
       "@nexus/model-fabric": ["./packages/model-fabric/src/index.ts"],
       "@nexus/memory": ["./packages/memory/src/index.ts"],
+      "@nexus/conversation": ["./packages/conversation/src/index.ts"],
       "@nexus/cognition": ["./packages/cognition/src/index.ts"],
       "@nexus/orchestrator": ["./packages/orchestrator/src/index.ts"],
       "@nexus/naei": ["./packages/naei/src/index.ts"],

@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>JARVIS</title>
+  <meta name="description" content="JARVIS — your personal AI. Voice-first companion, steward of NEXUS WORLD.">
+  <link rel="manifest" href="/app/manifest.webmanifest">
+  <meta name="theme-color" content="#070b14">
+  <link rel="apple-touch-icon" href="/app/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="JARVIS">
+  <link rel="icon" href="/app/icon-192.png">
+  <link rel="stylesheet" href="/app/style.css">
+</head>
+<body>
+  <!-- first-run gate: owner key entry (personal device; key stored locally only) -->
+  <div id="gate" class="gate hidden">
+    <div class="gate-card">
+      <div class="gate-mark" aria-hidden="true"></div>
+      <h1>JARVIS</h1>
+      <p class="gate-sub">Your personal AI. Voice-first, always yours.</p>
+      <p class="gate-note">This is a private system. Enter your owner key to begin — it is stored only on this device and sent only to your JARVIS NEXUS server.</p>
+      <input id="gate-key" type="password" autocomplete="off" placeholder="Owner key" enterkeyhint="done">
+      <button id="gate-go" class="btn-primary">Unlock JARVIS</button>
+      <p id="gate-error" class="gate-error" role="alert"></p>
+    </div>
+  </div>
+
+  <div id="app" class="app">
+    <header class="bar">
+      <div class="bar-left">
+        <span id="status-dot" class="dot dot-off" aria-hidden="true"></span>
+        <span class="wordmark">JARVIS</span>
+        <span id="presence" class="presence">connecting…</span>
+      </div>
+      <div class="bar-right">
+        <button id="btn-keyboard" class="icon-btn" title="Type instead" aria-label="Type instead">⌨</button>
+        <button id="btn-settings" class="icon-btn" title="Settings" aria-label="Settings">⚙</button>
+      </div>
+    </header>
+
+    <main id="transcript" class="transcript" aria-live="polite"></main>
+
+    <div id="input-sheet" class="input-sheet hidden">
+      <input id="text-input" type="text" placeholder="Say something to JARVIS…" enterkeyhint="send" autocomplete="off">
+      <button id="text-send" class="btn-primary" aria-label="Send">Send</button>
+    </div>
+
+    <footer class="controls">
+      <div class="mic-wrap">
+        <div id="mic-pulse" class="mic-pulse" aria-hidden="true"></div>
+        <button id="btn-mic" class="mic" title="Talk to JARVIS" aria-label="Talk to JARVIS">
+          <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/>
+            <path d="M19 10v1a7 7 0 0 1-14 0v-1"/>
+            <path d="M12 18v4"/>
+          </svg>
+        </button>
+      </div>
+      <div class="sub-controls">
+        <button id="btn-ear" class="chip" aria-pressed="false" title="Continuous conversation: JARVIS keeps listening after each reply">Auto-listen</button>
+        <button id="btn-wake" class="chip hidden" aria-pressed="false" title='Wake phrase: say "Hey JARVIS"'>“Hey JARVIS”</button>
+      </div>
+      <p id="hint" class="hint">Tap the mic and speak</p>
+    </footer>
+  </div>
+
+  <!-- settings sheet -->
+  <div id="settings" class="settings hidden" role="dialog" aria-label="Settings">
+    <div class="settings-card">
+      <h2>Settings</h2>
+      <label class="field">
+        <span>Voice</span>
+        <select id="set-voice"></select>
+      </label>
+      <label class="field">
+        <span>Auto-listen after replies</span>
+        <input id="set-autolisten" type="checkbox">
+      </label>
+      <label class="field" id="set-wake-field">
+        <span>Wake phrase “Hey JARVIS”</span>
+        <input id="set-wake" type="checkbox">
+      </label>
+      <label class="field">
+        <span>Speak replies aloud</span>
+        <input id="set-speak" type="checkbox">
+      </label>
+      <div class="settings-row">
+        <button id="btn-new-session" class="btn-ghost">New conversation</button>
+        <button id="btn-lock" class="btn-ghost">Lock</button>
+      </div>
+      <div class="cap-report" id="cap-report"></div>
+      <button id="btn-close-settings" class="btn-primary">Done</button>
+    </div>
+  </div>
+
+  <script src="/app/app.js"></script>
+</body>
+</html>

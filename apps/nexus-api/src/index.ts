@@ -13,6 +13,7 @@ import { NexusDb, migrate, createRepos } from "@nexus/db";
 import { fabricFromEnv } from "@nexus/model-fabric";
 import { MemoryService } from "@nexus/memory";
 import { JarvisOrchestrator, type ToolExecutor } from "@nexus/orchestrator";
+import { ConversationService } from "@nexus/conversation";
 import { NaeiEngine } from "@nexus/naei";
 import { WorldRuntime, createWorld } from "@nexus/world";
 import { McpGateway, TEST_MCP_SERVER_NAME, testMcpServerScript } from "@nexus/mcp-gateway";
@@ -20,7 +21,7 @@ import { NexusLogger, HealthRegistry, MetricsCollector, newCorrelationId } from 
 import { ok, err, safeJsonStringify, NexusError } from "@nexus/core";
 import { railwayFromEnv, introspectLiveFields, diffContract, contractIsCompatible, BackupService, SupabaseStorageClient, parseSupabaseBackupConfig, redactSupabaseSecrets } from "@nexus/railway";
 import type { EncryptedBackupDoc, ProtectionStatus, SupabaseBackupRecord, SupabaseListedBackup, RetentionReport } from "@nexus/railway";
-import { CreateObjectiveRequest, CreateNaeiTaskRequest, AdvanceWorldRequest, CreateMemoryRequest, CONTRACT_VERSION, RailwayDiagnoseRequest, RailwayRecoveryPlanRequest, RailwayExecuteRequest, RailwayAuthorizationRequestSchema } from "@nexus/contracts";
+import { CreateObjectiveRequest, CreateNaeiTaskRequest, AdvanceWorldRequest, CreateMemoryRequest, CONTRACT_VERSION, RailwayDiagnoseRequest, RailwayRecoveryPlanRequest, RailwayExecuteRequest, RailwayAuthorizationRequestSchema, ConverseRequest, ConverseSessionStateRequest } from "@nexus/contracts";
 import { mkdirSync, writeFileSync, readdirSync, statSync, rmSync, readFileSync, existsSync, openSync, writeSync, fsyncSync, closeSync, renameSync } from "node:fs";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { join, basename } from "node:path";
@@ -198,6 +199,29 @@ export function createApp(cfg: NexusApiConfig) {
       // by the owner-authenticated /jarvis/tasks/:id/approve route. Without
       // this, the approve endpoint could never release a consequential task.
       return { required: consequential, granted: Boolean(opts?.approvedBy), by: opts?.approvedBy };
+    },
+  });
+
+  // JARVIS conversational core (Stage 3.1): persistent dialogue + persona +
+  // memory recall, separate from the orchestrator's objective machine.
+  const conversation = new ConversationService({
+    db, fabric, memory, scope: "jarvis",
+    statusProvider: () => {
+      const ps = fabric.providerStatus().filter((p) => p.provider !== "echo");
+      const provider = ps.length === 0
+        ? "none configured"
+        : ps.map((p) => `${p.provider}${p.verified === true ? " (verified)" : p.verified === false ? " (verify failed)" : ""}`).join(", ");
+      const worlds = worldRuntime.store.listWorlds();
+      const w = worlds[0];
+      const worldSummary = w
+        ? `NEXUS Prime — ${w.environment.timeOfDay}, ${w.environment.weather}; ${worldRuntime.store.listResidents(w.id).length} residents active`
+        : "no world instantiated";
+      return {
+        provider,
+        memoryRecords: db.count("SELECT COUNT(*) AS n FROM memories WHERE scope = 'jarvis'"),
+        worldSummary,
+        backupProtection: String(protectionStatus()),
+      };
     },
   });
 
@@ -458,6 +482,7 @@ export function createApp(cfg: NexusApiConfig) {
     version: "1.0.0",
     contractVersion: CONTRACT_VERSION,
     subsystems: ["jarvis", "naei", "world", "mcp", "memory", "models", "observability", "railway"],
+    app: "/app/",
   }));
 
   app.get("/health", async (c) => {
@@ -487,6 +512,32 @@ export function createApp(cfg: NexusApiConfig) {
   app.post("/jarvis/tasks/:id/approve", requireOwner, async (c) => {
     const run = await orchestrator.run(c.req.param("id"), { approvedBy: "owner" });
     return c.json({ data: run.ok ? run.value : null, error: run.ok ? undefined : run.error.message });
+  });
+
+  // -- JARVIS conversation (Stage 3.1 — voice-first personal dialogue) ---------
+  // Model spend is consequential: conversation is owner-only, like objectives.
+  app.post("/jarvis/converse", requireOwner, async (c) => {
+    const parse = ConverseRequest.safeParse(await c.req.json().catch(() => ({})));
+    if (!parse.success) return c.json({ error: "validation", issues: parse.error.issues }, 400);
+    const r = await conversation.converse(parse.data);
+    if (!r.ok) {
+      const status = r.error.code === "NOT_FOUND" ? 404 : 400;
+      return c.json({ error: r.error.code, message: r.error.message }, status);
+    }
+    metrics.increment("conversation_turns_total", { result: r.value.reply.meta.degraded ? "degraded" : "ok" });
+    return c.json({ data: r.value }, 201);
+  });
+  app.get("/jarvis/converse/sessions", requireOwner, (c) => c.json({ data: conversation.sessions() }));
+  app.get("/jarvis/converse/history", requireOwner, (c) => {
+    const sessionId = c.req.query("sessionId") ?? "";
+    const msgs = conversation.history(sessionId, Number(c.req.query("limit") ?? 50));
+    return msgs ? c.json({ data: msgs }) : c.json({ error: "not_found" }, 404);
+  });
+  app.post("/jarvis/converse/session-state", requireOwner, async (c) => {
+    const parse = ConverseSessionStateRequest.safeParse(await c.req.json().catch(() => ({})));
+    if (!parse.success) return c.json({ error: "validation", issues: parse.error.issues }, 400);
+    const r = conversation.setSessionState(parse.data.sessionId, parse.data.state);
+    return r.ok ? c.json({ data: r.value }) : c.json({ error: "not_found" }, 404);
   });
 
   // -- NAEI --------------------------------------------------------------------
@@ -1641,6 +1692,44 @@ export function createApp(cfg: NexusApiConfig) {
     backupTimer.unref?.();
   }
 
+  // -- Voice-first PWA (Stage 3.1) -------------------------------------------
+  // The user-facing JARVIS app: static assets baked into the image at
+  // apps/nexus-api/web/app/, served from the SAME origin as the API (no CORS,
+  // no second service). Explicit allowlist of files — traversal-proof by
+  // construction; unknown paths 404. Assets are read once at startup.
+  const WEB_ASSET_DIR = join(import.meta.dir, "..", "web", "app");
+  const WEB_ASSETS = new Map<string, { body: Uint8Array; type: string; cache: string }>();
+  {
+    const TYPES: Record<string, string> = {
+      "index.html": "text/html; charset=utf-8",
+      "app.js": "text/javascript; charset=utf-8",
+      "style.css": "text/css; charset=utf-8",
+      "sw.js": "text/javascript; charset=utf-8",
+      "manifest.webmanifest": "application/manifest+json",
+      "icon-192.png": "image/png",
+      "icon-512.png": "image/png",
+      "apple-touch-icon.png": "image/png",
+    };
+    for (const [file, type] of Object.entries(TYPES)) {
+      const p = join(WEB_ASSET_DIR, file);
+      if (!existsSync(p)) continue;
+      WEB_ASSETS.set(`/app/${file}`, {
+        body: new Uint8Array(readFileSync(p)),
+        type,
+        cache: file === "index.html" ? "no-cache" : file.endsWith(".png") ? "public, max-age=604800" : "public, max-age=300",
+      });
+    }
+    if (WEB_ASSETS.has("/app/index.html")) {
+      WEB_ASSETS.set("/app/", { ...WEB_ASSETS.get("/app/index.html")!, cache: "no-cache" });
+    }
+  }
+  app.get("/app", (c) => c.redirect("/app/", 302));
+  for (const [routePath, asset] of WEB_ASSETS) {
+    app.get(routePath, (c) => new Response(asset.body, {
+      headers: { "content-type": asset.type, "cache-control": asset.cache },
+    }));
+  }
+
   app.post("/railway/webhook", async (c) => {
     // Authenticated by the per-project webhook secret (constant-time), not the
     // owner bearer key: Railway's webhook sender cannot present the owner key.
@@ -1655,7 +1744,7 @@ export function createApp(cfg: NexusApiConfig) {
   });
 
   return {
-    app, db, orchestrator, naei, worldRuntime, mcp, memory, fabric, logger, metrics, health, railway, tools,
+    app, db, orchestrator, naei, worldRuntime, mcp, memory, fabric, logger, metrics, health, railway, tools, conversation,
     runLogicalBackup, listLogicalBackups,
     /** Read-only bucket-size observability (Stage 2.4B): counts ONLY — no
      * identities, no counters. Exists so the memory-bound regression test can

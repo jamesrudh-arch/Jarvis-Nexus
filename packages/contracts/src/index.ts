@@ -575,6 +575,53 @@ export const EnvelopeSchema = <T extends z.ZodTypeAny>(inner: T) =>
   z.object({ data: inner, meta: z.object({ requestId: z.string().optional(), at: IsoTimestamp.optional() }).optional() });
 
 // ===========================================================================
+// JARVIS conversation (Stage 3.1 — voice-first personal dialogue)
+// ===========================================================================
+
+/** Session presence states. A sleeping/standby session auto-wakes when the
+ *  owner addresses it (converse records wokeFrom). */
+export const ConversationSessionState = z.enum(["ACTIVE", "STANDBY", "SLEEPING"]);
+export type ConversationSessionStateValue = z.infer<typeof ConversationSessionState>;
+
+export const ConverseRequest = z.object({
+  /** Omit to start a new session; pass the id returned by a previous turn. */
+  sessionId: z.string().min(1).max(128).optional(),
+  message: z.string().min(1).max(4_000),
+});
+
+export const ConverseSessionStateRequest = z.object({
+  sessionId: z.string().min(1).max(128),
+  state: ConversationSessionState,
+});
+
+export interface ConversationTurnMeta {
+  degraded?: boolean;
+  provider?: string;
+  modelId?: string;
+  latencyMs?: number;
+  memoriesStored?: number;
+  wokeFrom?: "STANDBY" | "SLEEPING";
+}
+
+export interface ConversationMessage {
+  id: string;
+  conversationId: string;
+  role: "user" | "assistant";
+  content: string;
+  meta: ConversationTurnMeta;
+  createdAt: string;
+}
+
+export interface ConversationSession {
+  id: string;
+  title: string;
+  state: ConversationSessionStateValue;
+  createdAt: string;
+  updatedAt: string;
+  messages?: number;
+}
+
+// ===========================================================================
 // Railway infrastructure intelligence (owner directive 2026-11-15)
 // ===========================================================================
 

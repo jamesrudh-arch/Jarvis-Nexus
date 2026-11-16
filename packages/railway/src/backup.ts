@@ -104,13 +104,14 @@ export interface RestoreReport {
   notes: string[];
 }
 
-/** All tables of the NEXUS store (migration 1-3). */
+/** All tables of the NEXUS store (migrations 1-4). */
 export const NEXUS_TABLES = [
   "schema_migrations", "kv", "jarvis_tasks", "naei_agents", "naei_tasks", "memories",
   "world_events", "world_snapshots", "worlds", "residents", "vehicles", "properties",
   "businesses", "accounts", "transactions", "mcp_servers", "mcp_audit",
   "requirements", "ledger", "technologies", "metrics",
   "railway_events", "railway_audit", "railway_state",
+  "conversations", "conversation_messages",
 ] as const;
 
 export class BackupService {

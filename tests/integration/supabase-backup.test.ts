@@ -25,7 +25,7 @@ import { mkdirSync, rmSync, readdirSync, readFileSync, writeFileSync, existsSync
 import { join } from "node:path";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { createApp } from "@nexus/api";
-import { BackupService, SupabaseStorageClient, parseSupabaseBackupConfig } from "@nexus/railway";
+import { BackupService, SupabaseStorageClient, parseSupabaseBackupConfig, NEXUS_TABLES } from "@nexus/railway";
 import type { EncryptedBackupDoc } from "@nexus/railway";
 
 const TMP = `/tmp/supabase_backup_${Date.now()}`;
@@ -254,7 +254,7 @@ describe("supabase off-volume backup — happy path", () => {
     );
     expect(status.lastArtifact.bytes).toBeGreaterThan(0);
     expect(status.lastArtifact.sha256).toMatch(/^[0-9a-f]{64}$/);
-    expect(status.lastArtifact.tables).toBe(24);
+    expect(status.lastArtifact.tables).toBe(NEXUS_TABLES.length);
     expect(status.stageRecord).toEqual(
       expect.objectContaining({
         generation: expect.objectContaining({ ok: true }),
@@ -293,7 +293,7 @@ describe("supabase off-volume backup — happy path", () => {
     expect(r.status).toBe(200);
     const body = (await r.json()) as { data: { report: { restored: boolean; tables: number; rows: number }; objectKey: string; target: string } };
     expect(body.data.report.restored).toBe(true);
-    expect(body.data.report.tables).toBe(24);
+    expect(body.data.report.tables).toBe(NEXUS_TABLES.length);
     expect(body.data.objectKey).toMatch(/\.enc$/);
     expect(body.data.target).toContain("restore-verifications");
     // isolated target is NOT the live database
@@ -305,7 +305,7 @@ describe("supabase off-volume backup — happy path", () => {
     expect(ok).toBe(true);
     const status = (await sbStatus()) as Record<string, any>;
     expect(status.lastRestorationVerification).toEqual(
-      expect.objectContaining({ restored: true, tables: 24, rows: body.data.report.rows }),
+      expect.objectContaining({ restored: true, tables: NEXUS_TABLES.length, rows: body.data.report.rows }),
     );
   });
 
