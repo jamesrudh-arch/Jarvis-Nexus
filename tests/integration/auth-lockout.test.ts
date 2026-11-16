@@ -251,6 +251,14 @@ describe("restart behaviour", () => {
 // 9. memory cleanup — the maps cannot grow without bound
 // ---------------------------------------------------------------------------
 describe("memory cleanup (unbounded in-memory bucket growth is prevented)", () => {
+  // FINAL-EXECUTION FIX (test-only, no assertion changed): the 12,000-request
+  // loop is compute-bound (~0.6-0.7 ms/request on GitHub Actions runners =
+  // 7-10 s wall clock) and bun's DEFAULT 5 s per-test timeout is a latent
+  // environment-speed defect — it intermittently failed CI on slower runners
+  // (runs 43829303613 + rerun on commit 453e355) while passing on faster ones
+  // (run 43826898376 on 250ca25, identical code). The test's intent is memory
+  // reclamation under a FAKE clock; the wall-clock budget is incidental.
+  // Explicit 60 s budget removes the environment sensitivity.
   test("a 12,000-identity flood is reclaimed once stale; maps return to a tiny size", async () => {
     // dedicated instance: generous auth budgets so the flood measures MEMORY,
     // not lockout (1 failure per identity, no identity or global trip)
@@ -299,5 +307,5 @@ describe("memory cleanup (unbounded in-memory bucket growth is prevented)", () =
 
     app2.stopBackupScheduler();
     app2.db.close();
-  });
+  }, 60_000);
 });
