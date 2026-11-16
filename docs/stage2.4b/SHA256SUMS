@@ -1,0 +1,43 @@
+# STAGE 2.4B package checksums (authoritative tree: docs/stage2.4b/)
+# Standard sha256sum format: verify from repo root with
+#   sha256sum -c docs/stage2.4b/SHA256SUMS
+# Covers the required deliverables, appendix/first-pass/ (first-pass documents,
+# preserved verbatim) and evidence/ incl. the reverify/ second-pass record.
+# Convention corrected vs the first pass: repo-root-relative paths, CI-loop
+# compatible (matches docs/stage2.3 and docs/stage2.2).
+352b5431255b7e0e9032ece6b4cbb88e2d0122c736409dc18dc58e1b42c37fdb  docs/stage2.4b/AUTH_LOCKOUT_REMEDIATION.md
+dd84af14a3b2add5a3b8274830841f1363e67f6e38f97d060b7affd966d51a20  docs/stage2.4b/BACKUP_ARCHITECTURE.md
+c5d0826a11e411fb26830491d88547a43657e3e9362242748b3a7618aee051fe  docs/stage2.4b/BACKUP_RESTORE_VERIFICATION.md
+28d9e1c6667bb02e0c8b8ec6dd6bee32462f9f8a9f19827f47139dd01d987f14  docs/stage2.4b/CI_REMEDIATION_REPORT.md
+05b2d4a0c1742a58ac6860cfda54168cb738e30e4ac5ea744f7de06c6e698d1b  docs/stage2.4b/DEPLOYMENT_READINESS_DECISION.md
+bb6ee142acd1c83f7bd851eb8a2fe405527b3e92ad33d2be48301695191d7ebc  docs/stage2.4b/REGRESSION_RESULTS.md
+1129615fedd1cb935df0ccbf967cff72d37a47025f0aab366c4c382b4013d697  docs/stage2.4b/SECURITY_RESULTS.md
+ca37c134209a63455148a719263329d414cce9ca3491076193b1ab08a7de108e  docs/stage2.4b/STAGE_2.4B_FINAL_REPORT.md
+60777c436f7f6dfe3d68cb478892ab2eec9de6913da4ff545c559bb26564fbbe  docs/stage2.4b/UPDATED_RISK_REGISTER.md
+03e405b3c188b405199ab6a51f0b38ad7185cb36870772ee8bd24a03c632d40a  docs/stage2.4b/appendix/first-pass/BACKUP_ARCHITECTURE.md
+0f5cfdab11637913c0d7cc3da05ed4bfd402cdfa2c375e7c820a18d2dbe0a7bd  docs/stage2.4b/appendix/first-pass/BACKUP_IMPLEMENTATION.md
+466b61b1597142850c59d4485f1ff4725f978e066b52e553942e5fcecc3ca2ce  docs/stage2.4b/appendix/first-pass/CI_REMEDIATION_REVIEW.md
+e955a7ef1ac0b82701c12d155a6174852e9ecd5291253a2f3524a4adf7386294  docs/stage2.4b/appendix/first-pass/EVIDENCE_MANIFEST.md
+21be4871f1a873fd04699305999dcd81f9ee1eda181cd1d8ae05c47ffc7932cc  docs/stage2.4b/appendix/first-pass/FULL_REGRESSION_REPORT.md
+13c42a6fc1c975d2a2cdb97720a75d962988ab741a99918d711e67f90f2e8dc1  docs/stage2.4b/appendix/first-pass/LOCKOUT_REMEDIATION.md
+ac7ebf95d68adb3508cd62188db20cd920de6326930e795fac7d72b463b63f47  docs/stage2.4b/appendix/first-pass/LOCKOUT_ROOT_CAUSE.md
+ff40e6f9f8f9d49e293ddeefaf6754d59a07a90852f83b4a8be6740e1b5017c9  docs/stage2.4b/appendix/first-pass/OFFVOLUME_RESTORE_EVIDENCE.md
+1ed0e0424c1f4979a4aa9b34971e65139054e76a40c517a3d49fcb334c18f08c  docs/stage2.4b/appendix/first-pass/REGRESSION_TESTS.md
+9ce3d957c5bd29ff6fab61f1d5c8bad206d47dea6e45abddfe10df6251b6387e  docs/stage2.4b/appendix/first-pass/RELEASE_QUALIFICATION.md
+2db94fbf8de09b41661bdb02497e4625666d813d04131acf4102264284e76e18  docs/stage2.4b/appendix/first-pass/RISK_REGISTER.md
+2dd900242ce1857860adfad880cb46772f9372dc8be27efa7ab79ca6cf9a1e14  docs/stage2.4b/appendix/first-pass/RPO_RTO_ASSESSMENT.md
+d8c6865b3121e8e90e796ac35540aa86c7217909bb35d6d7481e6e595035f56a  docs/stage2.4b/appendix/first-pass/SECURITY_REASSESSMENT.md
+348894bec0f8516094695c1cc8a059da92909853f6fcfdcd043562bf52d957aa  docs/stage2.4b/evidence/ci-qualification.json
+168a7a38af9acbab01b0a897e3c169dd0d468f8f095367f239373baf8f054ce7  docs/stage2.4b/evidence/drill-offvolume-restore.json
+587778a61cebedf13274d42b036edc49d182fd0da804deef8eca0c63a42b0189  docs/stage2.4b/evidence/e2e-matrix.json
+de724e8946e49265d42c5a3d7af8c875b229ba9b61bf71bae1a66144cf3863ef  docs/stage2.4b/evidence/repro-f24a01-post.json
+7af4ea852b35e0a30d4db8e23789059dcfdeab3c54bf40aab07a66f51a9d6b5b  docs/stage2.4b/evidence/repro-f24a01-pre.json
+63764779c2bc41b3a8c7b966f164096bbc23887df1fe81942c192ca80bd785e2  docs/stage2.4b/evidence/reverify/SESSION_RECORD.md
+45661cd9fc2a545291fbbf8f931df71b50cb4e0d3d611e74fade97c1d6e6c9a4  docs/stage2.4b/evidence/reverify/drill-offvolume-restore.json
+db5877fbc84db6b599f120fd2066d38b380f6d8a2df4a490545114e3db9a645e  docs/stage2.4b/evidence/reverify/e2e-matrix.json
+ea4ae4ca007ccd98dc9847624661d6195f989d4f48d2c44ba1f0072392a86402  docs/stage2.4b/evidence/reverify/repro-f24a01-post.json
+06174a63970f8408d71a42ad6123db478547fa12c0b836d0bff46c49cb3c2fc9  docs/stage2.4b/evidence/reverify/repro-f24a01-pre.json
+a6f5a8e13482b6bcdc13ba671a1a9ff6493ca3724533922cd5184f07ed3e331e  docs/stage2.4b/evidence/reverify/suite-output.txt
+d63b712a76fd153dacbed8483cadc52a93888935f9c61dd9cc6a97e5aa458fbe  docs/stage2.4b/evidence/reverify/xff-edge-probe.json
+2826e00228b2ed8936be40e5d5e717b1b202bb1a388f9245f06d84574a46a3b3  docs/stage2.4b/evidence/suite-output.txt
+fe0dbb3d786fb5f29517ea081fa6dd2ab13491eba8ba017240684913c2baa628  docs/stage2.4b/evidence/xff-edge-probe.json

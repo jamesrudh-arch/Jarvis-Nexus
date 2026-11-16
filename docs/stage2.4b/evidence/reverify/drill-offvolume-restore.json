@@ -1,0 +1,175 @@
+{
+  "drill": "F-2.4A-06 independent off-volume restore",
+  "startedAt": "2026-11-15T20:38:02.566Z",
+  "volumeA": "/tmp/stage24b_drill_1794775082565/volume-a",
+  "volumeB": "/tmp/stage24b_drill_1794775082565/volume-b",
+  "phases": {
+    "bootMs": 12,
+    "reference": {
+      "tables": 24,
+      "rows": 56,
+      "perTable": [
+        {
+          "name": "schema_migrations",
+          "rows": 3,
+          "sha256Rowid": "fb651d6ab6808096e654608d72ba6fb53a9a2afe4f97056964f02927aa888f91"
+        },
+        {
+          "name": "kv",
+          "rows": 1,
+          "sha256Rowid": "0751e0b27fc5f7c7f39384591f79bbd632da911d43b31aeae8bcbad407855914"
+        },
+        {
+          "name": "jarvis_tasks",
+          "rows": 1,
+          "sha256Rowid": "19bba4c122210f4351930b19addbb3f1f70def6352feeab8f3df7b8e1455a489"
+        },
+        {
+          "name": "naei_agents",
+          "rows": 10,
+          "sha256Rowid": "2d17ac248998d4ed7b097552c80ac8429e5f3594447279a57fe16fa7714747f3"
+        },
+        {
+          "name": "naei_tasks",
+          "rows": 0,
+          "sha256Rowid": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        {
+          "name": "memories",
+          "rows": 1,
+          "sha256Rowid": "bbfc145709a328571197351f27b79c92d8f68198e24be234cf617e186735c260"
+        },
+        {
+          "name": "world_events",
+          "rows": 1,
+          "sha256Rowid": "7b17eb6946d9481189a952da2411e919323e1c3394327664a24f9bb9bc9a6c4a"
+        },
+        {
+          "name": "world_snapshots",
+          "rows": 1,
+          "sha256Rowid": "402eeb267213a7c96450e796d2db43a793bbf6326173b8f70d56dde3a2aa5b2b"
+        },
+        {
+          "name": "worlds",
+          "rows": 1,
+          "sha256Rowid": "bdf1c1360f76105fd7d71ff91d6ddc014017cad5bb8600c7977fddade476213e"
+        },
+        {
+          "name": "residents",
+          "rows": 8,
+          "sha256Rowid": "3d699d389a576ecc238008994fe8bf19558bba3d5b6ae551ec15cbba992abf0b"
+        },
+        {
+          "name": "vehicles",
+          "rows": 0,
+          "sha256Rowid": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        {
+          "name": "properties",
+          "rows": 8,
+          "sha256Rowid": "76f8d4872ec90ea8a609049d569a7c2abb4d6c24d91332304c63ace3b1cdfdb8"
+        },
+        {
+          "name": "businesses",
+          "rows": 1,
+          "sha256Rowid": "b12e54d49fb3b83fe7373bd9b0e383041010656b4afbdb52fb4f12f3c7266f33"
+        },
+        {
+          "name": "accounts",
+          "rows": 9,
+          "sha256Rowid": "838aa3b6fc2788055ce8efed9221514efadc25519af18bf1d03ad8b1d6abd652"
+        },
+        {
+          "name": "transactions",
+          "rows": 0,
+          "sha256Rowid": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        {
+          "name": "mcp_servers",
+          "rows": 1,
+          "sha256Rowid": "973e0f902e46b0cbbaf0d82b5f2c69924ed91300f2865904144fda62b3688953"
+        },
+        {
+          "name": "mcp_audit",
+          "rows": 0,
+          "sha256Rowid": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        {
+          "name": "requirements",
+          "rows": 0,
+          "sha256Rowid": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        {
+          "name": "ledger",
+          "rows": 0,
+          "sha256Rowid": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        {
+          "name": "technologies",
+          "rows": 0,
+          "sha256Rowid": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        {
+          "name": "metrics",
+          "rows": 10,
+          "sha256Rowid": "a1873711ec1f073be4e55f856d2daa255445c4f11b4adf3c479dc986df548365"
+        },
+        {
+          "name": "railway_events",
+          "rows": 0,
+          "sha256Rowid": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        {
+          "name": "railway_audit",
+          "rows": 0,
+          "sha256Rowid": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        {
+          "name": "railway_state",
+          "rows": 0,
+          "sha256Rowid": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        }
+      ]
+    },
+    "backup": {
+      "runs": 3,
+      "offVolumeFiles": 3,
+      "newestArtifact": "/tmp/stage24b_drill_1794775082565/volume-b/2026-11-15T20-38-02-618Z.json",
+      "newestArtifactSha256": "ffe3011491f9117d92a936a05e1669694a14d9db2c2c4b5d62b87c2eeeb8f090",
+      "encrypted": true
+    },
+    "volumeLoss": {
+      "destroyed": true,
+      "volumeBFilesAfterLoss": 3,
+      "note": "volume A erased entirely; recovery is possible ONLY through the volume-B artifact"
+    },
+    "restore": {
+      "exitCode": 0,
+      "wallClockMs": 88,
+      "encrypted": true,
+      "tables": 24,
+      "rows": 61,
+      "transaction": "committed",
+      "contentVerified": true,
+      "foreignKeyViolations": 0
+    },
+    "restoredInstance": {
+      "bootMs": 2,
+      "health": 200,
+      "contentMismatches": [],
+      "canaryRowPresent": true,
+      "seededObjectiveReadable": true,
+      "postRestoreBackup": true
+    },
+    "timings": {
+      "fromVolumeLossToRestoredOperationalMs": 100,
+      "components": {
+        "restoreCliMs": 88,
+        "bootMs": 2,
+        "note": "the dominant term in production is platform redeploy time, not the restore itself"
+      }
+    }
+  },
+  "finishedAt": "2026-11-15T20:38:02.727Z",
+  "verdict": "PASS: total volume loss recovered exclusively from the verified encrypted off-volume artifact; content verified against the pre-loss reference; system operational post-restore"
+}

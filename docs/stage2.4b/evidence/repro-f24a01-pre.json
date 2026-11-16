@@ -1,0 +1,21 @@
+{
+  "probe": "F-2.4A-01 reproduction",
+  "label": "pre-fix",
+  "startedAt": "2026-11-15T18:20:54.185Z",
+  "identity": "10.24.42.10",
+  "authFailLimit": 60,
+  "windowMs": 60000,
+  "waitMs": 70000,
+  "first60All401": true,
+  "attempt61WrongKey": 429,
+  "validKeyWhileLocked": 429,
+  "publicHealthWhileLocked": 200,
+  "retryAfterWhileLocked": 60,
+  "waitedMs": 70005,
+  "after70sValidKey": 429,
+  "after70sWrongKey": 429,
+  "after70sPublicHealth": 200,
+  "freshInstanceValidKey": 200,
+  "finishedAt": "2026-11-15T18:22:04.219Z",
+  "verdict": "DEFECT REPRODUCED: valid credential still refused (429) after the 60 s window + 10 s margin"
+}

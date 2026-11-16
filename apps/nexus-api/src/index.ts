@@ -20,9 +20,10 @@ import { NexusLogger, HealthRegistry, MetricsCollector, newCorrelationId } from 
 import { ok, err, safeJsonStringify, NexusError } from "@nexus/core";
 import { railwayFromEnv, introspectLiveFields, diffContract, contractIsCompatible, BackupService } from "@nexus/railway";
 import { CreateObjectiveRequest, CreateNaeiTaskRequest, AdvanceWorldRequest, CreateMemoryRequest, CONTRACT_VERSION, RailwayDiagnoseRequest, RailwayRecoveryPlanRequest, RailwayExecuteRequest, RailwayAuthorizationRequestSchema } from "@nexus/contracts";
-import { mkdirSync, writeFileSync, readdirSync, statSync, rmSync, readFileSync, copyFileSync, existsSync } from "node:fs";
+import { mkdirSync, writeFileSync, readdirSync, statSync, rmSync, readFileSync, existsSync, openSync, writeSync, fsyncSync, closeSync, renameSync } from "node:fs";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { join, basename } from "node:path";
+import type { LogicalBackupDoc } from "@nexus/railway";
 
 export interface NexusApiConfig {
   dbPath: string;
@@ -30,6 +31,9 @@ export interface NexusApiConfig {
   env: Record<string, string | undefined>;
   /** Test seam: inject a MOCKED Railway transport (never used in production wiring). */
   railwayFetchFn?: typeof fetch;
+  /** Test seam (Stage 2.4B): injectable clock for DETERMINISTIC time control in
+   * rate-limit/lockout tests. Production uses Date.now(). */
+  nowFn?: () => number;
 }
 
 export function createApp(cfg: NexusApiConfig) {
@@ -313,16 +317,29 @@ export function createApp(cfg: NexusApiConfig) {
 
   // Rate limiting (Stage 2 Phase 3): in-memory fixed window per client IP.
   // Railway terminates TLS and provides X-Forwarded-For; first hop is the client.
-  // Two independent budgets:
+  // Three independent budgets (Stage 2.4B hardened):
   //  - GLOBAL (default 240/min): every route. Generous for the owner's
   //    interactive use; caps abuse and metric/log spam.
-  //  - AUTH-FAIL (default 60/min): failed owner-auth attempts. An exhausted
-  //    budget locks out ALL protected routes for that IP for the window —
-  //    lockout semantics (even valid tokens are refused while locked) — but
-  //    never public routes (health, metrics, world state stay readable; a
-  //    brute-forcing IP must not blind Railway healthchecks or public state).
+  //  - AUTH-FAIL (default 60/min per identity): failed owner-auth attempts.
+  //  - AUTH-FAIL-GLOBAL (default 300/min across ALL identities, Stage 2.4B):
+  //    bounds TOTAL failed-auth throughput so rotating the client-controlled
+  //    identity header cannot multiply the brute-force budget (F-2.4A-02).
+  // Lockout semantics: an exhausted auth-fail budget locks out ALL protected
+  // routes for that identity for the remainder of the window — even valid
+  // tokens are refused while locked — but never public routes (health,
+  // metrics, world state stay readable; a brute-forcing identity must not
+  // blind Railway healthchecks or public state).
+  const now = cfg.nowFn ?? (() => Date.now());
   const RATE_LIMIT_PER_MIN = Math.max(1, Number(cfg.env.RATE_LIMIT_PER_MIN ?? 240));
   const AUTH_FAIL_LIMIT_PER_MIN = Math.max(1, Number(cfg.env.AUTH_FAIL_LIMIT_PER_MIN ?? 60));
+  const AUTH_FAIL_GLOBAL_LIMIT_PER_MIN = Math.max(1, Number(cfg.env.AUTH_FAIL_GLOBAL_LIMIT_PER_MIN ?? 300));
+  const AUTH_WINDOW_MS = 60_000;
+  // The global backstop lives in the same map under a reserved key. A client
+  // literally sending "__global__" as its X-Forwarded-For identity would alias
+  // this entry — every consequence of that alias is STRICTER (its failures
+  // would double-count against the shared budget), never looser. Benign by
+  // design; documented here so it is not rediscovered as a mystery.
+  const GLOBAL_AF_KEY = "authfail:__global__";
   const rateBuckets = new Map<string, { windowStart: number; count: number }>();
   const authFailBuckets = new Map<string, { windowStart: number; count: number }>();
   const clientIpOf = (c: any): string => {
@@ -349,7 +366,7 @@ export function createApp(cfg: NexusApiConfig) {
     for (const [k, b] of buckets) if (nowMs - b.windowStart >= 120_000) buckets.delete(k);
   };
   app.use("*", async (c: any, next: any) => {
-    const nowMs = Date.now();
+    const nowMs = now();
     sweepBuckets(rateBuckets, nowMs);
     sweepBuckets(authFailBuckets, nowMs);
     const ip = clientIpOf(c);
@@ -374,19 +391,49 @@ export function createApp(cfg: NexusApiConfig) {
   };
   const requireOwner = async (c: any, next: any) => {
     const ip = clientIpOf(c);
-    const nowMs = Date.now();
-    const af = authFailBuckets.get(`authfail:${ip}`);
-    if (af && af.count >= AUTH_FAIL_LIMIT_PER_MIN) {
-      // lockout semantics: while locked, even a VALID token is refused —
-      // that is what makes brute force pointless
-      const retry = Math.max(1, Math.ceil((af.windowStart + 60_000 - nowMs) / 1000));
-      return c.json({ error: "rate_limited" }, 429, { "Retry-After": String(retry) });
+    const nowMs = now();
+    // ---- per-identity lockout, WITH window expiry (Stage 2.4B, F-2.4A-01) ----
+    // Pre-fix, this check had no expiry clause: once count >= limit, the
+    // identity stayed locked FOREVER — the only reset lived inside hitBucket
+    // on the failed-auth path, which is unreachable while locked, so recovery
+    // required a process restart (independently reproduced against main
+    // 6a788348: valid key still 429 70 s after the last failure).
+    const afKey = `authfail:${ip}`;
+    const af = authFailBuckets.get(afKey);
+    if (af) {
+      if (nowMs - af.windowStart < AUTH_WINDOW_MS) {
+        if (af.count >= AUTH_FAIL_LIMIT_PER_MIN) {
+          // fail-closed while the window is live: even a VALID token is
+          // refused — that is what makes brute force pointless
+          const retry = Math.max(1, Math.ceil((af.windowStart + AUTH_WINDOW_MS - nowMs) / 1000));
+          return c.json({ error: "rate_limited" }, 429, { "Retry-After": String(retry), "x-lockout-scope": "identity" });
+        }
+      } else {
+        // window expired: reset safely. This whole section is synchronous
+        // (no await between read and delete), so concurrent requests can
+        // never observe a half-reset state — and the next failed attempt
+        // re-opens a FRESH window via hitBucket.
+        authFailBuckets.delete(afKey);
+      }
+    }
+    // ---- global backstop, identical expiry semantics ----
+    const g = authFailBuckets.get(GLOBAL_AF_KEY);
+    if (g) {
+      if (nowMs - g.windowStart < AUTH_WINDOW_MS) {
+        if (g.count >= AUTH_FAIL_GLOBAL_LIMIT_PER_MIN) {
+          const retry = Math.max(1, Math.ceil((g.windowStart + AUTH_WINDOW_MS - nowMs) / 1000));
+          return c.json({ error: "rate_limited" }, 429, { "Retry-After": String(retry), "x-lockout-scope": "global" });
+        }
+      } else {
+        authFailBuckets.delete(GLOBAL_AF_KEY);
+      }
     }
     const auth = c.req.header("Authorization") ?? "";
     const token = auth.startsWith("Bearer ") ? auth.slice(7) : undefined;
     if (!ownerKey || !token || !tokenMatches(token, ownerKey)) {
-      // failed auth consumes the brute-force budget for this IP
-      hitBucket(authFailBuckets, `authfail:${ip}`, AUTH_FAIL_LIMIT_PER_MIN, nowMs);
+      // failed auth consumes BOTH budgets for this identity
+      hitBucket(authFailBuckets, afKey, AUTH_FAIL_LIMIT_PER_MIN, nowMs);
+      hitBucket(authFailBuckets, GLOBAL_AF_KEY, AUTH_FAIL_GLOBAL_LIMIT_PER_MIN, nowMs);
       return c.json({ error: "unauthorized" }, 401);
     }
     await next();
@@ -695,8 +742,11 @@ export function createApp(cfg: NexusApiConfig) {
     return c.json({ data: { ...volumeReport, logical } });
   });
   app.post("/railway/backup/export", requireOwner, (c) => {
-    // app-level logical backup of THIS deployment's own store + isolated restore verification
+    // app-level logical backup of THIS deployment's own store + isolated restore
+    // verification. Stage 2.4B: a failed verification writes NO artifact and the
+    // route answers 500 — a bad backup is never persisted anywhere.
     const result = runLogicalBackup();
+    if (!result.ok) return c.json({ error: "backup_failed", data: result }, 500);
     return c.json({ data: result }, 201);
   });
   app.post("/railway/backup/restore", requireOwner, async (c) => {
@@ -710,8 +760,16 @@ export function createApp(cfg: NexusApiConfig) {
     if (!/^[\w-]+\.json$/.test(name)) return c.json({ error: "validation", detail: "file must be a backup filename from the backup directory" }, 400);
     const src = join(backupDir, name);
     if (!existsSync(src)) return c.json({ error: "not_found", detail: "no such backup in the backup directory" }, 404);
-    let doc: import("@nexus/railway").LogicalBackupDoc;
-    try { doc = JSON.parse(readFileSync(src, "utf8")); } catch { return c.json({ error: "validation", detail: "backup file is not valid JSON" }, 400); }
+    let doc: LogicalBackupDoc;
+    let encrypted = false;
+    try {
+      const parsed: unknown = JSON.parse(readFileSync(src, "utf8"));
+      const decoded = BackupService.decodeBackupDoc(parsed, encKeyInfo.configured && encKeyInfo.key ? encKeyInfo.key : null);
+      doc = decoded.doc;
+      encrypted = decoded.encrypted;
+    } catch (e) {
+      return c.json({ error: "validation", detail: `backup could not be decoded: ${e instanceof Error ? e.message : String(e)}` }, 400);
+    }
     const id = `restore-${Date.now()}`;
     const dir = join(cfg.workspaceRoot, "restore-verifications", id);
     mkdirSync(dir, { recursive: true });
@@ -722,10 +780,10 @@ export function createApp(cfg: NexusApiConfig) {
       report = BackupService.restoreLogicalBackup(target, doc);
     } finally {
       const logPath = join(dir, "restore-log.json");
-      writeFileSync(logPath, JSON.stringify({ id, source: src, target: targetPath, generatedAt: new Date().toISOString(), report }, null, 2));
+      writeFileSync(logPath, JSON.stringify({ id, source: src, target: targetPath, generatedAt: new Date().toISOString(), encrypted, report }, null, 2));
       target.close();
     }
-    return c.json({ data: { id, source: src, target: targetPath, log: join(dir, "restore-log.json"), report } }, report.restored ? 200 : 422);
+    return c.json({ data: { id, source: src, target: targetPath, log: join(dir, "restore-log.json"), encrypted, report } }, report.restored ? 200 : 422);
   });
   app.get("/railway/backup/export/:file/download", requireOwner, (c) => {
     // Stage 2.2 (G-03 minimal): owner-gated off-volume export enabler —
@@ -737,11 +795,13 @@ export function createApp(cfg: NexusApiConfig) {
     if (!existsSync(src)) return c.json({ error: "not_found" }, 404);
     const bytes = statSync(src).size;
     const sha256 = createHash("sha256").update(readFileSync(src)).digest("hex");
+    const fmt = BackupService.peekBackupFormat(src);
     return c.body(readFileSync(src), 200, {
       "content-type": "application/json",
       "content-disposition": `attachment; filename="${name}"`,
       "x-backup-sha256": sha256,
       "x-backup-bytes": String(bytes),
+      "x-backup-encrypted": fmt === "encrypted" ? "true" : "false",
     });
   });
   app.post("/railway/reconcile", requireOwner, async (c) => {
@@ -792,11 +852,14 @@ export function createApp(cfg: NexusApiConfig) {
     const plan = railway.recovery.getPlan(c.req.param("id"));
     return plan ? c.json({ data: plan }) : c.json({ error: "not_found" }, 404);
   });
-  // -- BACKUP SCHEDULER (Stage 2 Phase 4) -------------------------------------------
-  // Application-level logical backups on a schedule: export -> REAL isolated
-  // restore-verify -> write to volume -> retention prune. In-process timer is
-  // correct for this single-instance deployment; a future multi-instance
-  // topology must externalise the schedule (documented in the backup report).
+  // -- BACKUP SCHEDULER (Stage 2 Phase 4; hardened Stage 2.4B, F-2.4A-06) ------
+  // Application-level logical backups: snapshot-consistent export -> REAL
+  // isolated restore-verify (a backup that has never been restored is not
+  // proven recoverable) -> ATOMIC on-volume write (<file>.tmp + fsync +
+  // rename: an interrupted run can never leave a half-written artifact) ->
+  // verified ENCRYPTED off-volume copy when configured -> two-sided retention
+  // pruning. In-process timer is correct for this single-instance deployment;
+  // a future multi-instance topology must externalise the schedule.
   const backupDir = join(cfg.workspaceRoot, "backups");
   const BACKUP_INTERVAL_HOURS = Math.max(0, Number(cfg.env.NEXUS_BACKUP_INTERVAL_HOURS ?? 24));
   const BACKUP_RETENTION = Math.max(1, Number(cfg.env.NEXUS_BACKUP_RETENTION ?? 14));
@@ -804,57 +867,194 @@ export function createApp(cfg: NexusApiConfig) {
   // Zero-cost, provider-independent; effective on Railway when another
   // volume/mount is attached. S3/object-storage push stays owner-gated (D-2.1-03).
   const OFFSITE_DIR = (cfg.env.NEXUS_BACKUP_OFFSITE_DIR ?? "").trim();
-  let lastBackupRun: { at: string; file: string | null; tables: number; rows: number; rowsMatched: boolean; pruned: number; offsite?: { dir: string; copied: boolean; file?: string; error?: string } | null } | null = null;
+  // Stage 2.4B (F-2.4A-06): off-volume artifacts are ALWAYS encrypted — a
+  // plaintext copy must never leave the volume. Without a valid key the
+  // off-volume copy is SKIPPED with a visible alert instead (never silent).
+  const encKeyInfo = BackupService.parseBackupEncryptionKey(cfg.env.NEXUS_BACKUP_ENCRYPTION_KEY);
+  // Stage 2.4B: optional zero-cost alert webhook (owner-chosen URL, opt-in).
+  // The URL itself is never logged or exposed in any status view.
+  const ALERT_WEBHOOK_URL = (cfg.env.NEXUS_ALERT_WEBHOOK_URL ?? "").trim();
 
-  const runLogicalBackup = (): { file: string; tables: number; rows: number; verification: ReturnType<typeof BackupService.verifyLogicalBackup>; pruned: number; offsite: { dir: string; copied: boolean; file?: string; error?: string } | null } => {
-    const doc = BackupService.exportLogicalBackup(db);
-    const verification = BackupService.verifyLogicalBackup(doc);
-    mkdirSync(backupDir, { recursive: true });
-    const file = join(backupDir, `${doc.exportedAt.replace(/[:.]/g, "-")}.json`);
-    writeFileSync(file, JSON.stringify(doc));
-    // Stage 2.2 (G-03 minimal): copy the newest backup off-volume when configured.
-    let offsite: { dir: string; copied: boolean; file?: string; error?: string } | null = null;
-    if (OFFSITE_DIR) {
-      try {
-        mkdirSync(OFFSITE_DIR, { recursive: true });
-        const dest = join(OFFSITE_DIR, basename(file));
-        copyFileSync(file, dest);
-        offsite = { dir: OFFSITE_DIR, copied: true, file: dest };
-      } catch (e) {
-        offsite = { dir: OFFSITE_DIR, copied: false, error: String(e) };
-        logger.error?.("backup", "off-site backup copy failed", { dir: OFFSITE_DIR, error: String(e) });
-      }
+  const backupAlerts: Array<{ at: string; code: string; detail: string }> = [];
+  let lastWebhookDelivery: { at: string; ok: boolean; status?: number; error?: string } | null = null;
+  const recordBackupAlert = (code: string, detail: string): void => {
+    backupAlerts.push({ at: new Date().toISOString(), code, detail });
+    if (backupAlerts.length > 20) backupAlerts.splice(0, backupAlerts.length - 20);
+    metrics.increment("backup_failures_total", { code });
+    logger.error?.("backup", `backup alert: ${code}`, { detail });
+    if (ALERT_WEBHOOK_URL) {
+      fetch(ALERT_WEBHOOK_URL, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ kind: "backup.alert", at: new Date().toISOString(), code, detail }),
+        signal: AbortSignal.timeout(5_000),
+      }).then(
+        (r) => { lastWebhookDelivery = { at: new Date().toISOString(), ok: true, status: r.status }; },
+        (e) => { lastWebhookDelivery = { at: new Date().toISOString(), ok: false, error: String((e as Error)?.name ?? e) }; },
+      );
     }
-    // retention: keep the newest BACKUP_RETENTION files, prune the rest
-    const files = readdirSync(backupDir)
-      .filter((f) => f.endsWith(".json"))
-      .map((f) => ({ f, mtime: statSync(join(backupDir, f)).mtimeMs }))
-      .sort((a, b) => b.mtime - a.mtime);
+  };
+  if (encKeyInfo.invalid) {
+    // surfaced at boot so a typo'd key cannot silently disable off-volume
+    // protection; visible on every listing until fixed.
+    recordBackupAlert("OFFSITE_KEY_INVALID", `${encKeyInfo.error ?? "invalid NEXUS_BACKUP_ENCRYPTION_KEY"}; off-volume copies are disabled until it is fixed (on-volume backups continue as plaintext v1 with this alert visible)`);
+  }
+
+  /** Atomic durable write (Stage 2.4B): tmp file -> fsync -> rename. A crash
+   * between any two steps can only leave a complete file or a junk .tmp —
+   * never a truncated artifact under the real name. */
+  const atomicWrite = (path: string, bytes: Buffer): void => {
+    const tmp = `${path}.tmp`;
+    const fd = openSync(tmp, "w");
+    try {
+      let off = 0;
+      while (off < bytes.length) off += writeSync(fd, bytes, off);
+      fsyncSync(fd);
+    } finally {
+      closeSync(fd);
+    }
+    renameSync(tmp, path);
+  };
+
+  /** Retention + stale-tmp sweep shared by both volumes (Stage 2.4B).
+   * `*.json.tmp` junk (remnants of interrupted runs) is removed
+   * unconditionally — it can never be a valid backup. */
+  const pruneBackupDir = (dir: string, keep: number): { pruned: number; tmpSwept: number } => {
     let pruned = 0;
-    for (const old of files.slice(BACKUP_RETENTION)) {
-      rmSync(join(backupDir, old.f), { force: true });
-      pruned += 1;
+    let tmpSwept = 0;
+    try {
+      for (const f of readdirSync(dir)) {
+        if (f.endsWith(".json.tmp")) { rmSync(join(dir, f), { force: true }); tmpSwept += 1; }
+      }
+      const files = readdirSync(dir)
+        .filter((f) => f.endsWith(".json"))
+        .map((f) => ({ f, mtime: statSync(join(dir, f)).mtimeMs }))
+        .sort((a, b) => b.mtime - a.mtime);
+      for (const old of files.slice(keep)) {
+        rmSync(join(dir, old.f), { force: true });
+        pruned += 1;
+      }
+    } catch { /* directory may not exist yet — nothing to prune */ }
+    return { pruned, tmpSwept };
+  };
+
+  interface BackupRunResult {
+    ok: boolean;
+    code?: string;
+    file: string;
+    tables: number;
+    rows: number;
+    rowsMatched?: boolean;
+    encrypted: boolean;
+    verification: ReturnType<typeof BackupService.verifyLogicalBackup> | null;
+    pruned: number;
+    tmpSwept: number;
+    prunedOffsite: number;
+    offsite: { dir: string; copied: boolean; encrypted: boolean; file?: string; error?: string } | null;
+  }
+  let lastBackupRun: (BackupRunResult & { at?: string }) | null = null;
+  let backupInFlight = false;
+
+  const runLogicalBackup = (): BackupRunResult => {
+    if (backupInFlight) {
+      // Unreachable today (the whole run is synchronous); guards a future
+      // async refactor from interleaving two runs. Honest refusal, never a queue.
+      throw new Error("backup run overlap refused: another run is in flight");
     }
-    lastBackupRun = {
-      at: doc.exportedAt, file, tables: doc.tables.length,
-      rows: doc.tables.reduce((n, t) => n + t.rows, 0),
-      rowsMatched: verification.rowsMatched, pruned, offsite,
-    };
-    logger.info("backup", "logical backup executed", {
-      file, rowsMatched: verification.rowsMatched, pruned,
-      rows: doc.tables.reduce((n, t) => n + t.rows, 0),
-    });
-    return { file, tables: doc.tables.length, rows: doc.tables.reduce((n, t) => n + t.rows, 0), verification, pruned, offsite };
+    backupInFlight = true;
+    try {
+      // 1) snapshot-consistent export
+      let doc: LogicalBackupDoc;
+      try {
+        doc = BackupService.exportLogicalBackup(db);
+      } catch (e) {
+        recordBackupAlert("EXPORT_FAILED", String(e));
+        return { ok: false, code: "EXPORT_FAILED", file: "", tables: 0, rows: 0, encrypted: false, verification: null, pruned: 0, tmpSwept: 0, prunedOffsite: 0, offsite: null };
+      }
+      const rows = doc.tables.reduce((n, t) => n + t.rows, 0);
+      // 2) REAL isolated restore verification — the gate: a failed
+      //    verification writes NO artifact anywhere.
+      const verification = BackupService.verifyLogicalBackup(doc);
+      if (!verification.rowsMatched || verification.contentMatched === false) {
+        recordBackupAlert("VERIFY_FAILED", `isolated restore verification failed (rowsMatched=${verification.rowsMatched}, contentMatched=${verification.contentMatched}); NO backup artifact was written`);
+        return { ok: false, code: "VERIFY_FAILED", file: "", tables: doc.tables.length, rows, encrypted: false, verification, pruned: 0, tmpSwept: 0, prunedOffsite: 0, offsite: null };
+      }
+      // 3) encode — AES-256-GCM envelope when a key is configured; honest
+      //    plaintext v1 on-volume otherwise (see the offsite rule below)
+      const encKey = encKeyInfo.configured ? encKeyInfo.key : undefined;
+      const encrypted = encKey !== undefined;
+      const bytes = Buffer.from(JSON.stringify(encrypted ? BackupService.encryptBackupDoc(doc, encKey) : doc), "utf8");
+      // 4) atomic on-volume write
+      mkdirSync(backupDir, { recursive: true });
+      const file = join(backupDir, `${doc.exportedAt.replace(/[:.]/g, "-")}.json`);
+      try {
+        atomicWrite(file, bytes);
+      } catch (e) {
+        recordBackupAlert("WRITE_FAILED", `${String(e)} (on-volume artifact NOT written)`);
+        return { ok: false, code: "WRITE_FAILED", file, tables: doc.tables.length, rows, encrypted, verification, pruned: 0, tmpSwept: 0, prunedOffsite: 0, offsite: null };
+      }
+      // 5) off-volume copy — encrypted ONLY, verified by read-back hash
+      let offsite: BackupRunResult["offsite"] = null;
+      let prunedOffsite = 0;
+      if (OFFSITE_DIR) {
+        if (!encrypted) {
+          recordBackupAlert("OFFSITE_SKIPPED_NO_KEY", "NEXUS_BACKUP_OFFSITE_DIR is configured but no valid NEXUS_BACKUP_ENCRYPTION_KEY is set; off-volume copy SKIPPED — a plaintext artifact must never leave the volume");
+          offsite = { dir: OFFSITE_DIR, copied: false, encrypted: false, error: "no valid encryption key configured" };
+        } else {
+          try {
+            mkdirSync(OFFSITE_DIR, { recursive: true });
+            const dest = join(OFFSITE_DIR, basename(file));
+            atomicWrite(dest, bytes);
+            const srcHash = createHash("sha256").update(bytes).digest("hex");
+            const destHash = createHash("sha256").update(readFileSync(dest)).digest("hex");
+            if (srcHash !== destHash) {
+              rmSync(dest, { force: true });
+              recordBackupAlert("OFFSITE_VERIFY_MISMATCH", "off-volume copy failed read-back hash verification; the suspect copy was deleted");
+              offsite = { dir: OFFSITE_DIR, copied: false, encrypted: true, error: "read-back hash mismatch" };
+            } else {
+              offsite = { dir: OFFSITE_DIR, copied: true, encrypted: true, file: dest };
+              prunedOffsite = pruneBackupDir(OFFSITE_DIR, BACKUP_RETENTION).pruned;
+            }
+          } catch (e) {
+            recordBackupAlert("OFFSITE_COPY_FAILED", String(e));
+            offsite = { dir: OFFSITE_DIR, copied: false, encrypted: true, error: String(e) };
+          }
+        }
+      }
+      // 6) on-volume retention + junk sweep
+      const onVol = pruneBackupDir(backupDir, BACKUP_RETENTION);
+      const result: BackupRunResult = {
+        ok: true,
+        file, tables: doc.tables.length, rows, rowsMatched: true, encrypted, verification,
+        pruned: onVol.pruned, tmpSwept: onVol.tmpSwept, prunedOffsite,
+        offsite,
+      };
+      lastBackupRun = { ...result, at: doc.exportedAt };
+      metrics.increment("backup_runs_total", { result: "success" });
+      logger.info("backup", "logical backup executed", {
+        file, rowsMatched: true, pruned: onVol.pruned, tmpSwept: onVol.tmpSwept, prunedOffsite,
+        encrypted, offsiteCopied: offsite?.copied ?? false,
+      });
+      return result;
+    } finally {
+      backupInFlight = false;
+    }
   };
 
   const listLogicalBackups = () => {
-    let history: Array<{ file: string; bytes: number; at: string }> = [];
+    let history: Array<{ file: string; bytes: number; at: string; encrypted: boolean }> = [];
     try {
       history = readdirSync(backupDir)
         .filter((f) => f.endsWith(".json"))
-        .map((f) => ({ file: f, bytes: statSync(join(backupDir, f)).size, at: statSync(join(backupDir, f)).mtime.toISOString() }))
+        .map((f) => ({
+          file: f,
+          bytes: statSync(join(backupDir, f)).size,
+          at: statSync(join(backupDir, f)).mtime.toISOString(),
+          encrypted: BackupService.peekBackupFormat(join(backupDir, f)) === "encrypted",
+        }))
         .sort((a, b) => b.at.localeCompare(a.at));
     } catch { /* directory may not exist yet — no backups taken */ }
+    const lastOk = lastBackupRun?.ok ? lastBackupRun : null;
     return {
       schedule: {
         intervalHours: BACKUP_INTERVAL_HOURS,
@@ -862,22 +1062,57 @@ export function createApp(cfg: NexusApiConfig) {
         retentionCount: BACKUP_RETENTION,
         note: "in-process scheduler (single-instance); volume backup schedules are reported in the volumes layer",
         offsiteDir: OFFSITE_DIR || null,
-        offsiteNote: "off-volume copy target (NEXUS_BACKUP_OFFSITE_DIR); null = off-site export disabled (G-03); full object-storage push is owner-gated (D-2.1-03)",
+        offsiteNote: "off-volume copy target (NEXUS_BACKUP_OFFSITE_DIR); copies are ALWAYS encrypted (Stage 2.4B) and skipped with a visible alert when no valid key is configured; full object-storage push remains owner-gated (D-2.1-03)",
       },
+      encryption: {
+        configured: encKeyInfo.configured,
+        invalid: encKeyInfo.invalid,
+        algorithm: "aes-256-gcm" as const,
+        note: encKeyInfo.configured
+          ? "artifacts (on-volume AND off-volume) are AES-256-GCM encrypted"
+          : encKeyInfo.invalid
+            ? `${encKeyInfo.error ?? "invalid key"} — on-volume backups continue as plaintext v1 with a visible alert; off-volume copies are skipped`
+            : "not configured — on-volume backups are plaintext v1 (the Stage 2.4A posture); off-volume copies are skipped (a plaintext artifact must never leave the volume)",
+      },
+      alerting: {
+        webhookConfigured: ALERT_WEBHOOK_URL.length > 0,
+        lastDelivery: lastWebhookDelivery,
+        note: "alerts are recorded in-app (this list), counted in /metrics and logged; the optional webhook URL is never exposed",
+      },
+      alerts: backupAlerts.slice(-10),
       lastRun: lastBackupRun,
       historyCount: history.length,
       history: history.slice(0, 20),
-      rpo: { objectiveHours: BACKUP_INTERVAL_HOURS, meaning: "maximum acceptable data loss window = one backup interval (plus any unexported writes)" },
-      rto: { objectiveMinutes: 15, meaning: "logical restore = redeploy image + mount volume + import JSON; verified by isolated restore in CI and at every backup run" },
+      rpo: {
+        objectiveHours: BACKUP_INTERVAL_HOURS,
+        meaning: "maximum acceptable data loss window = one backup interval (plus any unexported writes)",
+        offVolume: lastOk?.offsite?.copied
+          ? { enabled: true, encrypted: true, lastCopiedAt: lastOk.at ?? null }
+          : { enabled: false, encrypted: false, lastCopiedAt: null },
+        offVolumeNote: "RPO for VOLUME-LOSS scenarios is unbounded until an off-volume copy is configured AND verified — never claim data-loss protection the deployment does not have",
+      },
+      rto: {
+        objectiveMinutes: 15,
+        meaning: "logical restore = redeploy image + mount volume + import backup via the product CLI (verified by isolated restore in CI and at every backup run); the Stage 2.4B drill measures the real figure",
+      },
     };
   };
 
   let backupTimer: ReturnType<typeof setInterval> | null = null;
+  let backupFirstTimer: ReturnType<typeof setTimeout> | null = null;
+  const scheduledBackupRun = (): void => {
+    try {
+      runLogicalBackup();
+    } catch (e) {
+      recordBackupAlert("RUN_EXCEPTION", String(e));
+      logger.error?.("backup", "scheduled backup failed", { error: String(e) });
+    }
+  };
   if (BACKUP_INTERVAL_HOURS > 0) {
     // first backup shortly after boot (staggered to avoid boot-latency impact), then on interval
-    const firstRunMs = 30_000;
-    setTimeout(() => { try { runLogicalBackup(); } catch (e) { logger.error?.("backup", "scheduled backup failed", { error: String(e) }); } }, firstRunMs).unref?.();
-    backupTimer = setInterval(() => { try { runLogicalBackup(); } catch (e) { logger.error?.("backup", "scheduled backup failed", { error: String(e) }); } }, BACKUP_INTERVAL_HOURS * 3_600_000);
+    backupFirstTimer = setTimeout(scheduledBackupRun, 30_000);
+    backupFirstTimer.unref?.();
+    backupTimer = setInterval(scheduledBackupRun, BACKUP_INTERVAL_HOURS * 3_600_000);
     backupTimer.unref?.();
   }
 
@@ -894,7 +1129,15 @@ export function createApp(cfg: NexusApiConfig) {
     return c.json({ data: r.value }, r.value.duplicate ? 200 : 202);
   });
 
-  return { app, db, orchestrator, naei, worldRuntime, mcp, memory, fabric, logger, metrics, health, railway, tools, runLogicalBackup, listLogicalBackups, stopBackupScheduler: () => { if (backupTimer) clearInterval(backupTimer); } };
+  return {
+    app, db, orchestrator, naei, worldRuntime, mcp, memory, fabric, logger, metrics, health, railway, tools,
+    runLogicalBackup, listLogicalBackups,
+    /** Read-only bucket-size observability (Stage 2.4B): counts ONLY — no
+     * identities, no counters. Exists so the memory-bound regression test can
+     * assert the sweep actually reclaims expired buckets. */
+    debugBucketSizes: () => ({ authFail: authFailBuckets.size, rate: rateBuckets.size }),
+    stopBackupScheduler: () => { if (backupTimer) clearInterval(backupTimer); if (backupFirstTimer) clearTimeout(backupFirstTimer); },
+  };
 }
 
 export type NexusApp = ReturnType<typeof createApp>;

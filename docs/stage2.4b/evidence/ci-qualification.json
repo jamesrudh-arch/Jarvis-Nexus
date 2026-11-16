@@ -1,0 +1,54 @@
+{
+  "qualification": "stage2.4a-ci @ 773ab14 — CI production-build gap remediation (F-2.4A-05)",
+  "qualifiedAt": "2026-11-15T18:14Z",
+  "branch": "stage2.4a-ci (773ab14d2c77a320ff3af3f03fc3cd1768a61bcf), worktree .worktrees/ci-branch, frozen-lockfile install 902 packages",
+  "diff": "exactly one file changed vs main: .github/workflows/ci.yml (+78 lines)",
+  "directiveChecklist": {
+    "dockerProductionBuild": {
+      "designed": "docker build -t jarvis-nexus:ci . (the exact deploy artifact)",
+      "locallyExecuted": false,
+      "status": "UNVERIFIED LOCALLY — this sandbox has no docker binary; the Docker-context build of the identical tree is independently verified in Stage 2.4A PRODUCTION_BUILD_VERIFICATION (same sources; the ci branch changes only ci.yml, which is not in the Docker context)"
+    },
+    "containerStartupSmokeTest": {
+      "locallyExecutedEquivalent": "image entrypoint (bun apps/nexus-api/src/main.ts) with NEXUS_DB_PATH/NEXUS_WORKSPACE_ROOT on a temp dir, PORT=3177",
+      "results": { "health200": true, "overallFieldPresent": true, "migrationsApplied": 3 }
+    },
+    "healthEndpointVerification": { "assertions": "HTTP 200 on /health (200+degraded is correct when secrets absent); 'migrations applied: 3' in /health/detailed", "status": "PASS" },
+    "nextVisualBuild": { "command": "bunx next build", "standaloneServerJs": true, "staticChunksDir": true, "status": "PASS" },
+    "typescriptValidation": { "command": "bun run typecheck", "errors": 0, "status": "PASS" },
+    "unitTests": { "result": "100 pass / 0 fail / 349 expects", "status": "PASS" },
+    "integrationTests": { "command": "bun test tests/integration tests/scenarios tests/persistence", "result": "99 tests: 89 pass / 10 skip (credential-gated, the known F-2.4A-10 environmental limit) / 0 fail", "status": "PASS" },
+    "adversarialTests": { "result": "19 pass / 0 fail (V1-V5 gate)", "status": "PASS" },
+    "evidenceIntegrity": {
+      "command": "the workflow's own loop (set -eu; sha256sum --quiet -c)",
+      "results": {
+        "docs/stage2.4a/SHA256SUMS": "skip (not present on this branch — the 2.4A evidence package lives on stage2.4a-evidence; by design)",
+        "docs/stage2.3b/SHA256SUMS": "skip (not present on main-based branches — 2.3B evidence stayed on its own branch)",
+        "docs/stage2.3/SHA256SUMS": "verified OK",
+        "docs/stage2.2/SHA256SUMS": "verified OK"
+      },
+      "status": "PASS (presence-tolerant by design)"
+    },
+    "dependencyIntegrity": { "install": "bun install --frozen-lockfile, 902 packages, no lockfile change on the branch", "bunAudit": "No vulnerabilities found", "status": "PASS" },
+    "workflowTriggers": { "on.push.branches": "[main]", "on.pull_request.branches": "[main]", "permissions": "contents: read (least privilege, unchanged)", "status": "PASS" },
+    "branchFilters": { "status": "PASS — [main] for both push and PR; evidence branches deliberately do not burn CI" },
+    "failurePropagation": { "setEu": true, "explicitExit1Paths": "production-build health/migrations assertions; visual-app-build standalone/static checks", "continueOnErrorAnywhere": false, "status": "PASS" },
+    "noSkippedCriticalJobs": { "jobs": ["verify", "production-build", "visual-app-build"], "status": "PASS — no job is conditional or skipped" }
+  },
+  "findings": [
+    {
+      "id": "F-2.4B-CI-01",
+      "severity": "LOW (documentation)",
+      "finding": "The Stage 2.4A design document CI_BUILD_GAP_REMEDIATION.md §1 claims an 'advisory osv-scanner step' and §4 references its gcr.io egress requirement — but the committed workflow contains NO osv-scanner step (verified: 125 lines, zero matches for osv/scan/continue-on-error). The Stage 2.4A design doc overstates the implemented workflow.",
+      "action": "recorded here; recommend adding the advisory step (continue-on-error: true) in the same commit that merges this branch, or correcting the design document. Not a gate: the step was declared advisory and its absence weakens no assertion. Independently: bun audit (npm advisory DB) ran clean on the remediation tree this stage."
+    },
+    {
+      "id": "F-2.4B-CI-02",
+      "severity": "INFO",
+      "finding": "The evidence-integrity loop does not include future packages (docs/stage2.4b/SHA256SUMS et al.) — the list is hard-coded to the packages existing at design time. Tolerant by design ('skip (not present)'), but each new stage package extends the list only by editing ci.yml.",
+      "action": "when the owner merges stage2.4b-remediation, add docs/stage2.4b/SHA256SUMS to the loop (one line)."
+    }
+  ],
+  "genuineGitHubActionsRun": "NOT performed — requires an authorized push to a main-filtered branch; forbidden at this stage by design. The workflow goes live only after the owner's separate merge authorization.",
+  "verdict": "QUALIFIED (with findings F-2.4B-CI-01/02 recorded): every item in the Stage 2.4B directive checklist verified; three jobs, correct triggers/filters, honest failure propagation, no skipped critical jobs. The Docker layer itself is locally UNVERIFIED (no docker in this sandbox) and is covered for the identical tree by Stage 2.4A's independent build verification."
+}

@@ -1,0 +1,29 @@
+{
+  "probe": "F-2.4A-02 XFF edge behaviour",
+  "startedAt": "2026-11-15T18:15:45.245Z",
+  "finishedAt": "2026-11-15T18:16:27.901Z",
+  "target": "https://jarvis-nexus-production.up.railway.app",
+  "method": "read-only public-route probe; ~250 GETs to /health over ~40 s; zero writes; self-healing within 60 s",
+  "control": { "status": 200 },
+  "phaseA": {
+    "xff": "9.9.9.9",
+    "requests": 245,
+    "statuses": { "200": 245, "429": 0, "other": 0 },
+    "first429At": -1,
+    "retryAfter": null
+  },
+  "verdictAtRunTime": "INCONCLUSIVE: no 429 within 245 requests — production RATE_LIMIT_PER_MIN exceeds the probe budget; nothing claimed",
+  "correctedVerdict": "NOT ANSWERABLE AGAINST THE CURRENT DEPLOYMENT: source inspection of the deployed code (41092a33) shows it contains NO rate limiter and NO XFF consumer (0 hits for clientIpOf / X-Forwarded / RATE_LIMIT in apps/nexus-api/src/index.ts at that commit). 245/245 HTTP 200 is that code's expected behaviour. The append-vs-overwrite question therefore cannot be answered against the current deployment in principle; it is settled empirically by runbook V-08 after the candidate deploys. No edge behaviour is claimed. F-2.4A-02 stays UNVERIFIED; the Stage 2.4B global auth-fail backstop (AUTH_FAIL_GLOBAL_LIMIT_PER_MIN, default 300) bounds total failed-auth throughput regardless of edge behaviour.",
+  "sourceInspection": {
+    "commit": "41092a33 (deployed production code)",
+    "clientIpOfHits": 0,
+    "xForwardedHits": 0,
+    "rateLimitHits": 0,
+    "conclusion": "the rate limiter and auth-fail lockout exist only in the candidate (6a788348 and its Stage 2.4B remediation); no XFF-dependent behaviour is deployed today"
+  },
+  "incidentalBaselineReverification": {
+    "health": "HTTP 200, overall healthy, migrations applied: 2 — the OLD code, as expected (deployment 3bed9747 @ 41092a33)",
+    "detailed": "HTTP 200"
+  },
+  "honesty": "UNVERIFIED is never converted to PASS. The Railway official statement (overwrite) and the community report (append) both remain unproven claims; neither is treated as fact."
+}
