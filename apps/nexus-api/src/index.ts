@@ -877,7 +877,9 @@ export function createApp(cfg: NexusApiConfig) {
         expectedSha = createHash("sha256").update(bytes).digest("hex");
       }
       const { record } = await sbClient.verifyExistingBackup(target, expectedSha, encKeyInfo.key);
-      lastSupabaseRecord = record;
+      if (!lastSupabaseRecord || record.exportedAt >= lastSupabaseRecord.exportedAt) {
+        lastSupabaseRecord = record;
+      }
       metrics.increment("backup_supabase_verifications_total", { result: "ok" });
       persistSupabaseStatus();
       return c.json({ data: { verified: true, record } });
@@ -1255,7 +1257,12 @@ export function createApp(cfg: NexusApiConfig) {
         exportedAt: job.exportedAt,
         backupId: job.backupId,
       });
-      lastSupabaseRecord = record;
+      // newest-wins: when several artifacts verify in one queue drain (e.g.
+      // boot-resume + fresh backup), the status must track the NEWEST one —
+      // an older verified record must never mask a pending newer upload.
+      if (!lastSupabaseRecord || record.exportedAt >= lastSupabaseRecord.exportedAt) {
+        lastSupabaseRecord = record;
+      }
       lastSupabaseError = null;
       metrics.increment("backup_supabase_uploads_total", { result: "ok" });
       logger.info("backup.supabase", "supabase off-volume backup verified", {

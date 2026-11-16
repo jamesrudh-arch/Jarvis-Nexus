@@ -128,10 +128,18 @@ def get_owner_key(token):
 
 
 def service_instance(token):
-    q = ('query { serviceInstance(environmentId: "%s", serviceId: "%s") { '
-         'latestDeployment { id status createdAt meta } } }' % (ENV_ID, SERVICE_ID))
+    # 2026-11-16 fix: the serviceInstance(environmentId:, serviceId:) query
+    # returns null on the live schema (verified by probe_deployments.py); the
+    # deployments(input:) query is the working route. latestDeployment is the
+    # newest edge — meta carries commitHash for the deployed-SHA checks.
+    q = ('query { deployments(input: {environmentId: "%s", serviceId: "%s"}) { '
+         'edges { node { id status createdAt meta } } } }' % (ENV_ID, SERVICE_ID))
     code, d = gql(token, q)
-    return (((d or {}).get("data") or {}).get("serviceInstance") or {})
+    edges = ((((d or {}).get("data") or {}).get("deployments") or {}).get("edges")) or []
+    if not edges:
+        return {}
+    node = (edges[0].get("node") or {})
+    return {"latestDeployment": node}
 
 
 def auto_deploy_status(token):
@@ -159,13 +167,10 @@ def cmd_precheck(token):
         f"(expected disabled): {raw[:300]}")
     # P-02 candidate identity on GitHub
     code2, body, ms = http("GET", "/health")
-    # P-03 production state (public)
-    q = ('query { serviceInstance(environmentId: "%s", serviceId: "%s") { '
-         'latestDeployment { id status meta { source { repo branch } } } } }'
-         % (ENV_ID, SERVICE_ID))
-    code3, d3 = gql(token, q)
-    dep = (((d3 or {}).get("data") or {}).get("serviceInstance") or {}) \
-        .get("latestDeployment") or {}
+    # P-03 production state (public) — 2026-11-16 fix: reuse the working
+    # deployments(input:) query via service_instance()
+    si = service_instance(token)
+    dep = si.get("latestDeployment") or {}
     log("P-03.deployment", "OK" if dep else "FAIL",
         f"latest deployment {dep.get('id')} status={dep.get('status')} "
         f"meta={json.dumps(dep.get('meta'))[:160]}")

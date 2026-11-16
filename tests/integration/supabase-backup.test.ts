@@ -70,15 +70,30 @@ const fake = Bun.serve({
     }
 
     // object LIST must be matched BEFORE the generic object routes (its path
-    // shape /object/list/{bucket} also matches /object/{bucket}/{key})
+    // shape /object/list/{bucket} also matches /object/{bucket}/{key}).
+    // Faithful to the REAL API: returns DIRECT children of the prefix only —
+    // folder children appear as {name: <segment>, metadata: null}, file
+    // children as {name: <remaining path>, metadata: {size}, updated_at}.
     const list = path.match(/^\/storage\/v1\/object\/list\/([^/]+)$/);
     if (list && req.method === "POST") {
       if (MODE === "auth_fail") return new Response("Invalid API key", { status: 401 });
       const { prefix } = (await req.json()) as { prefix: string };
-      const items = [...OBJECTS.entries()]
-        .filter(([k]) => k.startsWith(`${list[1]!}/${prefix}`))
-        .map(([k, v]) => ({ name: k.slice(list[1]!.length + 1), metadata: { size: v.bytes.length }, updated_at: v.updated_at }));
-      return Response.json(items);
+      const bucket = list[1]!;
+      const rootLen = bucket.length + 1 + prefix.length;
+      const children = new Map<string, { name: string; metadata: { size: number } | null; updated_at: string | null }>();
+      for (const [k, v] of OBJECTS.entries()) {
+        if (!k.startsWith(`${bucket}/${prefix}`)) continue;
+        const remainder = k.slice(rootLen);
+        if (remainder.length === 0) continue;
+        const slash = remainder.indexOf("/");
+        if (slash === -1) {
+          children.set(remainder, { name: remainder, metadata: { size: v.bytes.length }, updated_at: v.updated_at });
+        } else {
+          const folder = remainder.slice(0, slash);
+          if (!children.has(folder)) children.set(folder, { name: folder, metadata: null, updated_at: null });
+        }
+      }
+      return Response.json([...children.values()].sort((a, b) => a.name.localeCompare(b.name)));
     }
 
     // bucket endpoints
@@ -115,8 +130,9 @@ const fake = Bun.serve({
       return Response.json({ Key: up[2]! });
     }
 
-    // object stat
-    const stat = path.match(/^\/storage\/v1\/object\/stat\/([^/]+)\/(.+)$/);
+    // object info (matches the REAL Supabase route /object/info/…; the
+    // /object/stat/… route does not exist live — it 400s as NoSuchBucket)
+    const stat = path.match(/^\/storage\/v1\/object\/info\/([^/]+)\/(.+)$/);
     if (stat && req.method === "GET") {
       if (MODE === "auth_fail") return new Response("Invalid API key", { status: 401 });
       return OBJECTS.has(`${stat[1]}/${stat[2]}`) ? Response.json({}) : new Response("not found", { status: 404 });

@@ -448,15 +448,19 @@ export class SupabaseStorageClient {
     throw new SupabaseBackupError({ kind: "HTTP", message: `download returned HTTP ${r.status}`, httpStatus: r.status });
   }
 
-  /** Independent existence check (HEAD-equivalent via the stat endpoint). */
+  /** Independent existence check. Uses the /object/info route — verified
+   * against the LIVE Supabase Storage API on 2026-11-16: /object/stat/… does
+   * not exist (the server parses "stat" as a bucket name and answers
+   * 400 NoSuchBucket), while GET /object/info/{bucket}/{key} returns 200 with
+   * object metadata and 404 when absent. */
   async objectExists(objectKey: string): Promise<boolean> {
-    const r = await this.request(`/storage/v1/object/stat/${this.config.bucket}/${objectKey}`);
+    const r = await this.request(`/storage/v1/object/info/${this.config.bucket}/${objectKey}`);
     if (r.status === 200) return true;
     if (r.status === 404 || r.status === 400) return false;
     if (r.status === 401 || r.status === 403) {
-      throw new SupabaseBackupError({ kind: "AUTH", message: `Supabase rejected the service credential for stat (${r.status})`, httpStatus: r.status });
+      throw new SupabaseBackupError({ kind: "AUTH", message: `Supabase rejected the service credential for object info (${r.status})`, httpStatus: r.status });
     }
-    throw new SupabaseBackupError({ kind: "HTTP", message: `stat returned HTTP ${r.status}`, httpStatus: r.status });
+    throw new SupabaseBackupError({ kind: "HTTP", message: `object info returned HTTP ${r.status}`, httpStatus: r.status });
   }
 
   async deleteObject(objectKey: string): Promise<void> {
@@ -468,8 +472,15 @@ export class SupabaseStorageClient {
     throw new SupabaseBackupError({ kind: "HTTP", message: `delete returned HTTP ${r.status}`, httpStatus: r.status });
   }
 
-  /** List object keys under a prefix (storage list API). */
-  async listObjects(prefix: string): Promise<Array<{ name: string; size: number; updatedAt: string | null }>> {
+  /**
+   * DIRECT-children listing (storage list API). Verified against the LIVE
+   * Supabase Storage API on 2026-11-16: POST /object/list/{bucket} with a
+   * prefix returns only the entries DIRECTLY under that prefix — folder
+   * entries carry metadata:null and their name is the single next path
+   * segment; file entries carry metadata and their name is the remaining
+   * path relative to the prefix.
+   */
+  async listObjects(prefix: string): Promise<Array<{ name: string; size: number; updatedAt: string | null; isFolder: boolean }>> {
     const r = await this.request(`/storage/v1/object/list/${this.config.bucket}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -481,12 +492,35 @@ export class SupabaseStorageClient {
     if (r.status !== 200 && r.status !== 201) {
       throw new SupabaseBackupError({ kind: "HTTP", message: `listing returned HTTP ${r.status}`, httpStatus: r.status });
     }
-    const arr = JSON.parse(r.text) as Array<{ name: string; metadata?: { size?: number }; updated_at?: string; created_at?: string }>;
+    const arr = JSON.parse(r.text) as Array<{ name: string; metadata?: { size?: number } | null; updated_at?: string | null; created_at?: string | null }>;
     return arr.map((o) => ({
       name: o.name,
       size: Number(o.metadata?.size ?? 0),
       updatedAt: o.updated_at ?? o.created_at ?? null,
+      isFolder: o.metadata == null,
     }));
+  }
+
+  /**
+   * Recursive walk under a prefix (the backup layout is
+   * <env>/database/YYYY/MM/file — bounded depth). Returns FULL object keys
+   * with sizes and timestamps.
+   */
+  async walkObjects(prefix: string, maxDepth = 6): Promise<Array<{ key: string; size: number; updatedAt: string | null }>> {
+    const out: Array<{ key: string; size: number; updatedAt: string | null }> = [];
+    const walk = async (p: string, depth: number): Promise<void> => {
+      if (depth > maxDepth) return;
+      const entries = await this.listObjects(p);
+      for (const e of entries) {
+        if (e.isFolder) {
+          await walk(`${p}${e.name}/`, depth + 1);
+        } else if (e.name.length > 0) {
+          out.push({ key: `${p}${e.name}`, size: e.size, updatedAt: e.updatedAt });
+        }
+      }
+    };
+    await walk(prefix, 0);
+    return out;
   }
 
   // ---- high-level pipeline ---------------------------------------------------
@@ -690,15 +724,16 @@ export class SupabaseStorageClient {
     };
   }
 
-  /** List available backups under the environment prefix, joining metadata. */
+  /** List available backups under the environment prefix, joining metadata.
+   * Uses the recursive walk — the live list API returns only DIRECT children. */
   async listBackups(): Promise<SupabaseListedBackup[]> {
     const prefix = `${this.config.environment}/database/`;
-    const objects = await this.listObjects(prefix);
+    const objects = await this.walkObjects(prefix);
     const out: SupabaseListedBackup[] = [];
     for (const o of objects) {
-      if (!o.name.endsWith(".enc")) continue;
-      const objectKey = o.name.startsWith(prefix) ? o.name : `${prefix}${o.name}`;
-      const backupId = o.name.split("/").pop()!.replace(/\.enc$/, "");
+      if (!o.key.endsWith(".enc")) continue;
+      const objectKey = o.key;
+      const backupId = o.key.split("/").pop()!.replace(/\.enc$/, "");
       const metaKey = backupMetaKey(objectKey);
       let meta: Record<string, unknown> | null = null;
       try {

@@ -25,8 +25,9 @@ EXPECTED_SHA="${1:?usage: push_integration.sh <expected-local-sha>}"
 #       no overwrite of production changes). Base history: 6a78834 (the
 #       250ca25 integration push) -> 12f2a33 (after the Stage 2.4B
 #       final-execution + CI-qualification pushes, CI runs 43826898376 /
-#       43829977870 green) — the pin tracks the last VERIFIED remote state.
-BASE_SHA="12f2a337e28a3535a0d7d8037cda60f5c66da41f"
+#       43829977870 green) -> 3751c4c (supabase infrastructure, CI run
+#       43834983399 green) — the pin tracks the last VERIFIED remote state.
+BASE_SHA="3751c4c8993650d73bb13953513dfb0da71a24f8"
 cd "$REPO"
 
 # --- token (never printed) ---

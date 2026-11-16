@@ -17,6 +17,9 @@ EXTRA = [
     "scripts/stage24b/apply_supabase_config.py",
     "scripts/stage24b/verify_supabase_live.py",
     "scripts/stage24b/list_railway_vars.py",
+    "scripts/stage24b/probe_deployments.py",
+    "scripts/stage24b/probe_supabase_api.py",
+    "scripts/stage24b/probe_supabase_endpoints.py",
 ]
 
 def sha256(path):

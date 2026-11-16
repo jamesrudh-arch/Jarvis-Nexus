@@ -1,0 +1,52 @@
+{
+  "startedAt": "2026-11-16T09:01:23Z",
+  "checks": [
+    {
+      "name": "supabase.status.unauthenticated",
+      "ok": true,
+      "detail": "GET without owner key -> 401 (401 expected)"
+    },
+    {
+      "name": "supabase.list.unauthenticated",
+      "ok": true,
+      "detail": "GET without owner key -> 401 (401 expected)"
+    },
+    {
+      "name": "supabase.restore.unauthenticated",
+      "ok": true,
+      "detail": "POST without owner key -> 401 (401 expected)"
+    },
+    {
+      "name": "supabase.status.authenticated",
+      "ok": true,
+      "detail": "GET with owner key -> 200"
+    },
+    {
+      "name": "supabase.status.honest",
+      "ok": false,
+      "detail": "configured=True missing=None status=SUPABASE_UPLOAD_PENDING"
+    },
+    {
+      "name": "backups.supabase.block",
+      "ok": false,
+      "detail": "supabase block present: configured=True, protectionStatus=SUPABASE_UPLOAD_PENDING, missing=[]"
+    },
+    {
+      "name": "backups.rpo.provider",
+      "ok": true,
+      "detail": "rpo.offVolume.enabled=false (honest: no verified off-volume copy yet)"
+    },
+    {
+      "name": "no.secret.leak",
+      "ok": true,
+      "detail": "no credential values in the response"
+    },
+    {
+      "name": "metrics",
+      "ok": true,
+      "detail": "/metrics -> 200 (counters surface present)"
+    }
+  ],
+  "finishedAt": "2026-11-16T09:01:25Z",
+  "verdict": "FAIL"
+}

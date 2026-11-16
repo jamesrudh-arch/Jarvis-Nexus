@@ -1,112 +1,191 @@
 {
-  "record": "Stage 2.4B final execution - complete CI qualification history",
-  "capturedAt": "2026-11-16T08:19:23Z",
-  "runs": [
+  "run": {
+    "id": 43834983399,
+    "status": "completed",
+    "conclusion": "success",
+    "html_url": "https://github.com/jamesrudh-arch/Jarvis-Nexus/actions/runs/43834983399",
+    "head_sha": "3751c4c8993650d73bb13953513dfb0da71a24f8",
+    "event": "push",
+    "created_at": "2026-11-16T08:53:50Z",
+    "updated_at": "2026-11-16T08:55:07Z"
+  },
+  "jobs": [
     {
-      "key": "deployedShaQualification",
-      "note": "CI qualification of the DEPLOYED commit (Phase 2/3 basis)",
-      "run": {
-        "id": 43826898376,
-        "status": "completed",
-        "conclusion": "success",
-        "html_url": "https://github.com/jamesrudh-arch/Jarvis-Nexus/actions/runs/43826898376",
-        "head_sha": "250ca2587e5592deb6bbf759dca0fdff602f4904",
-        "event": "push"
-      },
-      "jobs": [
+      "name": "production-build",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-16T08:53:52Z",
+      "completed_at": "2026-11-16T08:55:07Z",
+      "html_url": "https://github.com/jamesrudh-arch/Jarvis-Nexus/actions/runs/43834983399/job/133189267629",
+      "steps": [
         {
-          "name": "production-build",
+          "name": "Set up job",
           "status": "completed",
-          "conclusion": "success",
-          "html_url": "https://github.com/jamesrudh-arch/Jarvis-Nexus/actions/runs/43826898376/job/133162773917",
-          "id": 133162773917
+          "conclusion": "success"
         },
         {
-          "name": "verify",
+          "name": "Run actions/checkout@v4",
           "status": "completed",
-          "conclusion": "success",
-          "html_url": "https://github.com/jamesrudh-arch/Jarvis-Nexus/actions/runs/43826898376/job/133162774196",
-          "id": 133162774196
+          "conclusion": "success"
         },
         {
-          "name": "visual-app-build",
+          "name": "Build the production image (Dockerfile = the deploy artifact)",
           "status": "completed",
-          "conclusion": "success",
-          "html_url": "https://github.com/jamesrudh-arch/Jarvis-Nexus/actions/runs/43826898376/job/133162774223",
-          "id": 133162774223
+          "conclusion": "success"
+        },
+        {
+          "name": "Boot smoke test from the image",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
         }
       ]
     },
     {
-      "key": "evidenceCommitFlake",
-      "note": "evidence-commit run: latent test-timeout flake (twice, incl. job rerun) - see report section 7.7",
-      "run": {
-        "id": 43829303613,
-        "status": "completed",
-        "conclusion": "failure",
-        "html_url": "https://github.com/jamesrudh-arch/Jarvis-Nexus/actions/runs/43829303613",
-        "head_sha": "453e355dcf94daec966c51559265803ab22dec90",
-        "event": "push"
-      },
-      "jobs": [
+      "name": "verify",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-16T08:53:52Z",
+      "completed_at": "2026-11-16T08:54:38Z",
+      "html_url": "https://github.com/jamesrudh-arch/Jarvis-Nexus/actions/runs/43834983399/job/133189267964",
+      "steps": [
         {
-          "name": "verify",
+          "name": "Set up job",
           "status": "completed",
-          "conclusion": "failure",
-          "html_url": "https://github.com/jamesrudh-arch/Jarvis-Nexus/actions/runs/43829303613/job/133171369774",
-          "id": 133171369774
+          "conclusion": "success"
         },
         {
-          "name": "production-build",
+          "name": "Pull ghcr.io/google/osv-scanner-action:v2.7.1",
           "status": "completed",
-          "conclusion": "success",
-          "html_url": "https://github.com/jamesrudh-arch/Jarvis-Nexus/actions/runs/43829303613/job/133171372142",
-          "id": 133171372142
+          "conclusion": "success"
         },
         {
-          "name": "visual-app-build",
+          "name": "Run actions/checkout@v4",
           "status": "completed",
-          "conclusion": "success",
-          "html_url": "https://github.com/jamesrudh-arch/Jarvis-Nexus/actions/runs/43829303613/job/133171372432",
-          "id": 133171372432
+          "conclusion": "success"
+        },
+        {
+          "name": "Run oven-sh/setup-bun@v2",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install dependencies",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Typecheck (tsc --noEmit)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Registry consistency validation",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Unit tests",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Integration + scenario tests (offline providers only)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Adversarial verification gate (V1-V5, incl. V4 evidence provenance)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Evidence integrity (stage package checksums)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Advisory dependency vulnerability scan (osv-scanner, non-blocking)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run oven-sh/setup-bun@v2",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
         }
       ]
     },
     {
-      "key": "finalGreenAfterFix",
-      "note": "final state after the one-line test-timeout repair: all three mandatory jobs green",
-      "run": {
-        "id": 43829977870,
-        "status": "completed",
-        "conclusion": "success",
-        "html_url": "https://github.com/jamesrudh-arch/Jarvis-Nexus/actions/runs/43829977870",
-        "head_sha": "6075eebb26c96ac3e9dfb3fe3a6aa4ca5a0ee116",
-        "event": "push"
-      },
-      "jobs": [
+      "name": "visual-app-build",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-16T08:53:52Z",
+      "completed_at": "2026-11-16T08:54:09Z",
+      "html_url": "https://github.com/jamesrudh-arch/Jarvis-Nexus/actions/runs/43834983399/job/133189268150",
+      "steps": [
         {
-          "name": "visual-app-build",
+          "name": "Set up job",
           "status": "completed",
-          "conclusion": "success",
-          "html_url": "https://github.com/jamesrudh-arch/Jarvis-Nexus/actions/runs/43829977870/job/133172699794",
-          "id": 133172699794
+          "conclusion": "success"
         },
         {
-          "name": "verify",
+          "name": "Run actions/checkout@v4",
           "status": "completed",
-          "conclusion": "success",
-          "html_url": "https://github.com/jamesrudh-arch/Jarvis-Nexus/actions/runs/43829977870/job/133172700231",
-          "id": 133172700231
+          "conclusion": "success"
         },
         {
-          "name": "production-build",
+          "name": "Run oven-sh/setup-bun@v2",
           "status": "completed",
-          "conclusion": "success",
-          "html_url": "https://github.com/jamesrudh-arch/Jarvis-Nexus/actions/runs/43829977870/job/133172700239",
-          "id": 133172700239
+          "conclusion": "success"
+        },
+        {
+          "name": "Install dependencies",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Build the visual app (non-production surface)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run oven-sh/setup-bun@v2",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
         }
       ]
     }
   ],
-  "finalVerdict": "ALL THREE MANDATORY JOBS GREEN on final HEAD 6075eeb (run 43829977870); the deployed production commit 250ca25 was qualified green by run 43826898376; the single flake (43829303613) was diagnosed as a latent test-timeout defect and repaired test-only (60s explicit budget, no assertion changed)."
+  "mandatory_all_green": true,
+  "checkedAt": "2026-11-16T08:55:10Z"
 }
