@@ -5,7 +5,7 @@
 # preserved verbatim), evidence/ incl. the reverify/ second-pass record, the
 # production-acceptance extension (report + session evidence) and the three
 # Stage 2.4B production-execution scripts under scripts/stage24b/.
-# Regenerated 2026-11-16T08:16:56Z for the production acceptance package.
+# Regenerated 2026-11-16T08:19:26Z for the production acceptance package.
 352b5431255b7e0e9032ece6b4cbb88e2d0122c736409dc18dc58e1b42c37fdb  docs/stage2.4b/AUTH_LOCKOUT_REMEDIATION.md
 dd84af14a3b2add5a3b8274830841f1363e67f6e38f97d060b7affd966d51a20  docs/stage2.4b/BACKUP_ARCHITECTURE.md
 c5d0826a11e411fb26830491d88547a43657e3e9362242748b3a7618aee051fe  docs/stage2.4b/BACKUP_RESTORE_VERIFICATION.md
@@ -34,7 +34,7 @@ d8c6865b3121e8e90e796ac35540aa86c7217909bb35d6d7481e6e595035f56a  docs/stage2.4b
 168a7a38af9acbab01b0a897e3c169dd0d468f8f095367f239373baf8f054ce7  docs/stage2.4b/evidence/drill-offvolume-restore.json
 587778a61cebedf13274d42b036edc49d182fd0da804deef8eca0c63a42b0189  docs/stage2.4b/evidence/e2e-matrix.json
 96c70b9d0f6b69ef0ca7fbd2f19b1a449269cf9e76262eacab800f126cd8ba10  docs/stage2.4b/evidence/production-acceptance/apply-backup-config.json
-f90c2733f6d35a2cdd24d7a70ceaadc75faf0b415437e46e835ca0c57231c954  docs/stage2.4b/evidence/production-acceptance/ci-qualification-run.json
+d8021134e5dcdd0e16a5f772fd3c6b37b2bb356533411530f375183c5eff76fa  docs/stage2.4b/evidence/production-acceptance/ci-qualification-run.json
 bec5f885cd65603010de3f2e9f93c3a1f6cd78d188e179835daad1e05f02d767  docs/stage2.4b/evidence/production-acceptance/deploy-verify.json
 ae68a8caed7da8f4241964928047e46e0100a7d462d6ebd898aa1d89011870a2  docs/stage2.4b/evidence/production-acceptance/integration-verification.json
 dcd042a6703d9fce67451d2a3f477f6ad581aa4d621e6dd11132ec574c81bb06  docs/stage2.4b/evidence/production-acceptance/live-verification-supplement.json
