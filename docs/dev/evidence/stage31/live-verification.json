@@ -1,0 +1,77 @@
+{
+  "startedAt": "2026-11-16T16:42:12Z",
+  "finishedAt": "2026-11-16T16:42:19Z",
+  "verdict": "FAIL",
+  "production": "https://jarvis-nexus-production.up.railway.app",
+  "stages": {
+    "pwa.shell": {
+      "ok": true,
+      "detail": "/app/ -> 200, html shell with manifest link, 4578 bytes"
+    },
+    "pwa.manifest": {
+      "ok": true,
+      "detail": "manifest -> 200, start_url=/app/, icons=3"
+    },
+    "pwa.service_worker": {
+      "ok": true,
+      "detail": "/app/sw.js -> 200"
+    },
+    "pwa.icon": {
+      "ok": true,
+      "detail": "icon-192 -> 200, 2844 bytes"
+    },
+    "pwa.allowlist_404": {
+      "ok": true,
+      "detail": "unknown asset -> 404 (404 expected)"
+    },
+    "root.pointer": {
+      "ok": false,
+      "detail": "root JSON points at /app/"
+    },
+    "auth.boundary": {
+      "ok": true,
+      "detail": "unauthenticated converse -> 401 (401 expected)"
+    },
+    "converse.real_model": {
+      "ok": true,
+      "detail": "real reply via cloudflare:@cf/meta/llama-3.1-8b-instruct in 386ms: 'I can hear you, sir.'"
+    },
+    "converse.session_created": {
+      "ok": true,
+      "detail": "session A: nexus_conv_9d77430c-73d0-48e5-9e69-97fad37e8429"
+    },
+    "converse.second_turn": {
+      "ok": true,
+      "detail": "same session continued: 'Functional.'"
+    },
+    "memory.fact_stored": {
+      "ok": false,
+      "detail": "personal fact stored: memoriesStored=0"
+    },
+    "memory.transcript_persisted": {
+      "ok": true,
+      "detail": "session A transcript: 6 messages persisted"
+    },
+    "memory.cross_session_recall": {
+      "ok": false,
+      "detail": "NEW session recalled the fact from long-term memory: \"I don't have any information about your personal preferences or favourite test codenames.\""
+    },
+    "presence.sleep": {
+      "ok": true,
+      "detail": "session B set to SLEEPING"
+    },
+    "presence.wake": {
+      "ok": true,
+      "detail": "woke from SLEEPING: 'Good morning, sir.'"
+    },
+    "backup.supabase": {
+      "ok": true,
+      "detail": "off-volume protection on the new deployment: SUPABASE_VERIFIED"
+    },
+    "metrics.conversation": {
+      "ok": true,
+      "detail": "conversation_turns_total counted: 5"
+    }
+  },
+  "note": "live verification of stage 3.1 against the real deployment: real model provider (cloudflare), real persistence, real cross-session long-term memory. The personal fact used for the memory test is a synthetic marker, not real owner data."
+}

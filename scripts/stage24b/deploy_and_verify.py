@@ -271,7 +271,7 @@ def cmd_verify(token, restore_flag=False):
     code, body, _ = http("GET", "/health/detailed")
     mig = re.search(r"migrations applied: (\d+)", body)
     check(4, code == 200 and '"database"' in body, f"/health/detailed -> {code}, database component present")
-    check(5, bool(mig) and mig.group(1) == "3", f"migration state: {mig.group(0) if mig else 'not found'}")
+    check(5, bool(mig) and mig.group(1) == "4", f"migration state: {mig.group(0) if mig else 'not found'}")
 
     # 6. authentication + owner authorization
     code, body, _ = http("GET", "/railway/backups")

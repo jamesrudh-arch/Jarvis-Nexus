@@ -8,6 +8,7 @@ import type { CompletionRequest, CompletionResponse } from "@nexus/contracts";
 import type { ProviderAdapter } from "@nexus/model-fabric";
 import type { Result } from "@nexus/core";
 import { ok } from "@nexus/core";
+import { balancedJsonValues } from "@nexus/conversation";
 
 /**
  * Unit tests: JARVIS conversational core (Stage 3.1).
@@ -216,6 +217,58 @@ describe("ConversationService", () => {
       expect(sessions[0]?.messages).toBe(2);
       db2.close();
     }
+  });
+
+  test("extraction survives the REAL llama failure shape (schema echo + answer concatenated)", async () => {
+    // captured verbatim from the live llama-3.1-8b round-trip on 2026-11-16:
+    // the model echoes the jsonSchema back, THEN produces the answer. The
+    // fabric's first-brace extractJson cannot parse this; the conversation
+    // package's balanced scan must.
+    const schemaEcho = JSON.stringify({
+      type: "object",
+      properties: { facts: { type: "array", items: { type: "object", properties: { content: { type: "string" }, assumption: { type: "boolean" } }, required: ["content", "assumption"] } } },
+      required: ["facts"],
+    });
+    const raw = `${schemaEcho}\n\n{"facts":[{"content":"The owner's favourite test codename is Aurelia.","assumption":false}]}`;
+    expect(extractJson(raw)).toBeUndefined(); // the fabric parser genuinely fails here
+    const values = balancedJsonValues(raw);
+    expect(values.length).toBe(2); // schema echo AND the answer both parse
+    const facts = values.find((v) => typeof v === "object" && v !== null && Array.isArray((v as { facts?: unknown }).facts)) as { facts: Array<{ content: string; assumption: boolean }> };
+    expect(facts.facts[0]!.content).toContain("Aurelia");
+
+    // end-to-end through the service with this exact raw output
+    class LlamaEchoAdapter implements ProviderAdapter {
+      readonly provider = "cloudflare" as const;
+      async complete(req: CompletionRequest, _model: string): Promise<Result<CompletionResponse>> {
+        const content = req.jsonSchema ? raw : PERSONA_REPLY;
+        return ok({
+          modelId: "cloudflare:@cf/meta/llama-3.1-8b-instruct", content,
+          parsedJson: req.jsonSchema ? extractJson(content) : undefined, // undefined — the real failure
+          usage: { inputTokens: 1, outputTokens: 1 }, latencyMs: 1, provider: "cloudflare",
+        });
+      }
+      async healthCheck(): Promise<Result<boolean>> { return ok(true); }
+    }
+    const fabric = new ModelFabric({ providers: { cloudflare: new LlamaEchoAdapter() } });
+    const memory = MemoryService.withDb(db, undefined as never);
+    const svc = new ConversationService({ db, fabric, memory });
+    const r = await svc.converse({ message: "Remember this: my favourite test codename is Aurelia." });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.memoriesStored).toBe(1); // recovered despite parsedJson=undefined
+    const personal = memory.retrieve({ scope: "jarvis", tiers: ["personal"], limit: 5 });
+    expect(personal.length).toBe(1);
+    expect(personal[0]!.content).toContain("Aurelia");
+    expect(personal[0]!.tags).toContain("confirmed");
+  });
+
+  test("balancedJsonValues handles fenced, prose-prefixed, and garbage output", () => {
+    expect(balancedJsonValues('```json\n{"facts":[]}\n```')).toEqual([{ facts: [] }]);
+    expect(balancedJsonValues('Here you go: {"facts":[]} hope that helps')).toEqual([{ facts: [] }]);
+    expect(balancedJsonValues("no json at all")).toEqual([]);
+    expect(balancedJsonValues('{"a":{"b":[1,2]}} trailing')).toEqual([{ a: { b: [1, 2] } }]);
+    // strings containing braces must not confuse the scanner
+    expect(balancedJsonValues('{"content":"has } brace"}')).toEqual([{ content: "has } brace" }]);
   });
 
   test("status snapshot is injected into the system prompt", async () => {

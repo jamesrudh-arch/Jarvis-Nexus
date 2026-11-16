@@ -177,6 +177,40 @@ const EXTRACTION_PROMPT = `Extract durable personal facts the OWNER stated about
 - Ignore commands, questions, world-talk and small talk.
 - If nothing durable was stated, respond {"facts":[]}.`;
 
+/** Scan text for ALL balanced top-level JSON values (object or array) and
+ *  return those that parse. Handles the REAL failure shape observed from
+ *  llama-3.1-8b: the model echoes the jsonSchema back and THEN produces the
+ *  answer — two concatenated JSON values. A first-brace slice cannot parse
+ *  that; a balanced scan can. Fences and prose prefixes are naturally
+ *  tolerated (non-JSON text simply never balances). */
+export function balancedJsonValues(text: string): unknown[] {
+  const out: unknown[] = [];
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch !== "{" && ch !== "[") continue;
+    let depth = 0;
+    let inStr = false;
+    let esc = false;
+    for (let j = i; j < text.length; j++) {
+      const c = text[j]!;
+      if (esc) { esc = false; continue; }
+      if (c === "\\") { esc = true; continue; }
+      if (inStr) { if (c === '"') inStr = false; continue; }
+      if (c === '"') { inStr = true; continue; }
+      if (c === "{" || c === "[") depth++;
+      else if (c === "}" || c === "]") {
+        depth--;
+        if (depth === 0) {
+          try { out.push(JSON.parse(text.slice(i, j + 1))); } catch { /* balanced but not valid JSON */ }
+          i = j; // resume scanning after this value
+          break;
+        }
+      }
+    }
+  }
+  return out;
+}
+
 export class ConversationService {
   readonly repo: ConversationRepository;
   private readonly fabric: ModelFabric;
@@ -335,7 +369,16 @@ export class ConversationService {
       temperature: 0,
     });
     if (!extraction.ok) return 0;
-    const parsed = extraction.value.parsedJson as { facts?: Array<{ content?: unknown; assumption?: unknown }> } | undefined;
+    // parsedJson may be undefined when the model echoes the schema before the
+    // answer (observed live from llama-3.1-8b): recover by scanning ALL
+    // balanced JSON values in the raw content for one with a facts array.
+    const candidates: unknown[] = [];
+    if (extraction.value.parsedJson !== undefined) candidates.push(extraction.value.parsedJson);
+    candidates.push(...balancedJsonValues(extraction.value.content));
+    const parsed = candidates.find(
+      (p): p is { facts?: Array<{ content?: unknown; assumption?: unknown }> } =>
+        typeof p === "object" && p !== null && Array.isArray((p as { facts?: unknown }).facts),
+    );
     if (!parsed || !Array.isArray(parsed.facts)) return 0;
     let stored = 0;
     for (const f of parsed.facts.slice(0, 5)) {
